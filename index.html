@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InfraGo – Projekt Nyomkövető</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --surface: #161b26; --surface2: #1e2535; --border: #2a3347;
+    --accent: #e8a020; --accent2: #2d7dd2; --text: #d4dbe8; --text-dim: #6b7a96;
+    --text-bright: #f0f4ff; --success: #27ae60; --danger: #e05252;
+    --profit: #2ecc71; --cost: #e05252;
+    --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:var(--sans); background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  .topbar { height:52px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:16px; flex-shrink:0; }
+  .logo { font-family:var(--mono); font-weight:600; font-size:15px; color:var(--accent); letter-spacing:2px; text-transform:uppercase; }
+  .logo span { color:var(--text-dim); }
+  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+  .user-badge { background:var(--surface2); border:1px solid var(--border); padding:4px 10px; border-radius:4px; font-size:11px; color:var(--text); }
+
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  .sidebar { width:232px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+  .sidebar-section { padding:14px 0 6px; }
+  .sidebar-label { font-family:var(--mono); font-size:9px; font-weight:600; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase; padding:0 16px 8px; }
+  .sidebar-item { display:flex; align-items:center; gap:9px; padding:9px 16px; cursor:pointer; font-size:13px; color:var(--text-dim); transition:all 0.15s; border-left:2px solid transparent; user-select:none; }
+  .sidebar-item:hover { background:var(--surface2); color:var(--text); }
+  .sidebar-item.active { background:rgba(232,160,32,0.1); color:var(--accent); border-left-color:var(--accent); }
+  .sidebar-divider { height:1px; background:var(--border); margin:6px 0; }
+
+  .search-box { padding:12px 14px; position:relative; }
+  .search-box input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:7px 10px 7px 30px; font-family:var(--mono); font-size:11px; color:var(--text); outline:none; transition:border 0.15s; }
+  .search-box input:focus { border-color:var(--accent); }
+  .search-box input::placeholder { color:var(--text-dim); }
+  .s-icon { position:absolute; left:23px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:12px; }
+
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .breadcrumb { height:38px; background:var(--surface); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:6px; font-family:var(--mono); font-size:11px; color:var(--text-dim); flex-shrink:0; }
+  .bc-sep { color:var(--border); }
+  .bc-active { color:var(--text); }
+  .bc-link { cursor:pointer; color:var(--accent2); }
+  .bc-link:hover { color:var(--accent); }
+  .content { flex:1; overflow-y:auto; padding:24px; }
+
+  .panel-title { font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+  .panel-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .grid-2 { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px 20px; cursor:pointer; transition:all 0.15s; position:relative; overflow:hidden; }
+  .card:hover { border-color:var(--accent2); background:var(--surface2); transform:translateY(-1px); }
+  .card-accent-line { position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); opacity:0; transition:opacity 0.15s; }
+  .card:hover .card-accent-line { opacity:1; }
+  .card-name { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--text-bright); margin-bottom:4px; }
+  .card-meta { font-size:11px; color:var(--text-dim); margin-top:2px; }
+
+  .project-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:13px 16px; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; gap:14px; }
+  .project-card:hover { border-color:var(--accent2); background:var(--surface2); }
+  .project-id { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--accent); min-width:145px; }
+  .project-info { flex:1; }
+  .project-company { font-size:11px; color:var(--text-dim); }
+  .project-name { font-size:13px; color:var(--text-bright); margin-top:1px; }
+
+  .status-badge { font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; padding:3px 8px; border-radius:3px; white-space:nowrap; border:1px solid; }
+  .s-0{color:#6b7a96;border-color:#6b7a96;background:rgba(107,122,150,0.1);}
+  .s-1{color:#2d7dd2;border-color:#2d7dd2;background:rgba(45,125,210,0.1);}
+  .s-2{color:#9b59b6;border-color:#9b59b6;background:rgba(155,89,182,0.1);}
+  .s-3{color:#e8a020;border-color:#e8a020;background:rgba(232,160,32,0.1);}
+  .s-4{color:#e05252;border-color:#e05252;background:rgba(224,82,82,0.1);}
+  .s-5{color:#e88a20;border-color:#e88a20;background:rgba(232,138,32,0.1);}
+  .s-6{color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,0.1);}
+  .s-7{color:#1abc9c;border-color:#1abc9c;background:rgba(26,188,156,0.1);}
+  .s-8{color:#3498db;border-color:#3498db;background:rgba(52,152,219,0.1);}
+  .s-9{color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,0.18);}
+
+  .detail-header { display:flex; align-items:flex-start; gap:20px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+  .detail-id { font-family:var(--mono); font-size:22px; font-weight:600; color:var(--accent); line-height:1; }
+  .detail-company { font-size:12px; color:var(--text-dim); margin-top:4px; font-family:var(--mono); }
+  .detail-actions { margin-left:auto; display:flex; gap:8px; }
+
+  .workflow { display:flex; align-items:center; margin-bottom:24px; overflow-x:auto; padding-bottom:4px; }
+  .wf-step { display:flex; align-items:center; flex-shrink:0; }
+  .wf-node { text-align:center; padding:8px 10px; border-radius:5px; min-width:74px; }
+  .wf-num { font-family:var(--mono); font-size:9px; color:var(--text-dim); margin-bottom:3px; }
+  .wf-label { font-size:9px; color:var(--text-dim); line-height:1.3; }
+  .wf-node.done .wf-num { color:var(--success); }
+  .wf-node.done .wf-label { color:var(--text); }
+  .wf-node.current { background:rgba(232,160,32,0.12); border:1px solid var(--accent); }
+  .wf-node.current .wf-num { color:var(--accent); }
+  .wf-node.current .wf-label { color:var(--accent); font-weight:600; }
+  .wf-arrow { color:var(--border); font-size:13px; margin:0 1px; flex-shrink:0; }
+
+  .docs-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(165px, 1fr)); gap:10px; margin-bottom:24px; }
+  .doc-folder { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px; transition:all 0.15s; cursor:pointer; }
+  .doc-folder:hover { border-color:var(--accent2); }
+  .doc-folder-icon { font-size:22px; margin-bottom:7px; }
+  .doc-folder-name { font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text-bright); margin-bottom:3px; }
+  .doc-folder-count { font-size:11px; color:var(--text-dim); }
+  .doc-upload-btn { font-size:10px; font-family:var(--mono); color:var(--accent2); margin-top:8px; opacity:0; transition:opacity 0.15s; }
+  .doc-folder:hover .doc-upload-btn { opacity:1; }
+
+  /* FINANCE */
+  .finance-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+  .finance-box { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+  .finance-box-title { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
+  .finance-total { font-family:var(--mono); font-size:19px; font-weight:600; margin-bottom:2px; }
+  .finance-label { font-size:11px; color:var(--text-dim); margin-bottom:12px; }
+  .invoice-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .invoice-item { background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:8px 10px; display:flex; align-items:flex-start; gap:8px; }
+  .invoice-left { flex:1; min-width:0; }
+  .invoice-ref { font-family:var(--mono); font-size:10px; color:var(--text-dim); }
+  .invoice-party { font-size:12px; color:var(--text); }
+  .invoice-note { font-size:10px; color:var(--text-dim); }
+  .invoice-right { text-align:right; flex-shrink:0; }
+  .invoice-amount { font-family:var(--mono); font-size:12px; font-weight:600; }
+  .inv-inc { color:var(--profit); }
+  .inv-out { color:var(--cost); }
+  .invoice-date { font-size:10px; color:var(--text-dim); }
+  .add-btn { display:flex; align-items:center; gap:5px; font-size:11px; font-family:var(--mono); color:var(--accent2); cursor:pointer; margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); transition:color 0.15s; }
+  .add-btn:hover { color:var(--accent); }
+
+  .profit-summary { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; margin-bottom:24px; display:flex; align-items:center; gap:24px; flex-wrap:wrap; }
+  .profit-val { font-family:var(--mono); font-size:20px; font-weight:600; }
+  .profit-bar-track { flex:1; min-width:150px; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+  .profit-bar-fill { height:100%; border-radius:3px; }
+
+  /* CASHFLOW PAGE */
+  .cf-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+  .cf-stat { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+  .cf-stat-val { font-family:var(--mono); font-size:18px; font-weight:600; }
+  .cf-stat-label { font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .cf-chart { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px; margin-bottom:16px; }
+  .cf-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; cursor:pointer; }
+  .cf-bar-row:hover .cf-bar-label { color:var(--accent); }
+  .cf-bar-label { font-family:var(--mono); font-size:10px; color:var(--text-dim); min-width:135px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:color 0.15s; }
+  .cf-bar-track { flex:1; height:16px; background:var(--surface2); border-radius:3px; overflow:hidden; display:flex; }
+  .cf-bar-inc { height:100%; background:rgba(46,204,113,0.55); }
+  .cf-bar-cost { height:100%; background:rgba(224,82,82,0.5); }
+  .cf-bar-val { font-family:var(--mono); font-size:10px; min-width:75px; text-align:right; }
+  .cf-legend { display:flex; gap:14px; margin-top:12px; font-size:11px; color:var(--text-dim); }
+  .cf-dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:22px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:13px 15px; }
+  .stat-val { font-family:var(--mono); font-size:20px; font-weight:600; color:var(--text-bright); }
+  .stat-label { font-size:11px; color:var(--text-dim); margin-top:3px; }
+
+  .empty-state { text-align:center; padding:50px 20px; color:var(--text-dim); }
+  .em-icon { font-size:32px; margin-bottom:10px; }
+  .em-title { font-family:var(--mono); font-size:13px; color:var(--text); margin-bottom:5px; }
+
+  .divider-tag { display:inline-block; background:rgba(45,125,210,0.12); border:1px solid rgba(45,125,210,0.3); border-radius:3px; padding:2px 7px; font-family:var(--mono); font-size:9px; color:var(--accent2); letter-spacing:1px; text-transform:uppercase; }
+  .supplier-tag { background:rgba(155,89,182,0.12); border-color:rgba(155,89,182,0.3); color:#9b59b6; }
+
+  .btn { font-family:var(--mono); font-size:11px; font-weight:600; letter-spacing:0.5px; padding:7px 14px; border-radius:4px; cursor:pointer; border:1px solid; transition:all 0.15s; display:inline-flex; align-items:center; gap:6px; text-transform:uppercase; }
+  .btn-primary { background:var(--accent); border-color:var(--accent); color:#0f1117; }
+  .btn-primary:hover { background:#f0b030; }
+  .btn-secondary { background:transparent; border-color:var(--border); color:var(--text-dim); }
+  .btn-secondary:hover { border-color:var(--text-dim); color:var(--text); }
+  .btn-advance { background:rgba(39,174,96,0.12); border-color:var(--success); color:var(--success); }
+  .btn-advance:hover { background:rgba(39,174,96,0.22); }
+  .btn-danger { background:rgba(224,82,82,0.1); border-color:var(--danger); color:var(--danger); }
+
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.76); z-index:100; align-items:center; justify-content:center; }
+  .modal-overlay.active { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:26px; width:480px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.6); max-height:90vh; overflow-y:auto; }
+  .modal-title { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--text-bright); margin-bottom:18px; letter-spacing:1px; text-transform:uppercase; }
+  .form-row { margin-bottom:13px; }
+  .form-label { font-family:var(--mono); font-size:10px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:5px; display:block; }
+  .form-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-family:var(--mono); font-size:12px; color:var(--text); outline:none; transition:border 0.15s; }
+  .form-input:focus { border-color:var(--accent); }
+  .form-input::placeholder { color:var(--text-dim); }
+  .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .id-preview { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-family:var(--mono); font-size:13px; color:var(--accent); margin-bottom:13px; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+  .confirm-bar { background:rgba(39,174,96,0.07); border:1px solid var(--success); border-radius:6px; padding:11px 14px; display:flex; align-items:center; gap:10px; margin-bottom:18px; font-size:13px; color:var(--text); }
+
+  .log-list { display:flex; flex-direction:column; gap:7px; }
+  .log-item { display:flex; gap:12px; padding:9px 12px; background:var(--surface); border-radius:5px; border-left:2px solid var(--border); }
+  .log-item.advance { border-left-color:var(--success); }
+  .log-item.upload { border-left-color:var(--accent2); }
+  .log-item.invoice { border-left-color:var(--accent); }
+  .log-time { font-family:var(--mono); font-size:10px; color:var(--text-dim); white-space:nowrap; min-width:115px; }
+  .log-msg { font-size:12px; color:var(--text); }
+
+  /* EDIT / DELETE icon buttons */
+  .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:4px; border:1px solid transparent; cursor:pointer; font-size:13px; transition:all 0.15s; flex-shrink:0; background:transparent; }
+  .icon-btn:hover { background:var(--surface2); border-color:var(--border); }
+  .icon-btn.edit:hover  { border-color:var(--accent2); color:var(--accent2); }
+  .icon-btn.del:hover   { border-color:var(--danger);  color:var(--danger); }
+  .row-actions { display:flex; gap:3px; align-items:center; opacity:0; transition:opacity 0.15s; }
+  .project-card:hover .row-actions { opacity:1; }
+  .card-actions { display:flex; gap:4px; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+  .invoice-item .inv-actions { display:flex; gap:2px; flex-shrink:0; opacity:0; transition:opacity 0.15s; }
+  .invoice-item:hover .inv-actions { opacity:1; }
+  .danger-bar { background:rgba(224,82,82,0.08); border:1px solid var(--danger); border-radius:6px; padding:11px 14px; display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--text); }
+
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* EDIT / DELETE */
+  .row-actions { display:flex; gap:5px; margin-left:auto; opacity:0; transition:opacity 0.15s; flex-shrink:0; }
+  .project-card:hover .row-actions,
+  .invoice-item:hover .row-actions,
+  .card:hover .row-actions { opacity:1; }
+  .icon-btn { background:transparent; border:1px solid var(--border); border-radius:4px; padding:4px 7px; cursor:pointer; font-size:12px; color:var(--text-dim); transition:all 0.15s; line-height:1; }
+  .icon-btn:hover { background:var(--surface2); color:var(--text); }
+  .icon-btn.del:hover { border-color:var(--danger); color:var(--danger); background:rgba(224,82,82,0.08); }
+  .icon-btn.edit:hover { border-color:var(--accent2); color:var(--accent2); }
+  .invoice-item { position:relative; }
+  .invoice-item .row-actions { opacity:0; }
+  .invoice-item:hover .row-actions { opacity:1; }
+  .doc-item { display:flex; align-items:center; gap:6px; margin-top:4px; }
+  .doc-item-name { font-size:10px; font-family:var(--mono); color:var(--accent2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .doc-item .row-actions { opacity:0; }
+  .doc-item:hover .row-actions { opacity:1; }
+  .danger-zone { background:rgba(224,82,82,0.07); border:1px solid rgba(224,82,82,0.25); border-radius:6px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--text); }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="display:flex;position:fixed;inset:0;background:#0f1117;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e8a020;letter-spacing:2px;">MINIGO</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7a96;">Felhő szinkronizálás...</div>
+  <div style="width:160px;height:2px;background:#2a3347;border-radius:2px;overflow:hidden;">
+    <div style="width:40%;height:100%;background:#e8a020;border-radius:2px;animation:loadbar 1.2s ease-in-out infinite;"></div>
+  </div>
+</div>
+<style>
+@keyframes loadbar {
+  0%{transform:translateX(-100%)} 50%{transform:translateX(150%)} 100%{transform:translateX(400%)}
+}
+</style>
+
+<style>
+/* ── MOBILE RESPONSIVE ──────────────────────────────────────────────────────── */
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  z-index: 201;
+}
+.hamburger:hover { background: var(--surface2); }
+.hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: all 0.25s;
+  transform-origin: center;
+}
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
+  /* Topbar */
+  .topbar { padding: 0 12px; gap: 10px; }
+  .hamburger { display: flex; }
+  .topbar-right { gap: 6px; }
+  .topbar-right #clockDisplay { display: none; }
+
+  /* Sidebar – slide-in drawer */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 280px;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    padding-top: 52px;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay.open { display: block; }
+
+  /* Main content full width */
+  .layout { position: relative; }
+  .main { width: 100%; }
+  .content { padding: 14px; }
+
+  /* Breadcrumb */
+  .breadcrumb { padding: 0 12px; font-size: 10px; }
+
+  /* Dashboard KPI cards – 2 columns */
+  .kpi-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .kpi-card { padding: 14px !important; }
+  .kpi-val { font-size: 18px !important; }
+
+  /* Cards grid – single column */
+  .cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Project detail */
+  .project-detail-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .project-action-btns {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .project-action-btns .btn { font-size: 11px !important; padding: 6px 10px !important; }
+
+  /* Workflow scroll */
+  .workflow { overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+  .wf-node { min-width: 70px; }
+  .wf-label { font-size: 8px !important; }
+
+  /* Finance boxes */
+  .finance-boxes {
+    flex-direction: column !important;
+  }
+  .finance-box { min-width: unset !important; }
+
+  /* Invoice rows */
+  .invoice-item { flex-wrap: wrap; gap: 6px; }
+  .invoice-ref { font-size: 10px; }
+
+  /* Cashflow bars */
+  .cf-bar-label { min-width: 90px !important; font-size: 9px !important; }
+
+  /* Modal full-screen on mobile */
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh !important;
+    border-radius: 12px 12px 0 0 !important;
+    margin: auto 0 0 0 !important;
+    padding: 20px 16px !important;
+  }
+  .modal-overlay {
+    align-items: flex-end !important;
+  }
+
+  /* Doc folders – 2 per row */
+  .doc-folders-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Panel title */
+  .panel-title { font-size: 10px; }
+
+  /* Profit summary */
+  .profit-summary { flex-wrap: wrap; gap: 8px; }
+
+  /* Stat badges smaller */
+  .status-badge { font-size: 9px !important; padding: 2px 6px !important; }
+
+  /* Search box */
+  .search-box input { font-size: 12px; }
+
+  /* Buttons in rows */
+  .row-actions { opacity: 1 !important; }
+}
+
+@media (max-width: 400px) {
+  .kpi-grid { grid-template-columns: 1fr !important; }
+  .kpi-val { font-size: 16px !important; }
+  .content { padding: 10px; }
+}
+
+@media (max-width: 768px) {
+  /* Dashboard stats row: 3 columns instead of 6 */
+  .stats-row { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+  /* Cashflow stats: 2 columns */
+  .cf-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Finance grid: single column */
+  .finance-grid { grid-template-columns: 1fr !important; }
+  /* Cards grid: single column */
+  .grid-2 { grid-template-columns: 1fr !important; }
+  /* Doc grid: 2 columns */
+  .docs-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Inline finance boxes - make them stack */
+  [style*="display:flex"][style*="gap:14px"] { flex-direction: column !important; }
+  /* Project detail header stack */
+  .detail-header { flex-direction: column !important; gap: 12px !important; }
+  .detail-actions { margin-left: 0 !important; flex-wrap: wrap !important; gap: 6px !important; }
+  .detail-actions .btn { font-size: 11px !important; padding: 6px 10px !important; }
+  .detail-id { font-size: 16px !important; }
+  /* Stat card in detail */
+  .stat-card { padding: 10px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Stats row: 2 columns on small phones */
+  .stats-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .stat-val { font-size: 16px !important; }
+  .stat-label { font-size: 9px !important; }
+}
+</style>
+
+<div class="topbar">
+  <div class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="logo">INFRA<span>GO</span></div>
+  <span style="color:var(--border);font-family:var(--mono);font-size:11px">|</span>
+  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
+  <div class="topbar-right">
+    <span id="clockDisplay"></span>
+    <div class="user-badge">👤 admin</div>
+  </div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<div class="layout">
+  <div class="sidebar" id="mainSidebar">
+    <div class="search-box">
+      <span class="s-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Projekt keresés..." oninput="doSearch(this.value)">
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigáció</div>
+      <div class="sidebar-item active" id="nav-dashboard"   onclick="showView('dashboard')">   <span>📊</span> Áttekintés</div>
+      <div class="sidebar-item"        id="nav-cashflow"    onclick="showView('cashflow')">    <span>💰</span> Cashflow</div>
+      <div class="sidebar-item"        id="nav-megrendelok" onclick="showView('megrendelok')"> <span>🏢</span> Megrendelők</div>
+      <div class="sidebar-item"        id="nav-szallitok"   onclick="showView('szallitok')">   <span>🔧</span> Szállítók</div>
+      <div class="sidebar-item"        id="nav-projects"    onclick="showView('projects')">    <span>📁</span> Projektek</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Gyors műveletek</div>
+      <div class="sidebar-item" onclick="openNewProjectModal()">  <span>➕</span> Új projekt</div>
+      <div class="sidebar-item" onclick="openNewClientModal()">   <span>🏢</span> Új megrendelő</div>
+      <div class="sidebar-item" onclick="openNewSupplierModal()"> <span>🔧</span> Új szállító</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Státusz szűrő</div>
+      <div class="sidebar-item" onclick="filterByStatus(-1)"><span style="font-size:9px">●</span>&nbsp;Összes</div>
+      <div class="sidebar-item" onclick="filterByStatus(0)"><span style="font-size:9px;color:#6b7a96">●</span>&nbsp;<span style="font-size:11px">Árajánlat vár</span></div>
+      <div class="sidebar-item" onclick="filterByStatus(3)"><span style="font-size:9px;color:var(--accent)">●</span>&nbsp;<span style="font-size:11px">Folyamatban</span></div>
+      <div class="sidebar-item" onclick="filterByStatus(5)"><span style="font-size:9px;color:#e88a20">●</span>&nbsp;<span style="font-size:11px">Számlázás vár</span></div>
+      <div class="sidebar-item" onclick="filterByStatus(6)"><span style="font-size:9px;color:var(--success)">●</span>&nbsp;<span style="font-size:11px">Számlázva</span></div>
+      <div class="sidebar-item" onclick="filterByStatus(8)"><span style="font-size:9px;color:#3498db">●</span>&nbsp;<span style="font-size:11px">Kész</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="content" id="mainContent"></div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ PROJEKT -->
+<div class="modal-overlay" id="newProjectModal">
+  <div class="modal">
+    <div class="modal-title">➕ Új Projekt Rögzítése</div>
+    <div class="form-row">
+      <label class="form-label">Megrendelő *</label>
+      <select class="form-input" id="np-company" onchange="updateIdPreview()">
+        <option value="">-- válassz megrendelőt --</option>
+      </select>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Helyszín (max 10)</label><input class="form-input" id="np-location" maxlength="10" placeholder="pl. HALLER" oninput="updateIdPreview()"></div>
+      <div><label class="form-label">Ütem (max 5)</label><input class="form-input" id="np-phase" maxlength="5" placeholder="pl. IV" oninput="updateIdPreview()"></div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <label class="form-label">Generált azonosító</label>
+      <div class="id-preview" id="idPreview">— töltsd ki az összes mezőt —</div>
+    </div>
+    <div class="form-row"><label class="form-label">Leírás (opcionális)</label><input class="form-input" id="np-desc" placeholder="pl. Parkoló EV töltő kiépítés"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createProject()">✓ Létrehozás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ MEGRENDELŐ -->
+<div class="modal-overlay" id="newClientModal">
+  <div class="modal">
+    <div class="modal-title">🏢 Új Megrendelő</div>
+    <div class="form-row"><label class="form-label">Cég neve *</label><input class="form-input" id="ncl-name" placeholder="pl. Parkl Zrt."></div>
+    <div class="form-row"><label class="form-label">Kapcsolattartó</label><input class="form-input" id="ncl-contact" placeholder="pl. Kiss János"></div>
+    <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="ncl-email" placeholder="info@ceg.hu"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newClientModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createClient()">✓ Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ SZÁLLÍTÓ -->
+<div class="modal-overlay" id="newSupplierModal">
+  <div class="modal">
+    <div class="modal-title">🔧 Új Szállító / Alvállalkozó</div>
+    <div class="form-row"><label class="form-label">Cég neve *</label><input class="form-input" id="ns-name" placeholder="pl. LNV Kft."></div>
+    <div class="form-row"><label class="form-label">Kapcsolattartó</label><input class="form-input" id="ns-contact" placeholder="pl. Nagy Béla"></div>
+    <div class="form-row"><label class="form-label">Szakterület / típus</label><input class="form-input" id="ns-type" placeholder="pl. villamos kivitelező, e-töltő gyártó"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newSupplierModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createSupplier()">✓ Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: STÁTUSZ -->
+<div class="modal-overlay" id="advanceModal">
+  <div class="modal">
+    <div class="modal-title">Státusz jóváhagyása</div>
+    <div id="advanceModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('advanceModal')">Mégse</button>
+      <button class="btn btn-advance" id="advanceConfirmBtn" onclick="confirmAdvance()">✓ Jóváhagyom</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DOKUMENTUM -->
+<div class="modal-overlay" id="uploadModal">
+  <div class="modal">
+    <div class="modal-title">📤 Dokumentum Feltöltése</div>
+    <div id="uploadFolderLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px;"></div>
+    <div class="form-row">
+      <label class="form-label">Fájl kiválasztása *</label>
+      <input class="form-input" type="file" id="upload-file" style="padding:6px;" onchange="onUploadFileChange()">
+    </div>
+    <div class="form-row"><label class="form-label">Fájl neve *</label><input class="form-input" id="upload-name" placeholder="pl. Ajanlat_v1.xlsx"></div>
+    <div class="form-row"><label class="form-label">Dátum</label><input class="form-input" type="date" id="upload-date"></div>
+    <div id="upload-status" style="font-size:11px;color:var(--accent);font-family:var(--mono);min-height:18px;margin-bottom:4px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('uploadModal')">Mégse</button>
+      <button class="btn btn-primary" id="uploadConfirmBtn" onclick="confirmUpload()">✓ Feltöltés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BEVÉTELI SZÁMLA -->
+<div class="modal-overlay" id="incomeInvoiceModal">
+  <div class="modal">
+    <div class="modal-title">💚 Kimenő Számla Rögzítése</div>
+    <div id="iiProjectLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;"></div>
+    <div class="form-row"><label class="form-label">Számlaszám *</label><input class="form-input" id="ii-ref" placeholder="pl. 2025/043"></div>
+    <div class="form-row"><label class="form-label">Nettó összeg (Ft) *</label><input class="form-input" id="ii-amount" type="number" min="0" placeholder="pl. 1250000"></div>
+    <div class="form-row"><label class="form-label">Számla dátuma</label><input class="form-input" type="date" id="ii-date"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="ii-note" placeholder="opcionális"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('incomeInvoiceModal')">Mégse</button>
+      <button class="btn btn-advance" onclick="confirmIncomeInvoice()">✓ Rögzítés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MEGRENDELŐ SZERKESZTÉS -->
+<div class="modal-overlay" id="editClientModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Megrendelő szerkesztése</div>
+    <input type="hidden" id="ecl-id">
+    <div class="form-row"><label class="form-label">Cég neve *</label><input class="form-input" id="ecl-name"></div>
+    <div class="form-row"><label class="form-label">Kapcsolattartó</label><input class="form-input" id="ecl-contact"></div>
+    <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="ecl-email"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editClientModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEditClient()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SZÁLLÍTÓ SZERKESZTÉS -->
+<div class="modal-overlay" id="editSupplierModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Szállító szerkesztése</div>
+    <input type="hidden" id="es-id">
+    <div class="form-row"><label class="form-label">Cég neve *</label><input class="form-input" id="es-name"></div>
+    <div class="form-row"><label class="form-label">Kapcsolattartó</label><input class="form-input" id="es-contact"></div>
+    <div class="form-row"><label class="form-label">Szakterület / típus</label><input class="form-input" id="es-type"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editSupplierModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEditSupplier()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PROJEKT SZERKESZTÉS -->
+<div class="modal-overlay" id="editProjectModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Projekt szerkesztése</div>
+    <input type="hidden" id="ep-id">
+    <div class="form-row"><label class="form-label">Projekt azonosító</label><div class="id-preview" id="ep-id-display" style="margin-bottom:0;font-size:14px;"></div></div>
+    <div class="form-row">
+      <label class="form-label">Megrendelő *</label>
+      <select class="form-input" id="ep-client"></select>
+    </div>
+    <div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="ep-desc"></div>
+    <div class="form-row">
+      <label class="form-label">Státusz (manuális korrekció)</label>
+      <select class="form-input" id="ep-status"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editProjectModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEditProject()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DOKUMENTUM SZERKESZTÉS -->
+<div class="modal-overlay" id="editDocModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Dokumentum szerkesztése</div>
+    <div class="form-row"><label class="form-label">Fájl neve *</label><input class="form-input" id="edoc-name"></div>
+    <div class="form-row"><label class="form-label">Dátum</label><input class="form-input" type="date" id="edoc-date"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editDocModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveDoc()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BEVÉTELI SZÁMLA SZERKESZTÉS -->
+<div class="modal-overlay" id="editIncomeInvoiceModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Kimenő számla szerkesztése</div>
+    <input type="hidden" id="eii-pid"><input type="hidden" id="eii-idx">
+    <div class="form-row"><label class="form-label">Számlaszám *</label><input class="form-input" id="eii-ref"></div>
+    <div class="form-row"><label class="form-label">Nettó összeg (Ft) *</label><input class="form-input" id="eii-amount" type="number" min="0"></div>
+    <div class="form-row"><label class="form-label">Dátum</label><input class="form-input" type="date" id="eii-date"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="eii-note"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editIncomeInvoiceModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEditIncomeInvoice()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SZÁLLÍTÓI SZÁMLA SZERKESZTÉS -->
+<div class="modal-overlay" id="editCostInvoiceModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Szállítói számla szerkesztése</div>
+    <input type="hidden" id="eci-pid"><input type="hidden" id="eci-idx">
+    <div class="form-row">
+      <label class="form-label">Szállító *</label>
+      <select class="form-input" id="eci-supplier" onchange="eciSupplierChange()"></select>
+    </div>
+    <div class="form-row" id="eci-manual-row" style="display:none">
+      <label class="form-label">Szállító neve (kézi) *</label>
+      <input class="form-input" id="eci-manual-name">
+    </div>
+    <div class="form-row"><label class="form-label">Számlaszám *</label><input class="form-input" id="eci-ref"></div>
+    <div class="form-row"><label class="form-label">Nettó összeg (Ft) *</label><input class="form-input" id="eci-amount" type="number" min="0"></div>
+    <div class="form-row"><label class="form-label">Dátum</label><input class="form-input" type="date" id="eci-date"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="eci-note"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editCostInvoiceModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEditCostInvoice()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TÖRLÉS MEGERŐSÍTÉS -->
+<div class="modal-overlay" id="deleteConfirmModal">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">🗑️ Törlés megerősítése</div>
+    <div class="danger-zone" id="deleteConfirmBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('deleteConfirmModal')">Mégse</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn">🗑️ Törlés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SZÁLLÍTÓI SZÁMLA -->
+<div class="modal-overlay" id="costInvoiceModal">
+  <div class="modal">
+    <div class="modal-title">🔴 Szállítói Számla Rögzítése</div>
+    <div id="ciProjectLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;"></div>
+    <div class="form-row">
+      <label class="form-label">Szállító *</label>
+      <select class="form-input" id="ci-supplier" onchange="ciSupplierChange()">
+        <option value="">-- válassz szállítót --</option>
+      </select>
+    </div>
+    <div class="form-row" id="ci-manual-row" style="display:none">
+      <label class="form-label">Szállító neve (kézi) *</label>
+      <input class="form-input" id="ci-manual-name" placeholder="pl. Egyéb Kft.">
+    </div>
+    <div class="form-row"><label class="form-label">Számlaszám *</label><input class="form-input" id="ci-ref" placeholder="pl. SZL-2025/012"></div>
+    <div class="form-row"><label class="form-label">Nettó összeg (Ft) *</label><input class="form-input" id="ci-amount" type="number" min="0" placeholder="pl. 450000"></div>
+    <div class="form-row"><label class="form-label">Számla dátuma</label><input class="form-input" type="date" id="ci-date"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés (anyag / munka / eszköz)</label><input class="form-input" id="ci-note" placeholder="opcionális"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('costInvoiceModal')">Mégse</button>
+      <button class="btn btn-danger" onclick="confirmCostInvoice()">✓ Rögzítés</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Firebase SDK -->
+<script type="module">
+// ── FIREBASE INIT ─────────────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc as fbDeleteDocFS, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD1aNhDDCfynx8OfZWjt-ql5Z7LiwoYAFo",
+  authDomain: "minigo-erp.firebaseapp.com",
+  projectId: "minigo-erp",
+  storageBucket: "minigo-erp.firebasestorage.app",
+  messagingSenderId: "1061974028511",
+  appId: "1:1061974028511:web:46f738eedcb7101072796a"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const storage = getStorage(fbApp);
+
+// ── FIREBASE HELPERS ──────────────────────────────────────────────────────────
+async function fbSaveClient(c) {
+  await setDoc(doc(db, 'clients', c.id), c);
+}
+async function fbDeleteClient(id) {
+  await fbDeleteDocFS(doc(db, 'clients', id));
+}
+async function fbSaveSupplier(s) {
+  await setDoc(doc(db, 'suppliers', s.id), s);
+}
+async function fbDeleteSupplier(id) {
+  await fbDeleteDocFS(doc(db, 'suppliers', id));
+}
+async function fbSaveProject(p) {
+  await setDoc(doc(db, 'projects', p.id), p);
+}
+async function fbDeleteProject(id) {
+  await fbDeleteDocFS(doc(db, 'projects', id));
+}
+async function fbUploadFile(projectId, folder, file) {
+  const path = `projects/${projectId}/${folder}/${file.name}`;
+  const sRef = storageRef(storage, path);
+  await uploadBytes(sRef, file);
+  const url = await getDownloadURL(sRef);
+  return url;
+}
+async function fbDeleteFile(projectId, folder, fileName) {
+  try {
+    const path = `projects/${projectId}/${folder}/${fileName}`;
+    const sRef = storageRef(storage, path);
+    await deleteObject(sRef);
+  } catch(e) { console.warn('File delete:', e); }
+}
+
+// ── BETÖLTÉS FIRESTORE-BÓL ────────────────────────────────────────────────────
+async function loadFromFirestore() {
+  showLoadingOverlay(true);
+  try {
+    const [cSnap, sSnap, pSnap] = await Promise.all([
+      getDocs(collection(db, 'clients')),
+      getDocs(collection(db, 'suppliers')),
+      getDocs(collection(db, 'projects')),
+    ]);
+
+    if (!cSnap.empty) {
+      clients = cSnap.docs.map(d => d.data());
+    } else {
+      // Első indítás: demo adatok feltöltése
+      for (const c of clients) await fbSaveClient(c);
+    }
+    if (!sSnap.empty) {
+      suppliers = sSnap.docs.map(d => d.data());
+    } else {
+      for (const s of suppliers) await fbSaveSupplier(s);
+    }
+    if (!pSnap.empty) {
+      projects = pSnap.docs.map(d => d.data());
+    } else {
+      for (const p of projects) await fbSaveProject(p);
+    }
+  } catch(e) {
+    console.error('Firestore betöltési hiba:', e);
+    showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
+  }
+  showLoadingOverlay(false);
+  showView('dashboard');
+}
+
+function showLoadingOverlay(show) {
+  document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+}
+
+// Globálissá tesszük a Firebase függvényeket
+window.fbSaveClient = fbSaveClient;
+window.fbDeleteClient = fbDeleteClient;
+window.fbSaveSupplier = fbSaveSupplier;
+window.fbDeleteSupplier = fbDeleteSupplier;
+window.fbSaveProject = fbSaveProject;
+window.fbDeleteProject = fbDeleteProject;
+window.fbUploadFile = fbUploadFile;
+window.fbDeleteFile = fbDeleteFile;
+window.loadFromFirestore = loadFromFirestore;
+
+// Indítás
+window.addEventListener('DOMContentLoaded', () => {
+  loadFromFirestore();
+});
+
+// ── ADATOK ────────────────────────────────────────────────────────────────────
+const STATUSES = [
+  {label:'Árajánlat kiküldésre vár', short:'Árajánlat vár',   cls:'s-0'},
+  {label:'Ajánlat elfogadás alatt',  short:'Elfogadás alatt', cls:'s-1'},
+  {label:'Megrendelés alatt',        short:'Megrendelés',     cls:'s-2'},
+  {label:'Projekt folyamatban',      short:'Folyamatban',     cls:'s-3'},
+  {label:'TIG aláírásra vár',        short:'TIG vár',         cls:'s-4'},
+  {label:'Projekt számlázásra vár',  short:'Számlázás vár',   cls:'s-5'},
+  {label:'Számlázva',                short:'Számlázva',       cls:'s-6'},
+  {label:'Kifizetésre vár',          short:'Kifizetés vár',   cls:'s-7'},
+  {label:'Projekt kész',             short:'Kész ✓',          cls:'s-9'},
+];
+const FOLDERS = ['Árajánlat','TIG','Képek','VBF','EGYÉB'];
+
+let clients = [
+  {id:'parkl',  name:'Parkl',  contact:'Horváth Péter', email:'info@parkl.net', counter:34},
+  {id:'mvm',    name:'MVM',    contact:'Nagy László',   email:'nagy@mvm.hu',    counter:12},
+  {id:'voltie', name:'Voltie', contact:'Kis Péter',     email:'info@voltie.hu', counter:5},
+];
+let suppliers = [
+  {id:'lnv',       name:'LNV Kft.',   contact:'Fekete Ádám', type:'villamos kivitelező'},
+  {id:'volstrike', name:'Volstrike',  contact:'Takács Imre', type:'építési alvállalkozó'},
+  {id:'voltie_s',  name:'Voltie',     contact:'Kis Péter',   type:'e-töltő gyártó / szállító'},
+  {id:'bs',        name:'BS Elektro', contact:'Bíró Sándor', type:'villamos tervezés'},
+];
+let projects = [
+  {id:'HALLER_IV_34', clientId:'parkl', desc:'Haller utcai parkoló EV töltő',
+   status:5, createdAt:'2025-01-15', updatedAt:'2025-03-02',
+   docs:{'Árajánlat':[{name:'Ajanlat_v1.xlsx',date:'2025-01-20'}],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
+   incomeInvoices:[{ref:'2025/034',amount:2850000,date:'2025-03-01',note:'Teljes projekt'}],
+   costInvoices:[
+     {supplierId:'lnv',      supplierName:'LNV Kft.', ref:'LNV-2025/011',amount:980000, date:'2025-02-20',note:'Villamos munkák'},
+     {supplierId:'voltie_s', supplierName:'Voltie',   ref:'VT-2025/008', amount:650000, date:'2025-02-22',note:'2x 22kW töltő'},
+   ],
+   log:[
+     {time:'2025-01-15 09:14',msg:'Projekt létrehozva',type:'create'},
+     {time:'2025-03-01 10:00',msg:'Kimenő számla rögzítve: 2025/034 – 2 850 000 Ft',type:'invoice'},
+     {time:'2025-03-02 08:45',msg:'Státusz: Megrendelés alatt → Projekt folyamatban',type:'advance'},
+   ]},
+  {id:'KELENF_II_33', clientId:'parkl', desc:'Kelenföld P+R töltők kiépítése',
+   status:1, createdAt:'2025-02-10', updatedAt:'2025-02-18',
+   docs:{'Árajánlat':[{name:'Ajanlat_KELENF.docx',date:'2025-02-12'},{name:'Ajanlat_KELENF_1.docx',date:'2025-02-17'}],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
+   incomeInvoices:[], costInvoices:[],
+   log:[
+     {time:'2025-02-10 10:00',msg:'Projekt létrehozva',type:'create'},
+     {time:'2025-02-18 13:00',msg:'Státusz: Árajánlat kiküldésre vár → Ajánlat elfogadás alatt',type:'advance'},
+   ]},
+  {id:'ALLEE_I_12', clientId:'mvm', desc:'Allee bevásárlóközpont töltőállomás',
+   status:8, createdAt:'2024-11-01', updatedAt:'2025-01-10',
+   docs:{'Árajánlat':[{name:'Ajanlat_ALLEE.xlsx',date:'2024-11-05'}],'TIG':[{name:'TIG_ALLEE_signed.pdf',date:'2025-01-05'}],'Képek':[{name:'kep1.jpg',date:'2025-01-05'}],'VBF':[{name:'VBJ_ALLEE.pdf',date:'2025-01-07'}],'EGYÉB':[]},
+   incomeInvoices:[{ref:'2025/005',amount:3400000,date:'2025-01-08',note:''}],
+   costInvoices:[
+     {supplierId:'lnv', supplierName:'LNV Kft.',   ref:'LNV-2025/001',amount:1100000,date:'2025-01-06',note:'Kivitelezés'},
+     {supplierId:'bs',  supplierName:'BS Elektro', ref:'BS-2024/102',  amount:280000, date:'2024-12-15',note:'Tervezés'},
+   ],
+   log:[
+     {time:'2024-11-01 08:00',msg:'Projekt létrehozva',type:'create'},
+     {time:'2025-01-08 12:00',msg:'Kimenő számla rögzítve: 2025/005 – 3 400 000 Ft',type:'invoice'},
+     {time:'2025-01-10 09:00',msg:'Státusz: Kifizetésre vár → Projekt kész',type:'advance'},
+   ]},
+  {id:'VOLTIE_I_5', clientId:'voltie', desc:'Voltie depot töltő infrastruktúra',
+   status:3, createdAt:'2025-03-01', updatedAt:'2025-03-05',
+   docs:{'Árajánlat':[{name:'Ajanlat_VOLTIE.xlsx',date:'2025-03-02'}],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
+   incomeInvoices:[],
+   costInvoices:[{supplierId:'volstrike',supplierName:'Volstrike',ref:'VS-2025/021',amount:320000,date:'2025-03-05',note:'Alapozási munkák'}],
+   log:[{time:'2025-03-01 08:30',msg:'Projekt létrehozva',type:'create'}]},
+];
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
+const fmtS = n => n>=1e6 ? (n/1e6).toFixed(1).replace('.',',')+' M Ft' : n>=1000 ? Math.round(n/1000)+' e Ft' : n+' Ft';
+const pIncome  = p => (p.incomeInvoices||[]).reduce((s,i)=>s+Number(i.amount),0);
+const pCost    = p => (p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0);
+const pProfit  = p => pIncome(p)-pCost(p);
+const nowStr   = () => new Date().toLocaleString('hu-HU').replace(',','');
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+let currentView='dashboard', currentProjectId=null, currentUploadFolder=null;
+let pendingAdvanceId=null, pendingInvoiceId=null;
+
+function nav(id){
+  document.querySelectorAll('.sidebar-item').forEach(e=>e.classList.remove('active'));
+  const el=document.getElementById(id); if(el) el.classList.add('active');
+}
+function bc(parts){
+  document.getElementById('breadcrumb').innerHTML=parts.map((p,i)=>{
+    if(i===parts.length-1) return `<span class="bc-active">${p.l}</span>`;
+    return `<span class="bc-link" onclick="${p.o||''}">${p.l}</span><span class="bc-sep">›</span>`;
+  }).join('');
+}
+function mc(){ return document.getElementById('mainContent'); }
+
+function showView(v, x){
+  currentView=v;
+  closeSidebar();
+  if(v!=='search') document.getElementById('searchInput').value='';
+  if(v==='dashboard')    { nav('nav-dashboard');    bc([{l:'Áttekintés'}]);                          mc().innerHTML=renderDashboard(); }
+  else if(v==='cashflow'){ nav('nav-cashflow');      bc([{l:'Cashflow & Nyereség'}]);                 mc().innerHTML=renderCashflow(); }
+  else if(v==='megrendelok'){ nav('nav-megrendelok');bc([{l:'Megrendelők'}]);                         mc().innerHTML=renderClients(); }
+  else if(v==='szallitok'){ nav('nav-szallitok');    bc([{l:'Szállítók'}]);                           mc().innerHTML=renderSuppliers(); }
+  else if(v==='projects'){ nav('nav-projects');      bc([{l:'Projektek'}]);                           mc().innerHTML=renderProjects(x!==undefined?projects.filter(p=>p.status===x):projects); }
+  else if(v==='client-projects'){
+    const co=clients.find(c=>c.id===x);
+    bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:x}]);
+    mc().innerHTML=renderClientProjects(x);
+  }
+  else if(v==='project-detail'){
+    currentProjectId=x;
+    const p=projects.find(z=>z.id===x), co=p?clients.find(c=>c.id===p.clientId):null;
+    bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:'?',o:`showView('client-projects','${p?p.clientId:''}')`},{l:x}]);
+    mc().innerHTML=renderProjectDetail(x);
+  }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const tot=projects.length, act=projects.filter(p=>p.status>0&&p.status<8).length,
+        done=projects.filter(p=>p.status===8).length;
+  const tInc=projects.reduce((s,p)=>s+pIncome(p),0),
+        tCost=projects.reduce((s,p)=>s+pCost(p),0), tPro=tInc-tCost;
+  return `
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val">${tot}</div><div class="stat-label">Összes projekt</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${act}</div><div class="stat-label">Aktív</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--success)">${done}</div><div class="stat-label">Befejezett</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--profit)">${fmtS(tInc)}</div><div class="stat-label">Összes bevétel</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${fmtS(tCost)}</div><div class="stat-label">Összes kiadás</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmtS(tPro)}</div><div class="stat-label">Nyereség (nettó)</div></div>
+  </div>
+  <div class="panel-title">Legutóbbi projektek</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+    ${projects.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(renderProjectRow).join('')}
+  </div>
+  <div class="panel-title">Megrendelők</div>
+  <div class="grid-2">
+    ${clients.map(c=>`
+      <div class="card" onclick="showView('client-projects','${c.id}')">
+        <div class="card-accent-line"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span style="font-size:18px">🏢</span><span class="divider-tag">Megrendelő</span></div>
+        <div class="card-name">${c.name}</div>
+        <div class="card-meta">${projects.filter(p=>p.clientId===c.id).length} projekt &nbsp;·&nbsp; ${fmtS(projects.filter(p=>p.clientId===c.id).reduce((s,p)=>s+pIncome(p),0))} bevétel</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ── CASHFLOW ──────────────────────────────────────────────────────────────────
+function renderCashflow(){
+  const tInc=projects.reduce((s,p)=>s+pIncome(p),0),
+        tCost=projects.reduce((s,p)=>s+pCost(p),0), tPro=tInc-tCost;
+  const margin=tInc>0?Math.round(tPro/tInc*100):0;
+  const chartP=projects.filter(p=>pIncome(p)>0||pCost(p)>0);
+  const maxV=Math.max(...chartP.map(p=>Math.max(pIncome(p),pCost(p))),1);
+  const supTot={};
+  projects.forEach(p=>(p.costInvoices||[]).forEach(i=>{
+    const k=i.supplierName||i.supplierId; supTot[k]=(supTot[k]||0)+Number(i.amount);
+  }));
+  const allInv=projects.flatMap(p=>[
+    ...(p.incomeInvoices||[]).map(i=>({...i,type:'in',pid:p.id})),
+    ...(p.costInvoices||[]).map(i=>({...i,type:'out',pid:p.id})),
+  ]).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+  return `
+  <div class="cf-stats">
+    <div class="cf-stat"><div class="cf-stat-val" style="color:var(--profit)">${fmt(tInc)}</div><div class="cf-stat-label">Összes bevétel (nettó)</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:var(--cost)">${fmt(tCost)}</div><div class="cf-stat-label">Összes kiadás (nettó)</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmt(tPro)}</div><div class="cf-stat-label">Nyereség (nettó)</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${margin}%</div><div class="cf-stat-label">Marzs</div></div>
+  </div>
+
+  <div class="cf-chart">
+    <div class="panel-title">Bevétel vs Kiadás – projektenként</div>
+    ${chartP.length===0?'<div style="color:var(--text-dim);font-size:12px;">Még nincs pénzügyi adat.</div>':''}
+    ${chartP.map(p=>{
+      const inc=pIncome(p),cost=pCost(p),pro=inc-cost;
+      const iW=Math.round(inc/maxV*100), cW=Math.round(cost/maxV*100);
+      return `<div class="cf-bar-row" onclick="showView('project-detail','${p.id}')">
+        <div class="cf-bar-label" title="${p.id}">${p.id}</div>
+        <div class="cf-bar-track">
+          <div class="cf-bar-inc" style="width:${iW}%"></div>
+          <div class="cf-bar-cost" style="width:${cW}%"></div>
+        </div>
+        <div class="cf-bar-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmtS(pro)}</div>
+      </div>`;}).join('')}
+    <div class="cf-legend">
+      <span><span class="cf-dot" style="background:rgba(46,204,113,0.55)"></span>Bevétel</span>
+      <span><span class="cf-dot" style="background:rgba(224,82,82,0.5)"></span>Kiadás</span>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="cf-chart">
+      <div class="panel-title">Szállítónkénti kiadás</div>
+      ${Object.keys(supTot).length===0?'<div style="color:var(--text-dim);font-size:12px;">Nincs adat.</div>':''}
+      ${Object.entries(supTot).sort((a,b)=>b[1]-a[1]).map(([name,tot])=>{
+        const w=Math.round(tot/Math.max(...Object.values(supTot))*100);
+        return `<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
+            <span style="color:var(--text)">${name}</span>
+            <span style="font-family:var(--mono);color:var(--cost)">${fmt(tot)}</span>
+          </div>
+          <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+            <div style="width:${w}%;height:100%;background:rgba(224,82,82,0.5);border-radius:3px;"></div>
+          </div>
+        </div>`;}).join('')}
+    </div>
+    <div class="cf-chart">
+      <div class="panel-title">Összes számla</div>
+      <div style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto;">
+        ${allInv.map(i=>`
+          <div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="showView('project-detail','${i.pid}')">
+            <span>${i.type==='in'?'💚':'🔴'}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${i.pid} · ${i.ref}</div>
+              <div style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.type==='in'?'Kimenő':'Szállítói: '+(i.supplierName||'')}</div>
+            </div>
+            <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${i.type==='in'?'var(--profit)':'var(--cost)'}">${i.type==='in'?'+':'−'}${fmtS(i.amount)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── MEGRENDELŐK ───────────────────────────────────────────────────────────────
+function renderClients(){
+  const sorted=[...clients].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
+  return `
+  <div class="panel-title">Megrendelők (${sorted.length})</div>
+  <div class="grid-2">
+    ${sorted.map(c=>{
+      const ps=projects.filter(p=>p.clientId===c.id);
+      const inc=ps.reduce((s,p)=>s+pIncome(p),0);
+      return `<div class="card" style="cursor:default;">
+        <div class="card-accent-line"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px;cursor:pointer" onclick="showView('client-projects','${c.id}')">🏢</span>
+          <span class="divider-tag">Megrendelő</span>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <button class="icon-btn edit" onclick="openEditClient('${c.id}')" title="Szerkesztés">✏️</button>
+            <button class="icon-btn del"  onclick="deleteClient('${c.id}')"   title="Törlés">🗑️</button>
+          </div>
+        </div>
+        <div class="card-name" style="cursor:pointer" onclick="showView('client-projects','${c.id}')">${c.name}</div>
+        <div class="card-meta">${c.contact||'–'}${c.email?' · '+c.email:''}</div>
+        <div class="card-meta" style="margin-top:5px;">${ps.length} projekt &nbsp;·&nbsp; <span style="color:var(--profit)">${fmtS(inc)}</span> bevétel</div>
+      </div>`;}).join('')}
+    <div class="card" style="border-style:dashed;cursor:pointer;" onclick="openNewClientModal()">
+      <div style="font-size:22px;margin-bottom:8px;">➕</div>
+      <div class="card-name" style="color:var(--text-dim)">Új megrendelő</div>
+    </div>
+  </div>`;
+}
+
+// ── SZÁLLÍTÓK ─────────────────────────────────────────────────────────────────
+function renderSuppliers(){
+  const sorted=[...suppliers].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
+  return `
+  <div class="panel-title">Szállítók / Alvállalkozók (${sorted.length})</div>
+  <div class="grid-2">
+    ${sorted.map(s=>{
+      const tot=projects.reduce((sum,p)=>sum+(p.costInvoices||[]).filter(i=>i.supplierId===s.id).reduce((ss,i)=>ss+Number(i.amount),0),0);
+      const cnt=projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===s.id)).length;
+      return `<div class="card" style="cursor:default;">
+        <div class="card-accent-line" style="background:#9b59b6"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px">🔧</span>
+          <span class="divider-tag supplier-tag">Szállító</span>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <button class="icon-btn edit" onclick="openEditSupplier('${s.id}')" title="Szerkesztés">✏️</button>
+            <button class="icon-btn del"  onclick="deleteSupplier('${s.id}')"   title="Törlés">🗑️</button>
+          </div>
+        </div>
+        <div class="card-name">${s.name}</div>
+        <div class="card-meta">${s.contact||'–'}${s.type?' · '+s.type:''}</div>
+        <div class="card-meta" style="margin-top:5px;"><span style="color:var(--cost)">${fmtS(tot)}</span> kiadás &nbsp;·&nbsp; ${cnt} projektben</div>
+      </div>`;}).join('')}
+    <div class="card" style="border-style:dashed;cursor:pointer;" onclick="openNewSupplierModal()">
+      <div style="font-size:22px;margin-bottom:8px;">➕</div>
+      <div class="card-name" style="color:var(--text-dim)">Új szállító</div>
+    </div>
+  </div>`;
+}
+
+// ── MEGRENDELŐ PROJEKTJEI ─────────────────────────────────────────────────────
+function renderClientProjects(cid){
+  const co=clients.find(c=>c.id===cid), ps=projects.filter(p=>p.clientId===cid);
+  return `
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+    <span style="font-size:26px">🏢</span>
+    <div>
+      <div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--text-bright)">${co.name}</div>
+      <div style="font-size:12px;color:var(--text-dim)">${co.contact||''}${co.email?' · '+co.email:''}</div>
+    </div>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openNewProjectModal('${co.id}')">➕ Új projekt</button>
+  </div>
+  <div class="panel-title">Projektek (${ps.length})</div>
+  ${ps.length?`<div style="display:flex;flex-direction:column;gap:8px">${ps.map(renderProjectRow).join('')}</div>`
+    :`<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">Még nincs projekt</div></div>`}`;
+}
+
+// ── PROJEKTEK LISTA ───────────────────────────────────────────────────────────
+function renderProjects(list){
+  return `
+  <div style="display:flex;align-items:center;margin-bottom:14px;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Összes projekt (${list.length})</span>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openNewProjectModal()">➕ Új projekt</button>
+  </div>
+  ${list.length?`<div style="display:flex;flex-direction:column;gap:8px">${list.map(renderProjectRow).join('')}</div>`
+    :`<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">Nincs projekt</div></div>`}`;
+}
+function renderProjectRow(p){
+  const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
+  const pro=pProfit(p), inc=pIncome(p);
+  return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
+    <div class="project-id">${p.id}</div>
+    <div class="project-info">
+      <div class="project-company">${co?co.name:p.clientId}</div>
+      <div class="project-name">${p.desc||'–'}</div>
+    </div>
+    <span class="status-badge ${st.cls}">${st.short}</span>
+    ${inc>0?`<span style="font-family:var(--mono);font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'};">${pro>=0?'+':''}${fmtS(pro)}</span>`:''}
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${p.updatedAt}</span>
+    <div class="row-actions" onclick="event.stopPropagation()">
+      <button class="icon-btn edit" title="Szerkesztés" onclick="openEditProject('${p.id}')">✏️</button>
+      <button class="icon-btn del"  title="Törlés"      onclick="deleteProject('${p.id}')">🗑️</button>
+    </div>
+  </div>`;
+}
+
+// ── PROJEKT DETAIL ────────────────────────────────────────────────────────────
+function renderProjectDetail(pid){
+  const p=projects.find(x=>x.id===pid);
+  if(!p) return '<div class="empty-state"><div class="em-title">Projekt nem található</div></div>';
+  const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status];
+  const isLast=p.status>=STATUSES.length-1;
+  const inc=pIncome(p), cost=pCost(p), pro=pProfit(p);
+  const margin=inc>0?Math.round(pro/inc*100):null;
+  const barW=inc>0?Math.min(100,Math.round(cost/inc*100)):0;
+
+  const wf=STATUSES.map((s,i)=>`
+    <div class="wf-step">
+      <div class="wf-node ${i<p.status?'done':''} ${i===p.status?'current':''}">
+        <div class="wf-num">${i<p.status?'✓':(i+1)}</div>
+        <div class="wf-label">${s.short}</div>
+      </div>
+      ${i<STATUSES.length-1?'<div class="wf-arrow">›</div>':''}
+    </div>`).join('');
+
+  const docs=FOLDERS.map(f=>`
+    <div class="doc-folder">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:20px">${f==='Árajánlat'?'📄':f==='TIG'?'📋':f==='Képek'?'🖼️':f==='VBF'?'⚡':'📦'}</span>
+        <div>
+          <div class="doc-folder-name" style="margin-bottom:0">${f}</div>
+          <div class="doc-folder-count">${(p.docs[f]||[]).length} fájl</div>
+        </div>
+      </div>
+      ${(p.docs[f]||[]).map((d,di)=>`
+        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:3px 4px;border-radius:3px;background:rgba(45,125,210,0.07);">
+          <span style="font-size:10px;font-family:var(--mono);color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· ${d.name}</span>
+          <button class="icon-btn edit" style="width:20px;height:20px;font-size:11px;" title="Átnevezés" onclick="openEditDoc('${pid}','${f}',${di})">✏️</button>
+          <button class="icon-btn del"  style="width:20px;height:20px;font-size:11px;" title="Törlés"    onclick="deleteDoc('${pid}','${f}',${di})">🗑️</button>
+        </div>`).join('')}
+      <div class="doc-upload-btn" onclick="openUploadModal('${pid}','${f}')">📤 Feltöltés</div>
+    </div>`).join('');
+
+  const incInv=(p.incomeInvoices||[]).map((i,idx)=>`
+    <div class="invoice-item">
+      <div class="invoice-left">
+        <div class="invoice-ref">${i.ref}</div>
+        <div class="invoice-party">${co?co.name:'Megrendelő'} → InfraGo</div>
+        ${i.note?`<div class="invoice-note">${i.note}</div>`:''}
+      </div>
+      <div class="invoice-right">
+        <div class="invoice-amount inv-inc">+${fmt(i.amount)}</div>
+        <div class="invoice-date">${i.date||''}</div>
+      </div>
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn edit" title="Szerkesztés" onclick="openEditIncomeInvoice('${pid}',${idx})">✏️</button>
+        <button class="icon-btn del"  title="Törlés"      onclick="deleteIncomeInvoice('${pid}',${idx})">🗑️</button>
+      </div>
+    </div>`).join('');
+
+  const costInv=(p.costInvoices||[]).map((i,idx)=>`
+    <div class="invoice-item">
+      <div class="invoice-left">
+        <div class="invoice-ref">${i.ref}</div>
+        <div class="invoice-party">${i.supplierName||i.supplierId}</div>
+        ${i.note?`<div class="invoice-note">${i.note}</div>`:''}
+      </div>
+      <div class="invoice-right">
+        <div class="invoice-amount inv-out">−${fmt(i.amount)}</div>
+        <div class="invoice-date">${i.date||''}</div>
+      </div>
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn edit" title="Szerkesztés" onclick="openEditCostInvoice('${pid}',${idx})">✏️</button>
+        <button class="icon-btn del"  title="Törlés"      onclick="deleteCostInvoice('${pid}',${idx})">🗑️</button>
+      </div>
+    </div>`).join('');
+
+  const log=(p.log||[]).slice().reverse().map(l=>`
+    <div class="log-item ${l.type==='advance'?'advance':l.type==='upload'?'upload':l.type==='invoice'?'invoice':''}">
+      <div class="log-time">${l.time}</div>
+      <div class="log-msg">${l.msg}</div>
+    </div>`).join('');
+
+  return `
+  <div class="detail-header">
+    <div>
+      <div class="detail-id">${p.id}</div>
+      <div class="detail-company">${co?co.name:''} &nbsp;·&nbsp; Létrehozva: ${p.createdAt}</div>
+      ${p.desc?`<div style="font-size:13px;color:var(--text);margin-top:5px">${p.desc}</div>`:''}
+    </div>
+    <span class="status-badge ${st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start">${st.label}</span>
+    <div class="detail-actions">
+      ${p.status>0?`<button class="btn btn-secondary" onclick="openRevertModal('${pid}')">◀ Előző státusz</button>`:''}
+      <button class="btn btn-secondary" onclick="openEditProject('${pid}')">✏️ Szerkesztés</button>
+      <button class="btn btn-danger" style="padding:7px 10px;" onclick="deleteProject('${pid}')">🗑️</button>
+      ${!isLast?`<button class="btn btn-advance" onclick="openAdvanceModal('${pid}')">▶ Következő státusz</button>`
+        :'<span class="btn btn-secondary" style="cursor:default">✓ Lezárva</span>'}
+    </div>
+  </div>
+
+  <div class="panel-title">Munkafolyamat</div>
+  <div class="workflow">${wf}</div>
+
+  <div class="panel-title">Pénzügyek</div>
+  <div class="finance-grid">
+    <div class="finance-box">
+      <div class="finance-box-title">💚 Kimenő számlák (InfraGo bevétele)</div>
+      <div class="finance-total" style="color:var(--profit)">${fmt(inc)}</div>
+      <div class="finance-label">nettó bevétel</div>
+      <div class="invoice-list">${incInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs számla rögzítve.</div>'}</div>
+      <div class="add-btn" onclick="openIncomeInvoiceModal('${pid}')">➕ Kimenő számla hozzáadása</div>
+    </div>
+    <div class="finance-box">
+      <div class="finance-box-title">🔴 Szállítói számlák (kiadások)</div>
+      <div class="finance-total" style="color:var(--cost)">${fmt(cost)}</div>
+      <div class="finance-label">nettó kiadás</div>
+      <div class="invoice-list">${costInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs szállítói számla.</div>'}</div>
+      <div class="add-btn" onclick="openCostInvoiceModal('${pid}')">➕ Szállítói számla hozzáadása</div>
+    </div>
+  </div>
+
+  <div class="profit-summary">
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Projekt nyereség</div>
+      <div class="profit-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmt(pro)}</div>
+      ${margin!==null?`<div style="font-size:11px;color:var(--text-dim);margin-top:3px">Marzs: <b style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${margin}%</b></div>`
+        :'<div style="font-size:11px;color:var(--text-dim);margin-top:3px">Még nincs bevételi számla</div>'}
+    </div>
+    ${inc>0?`<div style="flex:1;min-width:160px;">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:5px">
+        <span>Kiadás aránya a bevételből</span><span>${barW}%</span>
+      </div>
+      <div class="profit-bar-track">
+        <div class="profit-bar-fill" style="width:${barW}%;background:${pro>=0?'var(--profit)':'var(--danger)'}"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:4px">
+        <span style="color:var(--cost)">Kiadás: ${fmtS(cost)}</span>
+        <span style="color:var(--profit)">Bevétel: ${fmtS(inc)}</span>
+      </div>
+    </div>`:''}
+  </div>
+
+  <div class="panel-title">Dokumentumok</div>
+  <div class="docs-grid">${docs}</div>
+
+  <div class="panel-title">Eseménynapló</div>
+  <div class="log-list">${log||'<div style="color:var(--text-dim);font-size:12px">Nincs bejegyzés.</div>'}</div>`;
+}
+
+// ── KERESÉS ───────────────────────────────────────────────────────────────────
+function doSearch(val){
+  if(!val){ showView(currentView==='search'?'dashboard':currentView); return; }
+  currentView='search';
+  const q=val.toLowerCase();
+  const found=projects.filter(p=>
+    p.id.toLowerCase().includes(q)||(p.desc||'').toLowerCase().includes(q)||
+    (clients.find(c=>c.id===p.clientId)||{name:''}).name.toLowerCase().includes(q));
+  bc([{l:`Keresés: "${val}"  –  ${found.length} találat`}]);
+  mc().innerHTML=found.length
+    ?`<div style="display:flex;flex-direction:column;gap:8px">${found.map(renderProjectRow).join('')}</div>`
+    :`<div class="empty-state"><div class="em-icon">🔍</div><div class="em-title">Nincs találat</div><div style="font-size:12px;margin-top:4px;color:var(--text-dim)">„${val}" – próbálj más keresési feltételt</div></div>`;
+}
+function filterByStatus(idx){
+  if(idx===-1){ showView('projects'); return; }
+  const f=projects.filter(p=>p.status===idx);
+  bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
+  mc().innerHTML=renderProjects(f);
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+const openModal  = id => document.getElementById(id).classList.add('active');
+const closeModal = id => document.getElementById(id).classList.remove('active');
+function showToast(msg, type='info'){
+  let t=document.getElementById('toastEl');
+  if(!t){ t=document.createElement('div'); t.id='toastEl';
+    t.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:6px;font-family:var(--mono);font-size:12px;max-width:320px;transition:opacity 0.4s;';
+    document.body.appendChild(t); }
+  t.style.background = type==='warn'?'#3a1a1a':'#1a2a1a';
+  t.style.border = type==='warn'?'1px solid var(--danger)':'1px solid var(--success)';
+  t.style.color = type==='warn'?'var(--danger)':'var(--success)';
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._to); t._to=setTimeout(()=>t.style.opacity='0',3500);
+}
+
+function openNewProjectModal(pre){
+  const sel=document.getElementById('np-company');
+  sel.innerHTML='<option value="">-- válassz megrendelőt --</option>'+
+    clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(pre) sel.value=pre;
+  ['np-location','np-phase','np-desc'].forEach(id=>document.getElementById(id).value='');
+  updateIdPreview(); openModal('newProjectModal');
+}
+function openNewClientModal(){ ['ncl-name','ncl-contact','ncl-email'].forEach(id=>document.getElementById(id).value=''); openModal('newClientModal'); }
+function openNewSupplierModal(){ ['ns-name','ns-contact','ns-type'].forEach(id=>document.getElementById(id).value=''); openModal('newSupplierModal'); }
+
+function updateIdPreview(){
+  const cid=document.getElementById('np-company').value;
+  const loc=document.getElementById('np-location').value.trim().toUpperCase();
+  const ph=document.getElementById('np-phase').value.trim().toUpperCase();
+  if(!cid||!loc||!ph){ document.getElementById('idPreview').textContent='— töltsd ki az összes mezőt —'; return; }
+  const co=clients.find(c=>c.id===cid);
+  document.getElementById('idPreview').textContent=`${loc}_${ph}_${co?co.counter+1:'?'}`;
+}
+function createProject(){
+  const cid=document.getElementById('np-company').value;
+  const loc=document.getElementById('np-location').value.trim().toUpperCase();
+  const ph=document.getElementById('np-phase').value.trim().toUpperCase();
+  const desc=document.getElementById('np-desc').value.trim();
+  if(!cid||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
+  const co=clients.find(c=>c.id===cid); co.counter++;
+  const pid=`${loc}_${ph}_${co.counter}`;
+  const now=new Date().toISOString().split('T')[0];
+  const newP={id:pid,clientId:cid,desc,status:0,createdAt:now,updatedAt:now,
+    docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
+    incomeInvoices:[],costInvoices:[],
+    log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create'}]};
+  projects.push(newP);
+  if(window.fbSaveProject) window.fbSaveProject(newP).catch(e=>console.error(e));
+  if(window.fbSaveClient) window.fbSaveClient(co).catch(e=>console.error(e));
+  closeModal('newProjectModal'); showView('project-detail',pid);
+}
+function createClient(){
+  const name=document.getElementById('ncl-name').value.trim();
+  if(!name){ alert('Add meg a cég nevét!'); return; }
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_'+Date.now();
+  const newC={id,name,contact:document.getElementById('ncl-contact').value.trim(),email:document.getElementById('ncl-email').value.trim(),counter:0};
+  clients.push(newC);
+  if(window.fbSaveClient) window.fbSaveClient(newC).catch(e=>console.error(e));
+  closeModal('newClientModal'); showView('megrendelok');
+}
+function createSupplier(){
+  const name=document.getElementById('ns-name').value.trim();
+  if(!name){ alert('Add meg a szállító nevét!'); return; }
+  const id=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_'+Date.now();
+  const newS={id,name,contact:document.getElementById('ns-contact').value.trim(),type:document.getElementById('ns-type').value.trim()};
+  suppliers.push(newS);
+  if(window.fbSaveSupplier) window.fbSaveSupplier(newS).catch(e=>console.error(e));
+  closeModal('newSupplierModal'); showView('szallitok');
+}
+
+// ── STÁTUSZ LÉPTETÉS ──────────────────────────────────────────────────────────
+function openAdvanceModal(pid){
+  pendingAdvanceId=pid;
+  const p=projects.find(x=>x.id===pid), from=STATUSES[p.status], to=STATUSES[p.status+1];
+  if(!to) return;
+  document.getElementById('advanceModalBody').innerHTML=`
+    <div class="confirm-bar"><span>⚠️</span><span>Biztosan lépteted a projektet a következő státuszba?</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <span class="status-badge ${from.cls}">${from.label}</span>
+      <span style="font-family:var(--mono);font-size:16px;color:var(--text-dim)">→</span>
+      <span class="status-badge ${to.cls}">${to.label}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-top:10px">Projekt: <span style="font-family:var(--mono);color:var(--text)">${pid}</span></div>`;
+  document.getElementById('advanceConfirmBtn').textContent='✓ Jóváhagyom';
+  document.getElementById('advanceConfirmBtn').onclick=confirmAdvance;
+  openModal('advanceModal');
+}
+function confirmAdvance(){
+  const p=projects.find(x=>x.id===pendingAdvanceId);
+  if(!p||p.status>=STATUSES.length-1) return;
+  const from=STATUSES[p.status]; p.status++;
+  p.log.push({time:nowStr(),msg:`Státusz: ${from.label} → ${STATUSES[p.status].label}`,type:'advance'});
+  p.updatedAt=new Date().toISOString().split('T')[0];
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('advanceModal'); showView('project-detail',pendingAdvanceId);
+}
+
+function openRevertModal(pid){
+  pendingAdvanceId=pid;
+  const p=projects.find(x=>x.id===pid);
+  const from=STATUSES[p.status], to=STATUSES[p.status-1];
+  if(!to) return;
+  document.getElementById('advanceModalBody').innerHTML=`
+    <div class="confirm-bar" style="background:rgba(224,82,82,0.07);border-color:var(--danger)"><span>⚠️</span><span>Biztosan visszalépteted a projektet az előző státuszba?</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+      <span class="status-badge ${from.cls}">${from.label}</span>
+      <span style="font-family:var(--mono);font-size:16px;color:var(--text-dim)">→</span>
+      <span class="status-badge ${to.cls}">${to.label}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-top:10px">Projekt: <span style="font-family:var(--mono);color:var(--text)">${pid}</span></div>`;
+  document.getElementById('advanceConfirmBtn').textContent='◀ Visszaléptetés';
+  document.getElementById('advanceConfirmBtn').onclick = confirmRevert;
+  openModal('advanceModal');
+}
+function confirmRevert(){
+  const p=projects.find(x=>x.id===pendingAdvanceId);
+  if(!p||p.status<=0) return;
+  const from=STATUSES[p.status]; p.status--;
+  p.log.push({time:nowStr(),msg:`Státusz visszaléptetve: ${from.label} → ${STATUSES[p.status].label}`,type:'advance'});
+  p.updatedAt=new Date().toISOString().split('T')[0];
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('advanceModal'); showView('project-detail',pendingAdvanceId);
+}
+
+// ── DOKUMENTUM FELTÖLTÉS ──────────────────────────────────────────────────────
+function openUploadModal(pid,folder){
+  currentProjectId=pid; currentUploadFolder=folder;
+  document.getElementById('uploadFolderLabel').textContent=`Mappa: ${folder}  ·  Projekt: ${pid}`;
+  document.getElementById('upload-name').value='';
+  document.getElementById('upload-date').value=new Date().toISOString().split('T')[0];
+  openModal('uploadModal');
+}
+function onUploadFileChange(){
+  const f = document.getElementById('upload-file').files[0];
+  if(f && !document.getElementById('upload-name').value){
+    document.getElementById('upload-name').value = f.name;
+  }
+}
+async function confirmUpload(){
+  const name=document.getElementById('upload-name').value.trim();
+  if(!name){ alert('Add meg a fájl nevét!'); return; }
+  const fileInput = document.getElementById('upload-file');
+  const file = fileInput.files[0];
+  const btn = document.getElementById('uploadConfirmBtn');
+  const statusEl = document.getElementById('upload-status');
+  const p=projects.find(x=>x.id===currentProjectId);
+  const date=document.getElementById('upload-date').value;
+
+  if(file && window.fbUploadFile){
+    btn.disabled=true; btn.textContent='⏳ Feltöltés...';
+    statusEl.textContent='Feltöltés folyamatban...';
+    try {
+      const url = await window.fbUploadFile(currentProjectId, currentUploadFolder, file);
+      (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push({name,date,url});
+      p.log.push({time:nowStr(),msg:`Dokumentum feltöltve (${currentUploadFolder}): ${name}`,type:'upload'});
+      p.updatedAt=new Date().toISOString().split('T')[0];
+      if(window.fbSaveProject) await window.fbSaveProject(p);
+      statusEl.textContent='✓ Sikeres feltöltés!';
+      setTimeout(()=>{ closeModal('uploadModal'); showView('project-detail',currentProjectId); }, 600);
+    } catch(e) {
+      console.error(e);
+      statusEl.style.color='var(--danger)';
+      statusEl.textContent='⚠️ Feltöltési hiba: '+e.message;
+      btn.disabled=false; btn.textContent='✓ Feltöltés';
+    }
+  } else {
+    // No file selected – save name only (no Storage)
+    (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push({name,date});
+    p.log.push({time:nowStr(),msg:`Dokumentum rögzítve (${currentUploadFolder}): ${name}`,type:'upload'});
+    p.updatedAt=new Date().toISOString().split('T')[0];
+    if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+    closeModal('uploadModal'); showView('project-detail',currentProjectId);
+  }
+}
+
+// ── BEVÉTELI SZÁMLA ───────────────────────────────────────────────────────────
+function openIncomeInvoiceModal(pid){
+  pendingInvoiceId=pid;
+  document.getElementById('iiProjectLabel').textContent=`Projekt: ${pid}`;
+  ['ii-ref','ii-amount','ii-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ii-date').value=new Date().toISOString().split('T')[0];
+  openModal('incomeInvoiceModal');
+}
+function confirmIncomeInvoice(){
+  const ref=document.getElementById('ii-ref').value.trim();
+  const amount=Number(document.getElementById('ii-amount').value);
+  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  const p=projects.find(x=>x.id===pendingInvoiceId);
+  (p.incomeInvoices=p.incomeInvoices||[]).push({ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
+  p.log.push({time:nowStr(),msg:`Kimenő számla rögzítve: ${ref} – ${fmt(amount)}`,type:'invoice'});
+  p.updatedAt=new Date().toISOString().split('T')[0];
+  closeModal('incomeInvoiceModal'); showView('project-detail',pendingInvoiceId);
+}
+
+// ── SZÁLLÍTÓI SZÁMLA ──────────────────────────────────────────────────────────
+function ciSupplierChange(){
+  const v=document.getElementById('ci-supplier').value;
+  document.getElementById('ci-manual-row').style.display=v==='__manual__'?'block':'none';
+}
+function openCostInvoiceModal(pid){
+  pendingInvoiceId=pid;
+  document.getElementById('ciProjectLabel').textContent=`Projekt: ${pid}`;
+  const sel=document.getElementById('ci-supplier');
+  sel.innerHTML='<option value="">-- válassz szállítót --</option>'+
+    suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+
+    '<option value="__manual__">Egyéb / kézi bevitel</option>';
+  document.getElementById('ci-manual-row').style.display='none';
+  ['ci-ref','ci-amount','ci-note','ci-manual-name'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ci-date').value=new Date().toISOString().split('T')[0];
+  openModal('costInvoiceModal');
+}
+function confirmCostInvoice(){
+  const sid=document.getElementById('ci-supplier').value;
+  if(!sid){ alert('Válassz szállítót!'); return; }
+  let supplierName='';
+  if(sid==='__manual__'){
+    supplierName=document.getElementById('ci-manual-name').value.trim();
+    if(!supplierName){ alert('Add meg a szállító nevét!'); return; }
+  } else {
+    supplierName=(suppliers.find(x=>x.id===sid)||{name:sid}).name;
+  }
+  const ref=document.getElementById('ci-ref').value.trim();
+  const amount=Number(document.getElementById('ci-amount').value);
+  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  const p=projects.find(x=>x.id===pendingInvoiceId);
+  (p.costInvoices=p.costInvoices||[]).push({
+    supplierId:sid==='__manual__'?'manual':sid, supplierName, ref, amount,
+    date:document.getElementById('ci-date').value, note:document.getElementById('ci-note').value.trim()
+  });
+  p.log.push({time:nowStr(),msg:`Szállítói számla rögzítve: ${supplierName} / ${ref} – ${fmt(amount)}`,type:'invoice'});
+  p.updatedAt=new Date().toISOString().split('T')[0];
+  closeModal('costInvoiceModal'); showView('project-detail',pendingInvoiceId);
+}
+
+
+// ── SZERKESZTÉS / TÖRLÉS LOGIKA ───────────────────────────────────────────────
+let pendingDeleteFn = null;
+let editingClientId = null, editingSupplierId = null, editingProjectId = null;
+let editingInvoiceIdx = null, editingInvoiceType = null;
+let editingDocFolder = null, editingDocIdx = null;
+
+function openDeleteConfirm(text, deleteFn){
+  pendingDeleteFn = deleteFn;
+  document.getElementById('deleteConfirmBody').textContent = text;
+  openModal('deleteConfirmModal');
+}
+function confirmDelete(){
+  if(pendingDeleteFn) pendingDeleteFn();
+  pendingDeleteFn = null;
+  closeModal('deleteConfirmModal');
+}
+
+// ── MEGRENDELŐ EDIT/DELETE ────────────────────────────────────────────────────
+function openEditClient(id){
+  editingClientId = id;
+  const c = clients.find(x=>x.id===id);
+  document.getElementById('ecl-name').value    = c.name;
+  document.getElementById('ecl-contact').value = c.contact||'';
+  document.getElementById('ecl-email').value   = c.email||'';
+  openModal('editClientModal');
+}
+function saveClient(){
+  const name = document.getElementById('ecl-name').value.trim();
+  if(!name){ alert('Add meg a cég nevét!'); return; }
+  const c = clients.find(x=>x.id===editingClientId);
+  c.name    = name;
+  c.contact = document.getElementById('ecl-contact').value.trim();
+  c.email   = document.getElementById('ecl-email').value.trim();
+  if(window.fbSaveClient) window.fbSaveClient(c).catch(e=>console.error(e));
+  closeModal('editClientModal');
+  showView('megrendelok');
+}
+function deleteClient(id){
+  const c = clients.find(x=>x.id===id);
+  const hasProjects = projects.some(p=>p.clientId===id);
+  if(hasProjects){
+    alert('Nem törölhető: a megrendelőhöz aktív projektek tartoznak. Előbb töröld a projekteket.');
+    return;
+  }
+  openDeleteConfirm(`Törlöd a "${c.name}" megrendelőt?`, ()=>{
+    clients = clients.filter(x=>x.id!==id);
+    if(window.fbDeleteClient) window.fbDeleteClient(id).catch(e=>console.error(e));
+    showView('megrendelok');
+  });
+}
+
+// ── SZÁLLÍTÓ EDIT/DELETE ──────────────────────────────────────────────────────
+function openEditSupplier(id){
+  editingSupplierId = id;
+  const s = suppliers.find(x=>x.id===id);
+  document.getElementById('es-name').value    = s.name;
+  document.getElementById('es-contact').value = s.contact||'';
+  document.getElementById('es-type').value    = s.type||'';
+  openModal('editSupplierModal');
+}
+function saveSupplier(){
+  const name = document.getElementById('es-name').value.trim();
+  if(!name){ alert('Add meg a szállító nevét!'); return; }
+  const s = suppliers.find(x=>x.id===editingSupplierId);
+  s.name    = name;
+  s.contact = document.getElementById('es-contact').value.trim();
+  s.type    = document.getElementById('es-type').value.trim();
+  // update supplier name in existing invoices too
+  projects.forEach(p=>(p.costInvoices||[]).forEach(i=>{ if(i.supplierId===s.id) i.supplierName=name; }));
+  if(window.fbSaveSupplier) window.fbSaveSupplier(s).catch(e=>console.error(e));
+  // re-save affected projects too
+  if(window.fbSaveProject) projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===s.id)).forEach(p=>window.fbSaveProject(p));
+  closeModal('editSupplierModal');
+  showView('szallitok');
+}
+function deleteSupplier(id){
+  const s = suppliers.find(x=>x.id===id);
+  openDeleteConfirm(`Törlöd a "${s.name}" szállítót? (A hozzá rögzített számlák megmaradnak.)`, ()=>{
+    suppliers = suppliers.filter(x=>x.id!==id);
+    if(window.fbDeleteSupplier) window.fbDeleteSupplier(id).catch(e=>console.error(e));
+    showView('szallitok');
+  });
+}
+
+// ── PROJEKT EDIT/DELETE ────────────────────────────────────────────────────────
+function openEditProject(pid){
+  editingProjectId = pid;
+  const p = projects.find(x=>x.id===pid);
+  document.getElementById('ep-id-display').textContent = pid;
+  const cSel = document.getElementById('ep-client');
+  cSel.innerHTML = clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  cSel.value = p.clientId;
+  document.getElementById('ep-desc').value = p.desc||'';
+  const sSel = document.getElementById('ep-status');
+  sSel.innerHTML = STATUSES.map((s,i)=>`<option value="${i}">${s.label}</option>`).join('');
+  sSel.value = p.status;
+  openModal('editProjectModal');
+}
+function saveProject(){
+  const p = projects.find(x=>x.id===editingProjectId);
+  const newClientId = document.getElementById('ep-client').value;
+  const newDesc     = document.getElementById('ep-desc').value.trim();
+  const newStatus   = Number(document.getElementById('ep-status').value);
+  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status){
+    p.clientId  = newClientId;
+    p.desc      = newDesc;
+    if(newStatus !== p.status){
+      const oldLabel = STATUSES[p.status].label;
+      p.status = newStatus;
+      p.log.push({time:nowStr(), msg:`Státusz manuálisan módosítva: ${oldLabel} → ${STATUSES[newStatus].label}`, type:'advance'});
+    }
+    p.updatedAt = new Date().toISOString().split('T')[0];
+  }
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('editProjectModal');
+  showView('project-detail', editingProjectId);
+}
+function deleteProject(pid){
+  const p = projects.find(x=>x.id===pid);
+  const parentId = p.clientId;
+  openDeleteConfirm(`Törlöd a "${pid}" projektet? (Minden dokumentum és számla elveszik.)`, ()=>{
+    projects = projects.filter(x=>x.id!==pid);
+    if(window.fbDeleteProject) window.fbDeleteProject(pid).catch(e=>console.error(e));
+    showView('client-projects', parentId);
+  });
+}
+
+// ── BEVÉTELI SZÁMLA EDIT/DELETE ───────────────────────────────────────────────
+function openEditIncomeInvoice(pid, idx){
+  pendingInvoiceId     = pid;
+  editingInvoiceIdx    = idx;
+  editingInvoiceType   = 'income';
+  const inv = projects.find(x=>x.id===pid).incomeInvoices[idx];
+  document.getElementById('eii-ref').value    = inv.ref;
+  document.getElementById('eii-amount').value = inv.amount;
+  document.getElementById('eii-date').value   = inv.date||'';
+  document.getElementById('eii-note').value   = inv.note||'';
+  openModal('editIncomeInvoiceModal');
+}
+function saveIncomeInvoice(){
+  const ref    = document.getElementById('eii-ref').value.trim();
+  const amount = Number(document.getElementById('eii-amount').value);
+  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  const p   = projects.find(x=>x.id===pendingInvoiceId);
+  const inv = p.incomeInvoices[editingInvoiceIdx];
+  inv.ref    = ref;
+  inv.amount = amount;
+  inv.date   = document.getElementById('eii-date').value;
+  inv.note   = document.getElementById('eii-note').value.trim();
+  p.log.push({time:nowStr(), msg:`Kimenő számla módosítva: ${ref} – ${fmt(amount)}`, type:'invoice'});
+  p.updatedAt = new Date().toISOString().split('T')[0];
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('editIncomeInvoiceModal');
+  showView('project-detail', pendingInvoiceId);
+}
+function deleteIncomeInvoice(pid, idx){
+  const inv = projects.find(x=>x.id===pid).incomeInvoices[idx];
+  openDeleteConfirm(`Törlöd a "${inv.ref}" számlát?`, ()=>{
+    const p = projects.find(x=>x.id===pid);
+    p.incomeInvoices.splice(idx,1);
+    p.log.push({time:nowStr(), msg:`Kimenő számla törölve: ${inv.ref}`, type:'invoice'});
+    p.updatedAt = new Date().toISOString().split('T')[0];
+    if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+    showView('project-detail', pid);
+  });
+}
+
+// ── SZÁLLÍTÓI SZÁMLA EDIT/DELETE ──────────────────────────────────────────────
+function eciSupplierChange(){
+  const v = document.getElementById('eci-supplier').value;
+  document.getElementById('eci-manual-row').style.display = v==='__manual__'?'block':'none';
+}
+function openEditCostInvoice(pid, idx){
+  pendingInvoiceId   = pid;
+  editingInvoiceIdx  = idx;
+  editingInvoiceType = 'cost';
+  const inv = projects.find(x=>x.id===pid).costInvoices[idx];
+  const sel = document.getElementById('eci-supplier');
+  sel.innerHTML = suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+
+    '<option value="__manual__">Egyéb / kézi bevitel</option>';
+  const knownSupplier = suppliers.find(s=>s.id===inv.supplierId);
+  if(knownSupplier){ sel.value = inv.supplierId; document.getElementById('eci-manual-row').style.display='none'; }
+  else { sel.value='__manual__'; document.getElementById('eci-manual-row').style.display='block'; document.getElementById('eci-manual-name').value=inv.supplierName||''; }
+  document.getElementById('eci-ref').value    = inv.ref;
+  document.getElementById('eci-amount').value = inv.amount;
+  document.getElementById('eci-date').value   = inv.date||'';
+  document.getElementById('eci-note').value   = inv.note||'';
+  openModal('editCostInvoiceModal');
+}
+function saveCostInvoice(){
+  const sid = document.getElementById('eci-supplier').value;
+  if(!sid){ alert('Válassz szállítót!'); return; }
+  let supplierName='';
+  if(sid==='__manual__'){
+    supplierName = document.getElementById('eci-manual-name').value.trim();
+    if(!supplierName){ alert('Add meg a szállító nevét!'); return; }
+  } else {
+    supplierName = (suppliers.find(x=>x.id===sid)||{name:sid}).name;
+  }
+  const ref    = document.getElementById('eci-ref').value.trim();
+  const amount = Number(document.getElementById('eci-amount').value);
+  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  const p   = projects.find(x=>x.id===pendingInvoiceId);
+  const inv = p.costInvoices[editingInvoiceIdx];
+  inv.supplierId   = sid==='__manual__'?'manual':sid;
+  inv.supplierName = supplierName;
+  inv.ref    = ref;
+  inv.amount = amount;
+  inv.date   = document.getElementById('eci-date').value;
+  inv.note   = document.getElementById('eci-note').value.trim();
+  p.log.push({time:nowStr(), msg:`Szállítói számla módosítva: ${supplierName} / ${ref} – ${fmt(amount)}`, type:'invoice'});
+  p.updatedAt = new Date().toISOString().split('T')[0];
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('editCostInvoiceModal');
+  showView('project-detail', pendingInvoiceId);
+}
+function deleteCostInvoice(pid, idx){
+  const inv = projects.find(x=>x.id===pid).costInvoices[idx];
+  openDeleteConfirm(`Törlöd a "${inv.ref}" szállítói számlát?`, ()=>{
+    const p = projects.find(x=>x.id===pid);
+    p.costInvoices.splice(idx,1);
+    p.log.push({time:nowStr(), msg:`Szállítói számla törölve: ${inv.ref}`, type:'invoice'});
+    p.updatedAt = new Date().toISOString().split('T')[0];
+    if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+    showView('project-detail', pid);
+  });
+}
+
+// ── DOKUMENTUM EDIT/DELETE ────────────────────────────────────────────────────
+function openEditDoc(pid, folder, idx){
+  currentProjectId = pid;
+  editingDocFolder = folder;
+  editingDocIdx    = idx;
+  const doc = projects.find(x=>x.id===pid).docs[folder][idx];
+  document.getElementById('edoc-name').value = doc.name;
+  document.getElementById('edoc-date').value = doc.date||'';
+  openModal('editDocModal');
+}
+function saveDoc(){
+  const name = document.getElementById('edoc-name').value.trim();
+  if(!name){ alert('Add meg a fájl nevét!'); return; }
+  const p = projects.find(x=>x.id===currentProjectId);
+  p.docs[editingDocFolder][editingDocIdx].name = name;
+  p.docs[editingDocFolder][editingDocIdx].date = document.getElementById('edoc-date').value;
+  p.updatedAt = new Date().toISOString().split('T')[0];
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('editDocModal');
+  showView('project-detail', currentProjectId);
+}
+function deleteDoc(pid, folder, idx){
+  const doc = projects.find(x=>x.id===pid).docs[folder][idx];
+  openDeleteConfirm(`Törlöd a "${doc.name}" dokumentumot?`, ()=>{
+    const p = projects.find(x=>x.id===pid);
+    p.docs[folder].splice(idx,1);
+    p.log.push({time:nowStr(), msg:`Dokumentum törölve (${folder}): ${doc.name}`, type:'upload'});
+    p.updatedAt = new Date().toISOString().split('T')[0];
+    if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+    if(window.fbDeleteFile) window.fbDeleteFile(pid, folder, doc.name).catch(e=>console.warn(e));
+    showView('project-detail', pid);
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function updateClock(){ document.getElementById('clockDisplay').textContent=new Date().toLocaleString('hu-HU').replace(',',''); }
+function toggleSidebar(){
+  const sb=document.getElementById('mainSidebar');
+  const ov=document.getElementById('sidebarOverlay');
+  const hb=document.getElementById('hamburgerBtn');
+  const isOpen=sb.classList.contains('open');
+  if(isOpen){ sb.classList.remove('open'); ov.classList.remove('open'); hb.classList.remove('open'); }
+  else { sb.classList.add('open'); ov.classList.add('open'); hb.classList.add('open'); }
+}
+function closeSidebar(){
+  document.getElementById('mainSidebar')?.classList.remove('open');
+  document.getElementById('sidebarOverlay')?.classList.remove('open');
+  document.getElementById('hamburgerBtn')?.classList.remove('open');
+}
+setInterval(updateClock,1000); updateClock();
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('active'); }));
+document.getElementById('deleteConfirmBtn').addEventListener('click', ()=>{
+  if(pendingDeleteFn) pendingDeleteFn();
+  pendingDeleteFn=null;
+  closeModal('deleteConfirmModal');
+});
+
+// ── FUNCTION ALIASES (HTML calls these names) ─────────────────────────────────
+const openEditClientModal   = openEditClient;
+const saveEditClient        = saveClient;
+const confirmDeleteClient   = deleteClient;
+const openEditSupplierModal = openEditSupplier;
+const saveEditSupplier      = saveSupplier;
+const confirmDeleteSupplier = deleteSupplier;
+const saveEditProject       = saveProject;
+const saveEditIncomeInvoice = saveIncomeInvoice;
+const saveEditCostInvoice   = saveCostInvoice;
+
+// ── MODULE SCOPE: expose functions to window for HTML onclick handlers ─────────
+const _expose = [
+  'showView','nav','bc','mc','doSearch','filterByStatus',
+  'openNewProjectModal','openNewClientModal','openNewSupplierModal','updateIdPreview',
+  'createProject','createClient','createSupplier',
+  'openAdvanceModal','confirmAdvance','openRevertModal','confirmRevert',
+  'openUploadModal','onUploadFileChange','confirmUpload',
+  'openIncomeInvoiceModal','confirmIncomeInvoice',
+  'ciSupplierChange','openCostInvoiceModal','confirmCostInvoice',
+  'openDeleteConfirm','confirmDelete',
+  'openEditClient','saveClient','deleteClient','openEditClientModal','saveEditClient','confirmDeleteClient',
+  'openEditSupplier','saveSupplier','deleteSupplier','openEditSupplierModal','saveEditSupplier','confirmDeleteSupplier',
+  'openEditProject','saveProject','deleteProject','saveEditProject',
+  'openEditIncomeInvoice','saveIncomeInvoice','deleteIncomeInvoice','saveEditIncomeInvoice',
+  'eciSupplierChange','openEditCostInvoice','saveCostInvoice','deleteCostInvoice','saveEditCostInvoice',
+  'openEditDoc','saveDoc','deleteDoc',
+  'openModal','closeModal','updateClock'
+];
+const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,
+  openNewProjectModal,openNewClientModal,openNewSupplierModal,updateIdPreview,
+  createProject,createClient,createSupplier,
+  openAdvanceModal,confirmAdvance,openRevertModal,confirmRevert,
+  openUploadModal,onUploadFileChange,confirmUpload,
+  openIncomeInvoiceModal,confirmIncomeInvoice,
+  ciSupplierChange,openCostInvoiceModal,confirmCostInvoice,
+  openDeleteConfirm,confirmDelete,
+  openEditClient,saveClient,deleteClient,
+  openEditSupplier,saveSupplier,deleteSupplier,
+  openEditProject,saveProject,deleteProject,
+  openEditIncomeInvoice,saveIncomeInvoice,deleteIncomeInvoice,
+  eciSupplierChange,openEditCostInvoice,saveCostInvoice,deleteCostInvoice,
+  openEditDoc,saveDoc,deleteDoc,
+  openModal,closeModal,updateClock,toggleSidebar,closeSidebar,
+  saveEditClient,confirmDeleteClient:deleteClient,
+  openEditClientModal:openEditClient,
+  openEditSupplierModal:openEditSupplier,
+  saveEditSupplier,confirmDeleteSupplier:deleteSupplier,
+  saveEditProject,saveEditIncomeInvoice,saveEditCostInvoice
+};
+Object.assign(window, _fns);
+
+// Az indítást a Firebase loader kezeli (loadFromFirestore → showView('dashboard'))
+// Ha offline/hiba esetén sem töltene be, fallback:
+setTimeout(()=>{
+  if(document.getElementById('loadingOverlay').style.display !== 'none'){
+    document.getElementById('loadingOverlay').style.display='none';
+    showView('dashboard');
+  }
+}, 5000);
+</script>
+</body>
+</html>
