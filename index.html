@@ -225,42 +225,8 @@
 </head>
 <body>
 
-<!-- Login képernyő -->
-<div id="loginScreen" style="display:none;position:fixed;inset:0;background:#0f1117;z-index:10000;align-items:center;justify-content:center;padding:20px;">
-  <div style="width:100%;max-width:380px;">
-    <div style="text-align:center;margin-bottom:36px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:#e8a020;letter-spacing:3px;">MINI<span style="color:#6b7a96">GO</span></div>
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7a96;letter-spacing:2px;margin-top:6px;">PROJECT TRACKER</div>
-    </div>
-    <div style="background:#161b26;border:1px solid #2a3347;border-radius:10px;padding:28px 24px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7a96;letter-spacing:1px;margin-bottom:20px;">BEJELENTKEZÉS</div>
-      <div style="margin-bottom:14px;">
-        <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7a96;display:block;margin-bottom:6px;">EMAIL</label>
-        <input id="login-email" type="email" autocomplete="email" placeholder="nev@ceg.hu"
-          style="width:100%;background:#0f1117;border:1px solid #2a3347;border-radius:5px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#d4dbe8;outline:none;transition:border 0.15s;"
-          onfocus="this.style.borderColor='#e8a020'" onblur="this.style.borderColor='#2a3347'">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7a96;display:block;margin-bottom:6px;">JELSZÓ</label>
-        <input id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••"
-          style="width:100%;background:#0f1117;border:1px solid #2a3347;border-radius:5px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#d4dbe8;outline:none;transition:border 0.15s;"
-          onfocus="this.style.borderColor='#e8a020'" onblur="this.style.borderColor='#2a3347'">
-      </div>
-      <div id="login-error" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#e05252;margin-bottom:14px;min-height:16px;"></div>
-      <button id="login-btn" onclick="doLogin()"
-        style="width:100%;background:#e8a020;border:none;border-radius:5px;padding:11px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#0f1117;cursor:pointer;transition:background 0.15s;letter-spacing:1px;"
-        onmouseover="this.style.background='#f0b030'" onmouseout="this.style.background='#e8a020'">
-        → Belépés
-      </button>
-    </div>
-    <div style="text-align:center;margin-top:16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#2a3347;">
-      InfraGo MiniGo ERP · Csak jogosult felhasználóknak
-    </div>
-  </div>
-</div>
-
 <!-- Loading overlay -->
-<div id="loadingOverlay" style="display:none;position:fixed;inset:0;background:#0f1117;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+<div id="loadingOverlay" style="display:flex;position:fixed;inset:0;background:#0f1117;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
   <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e8a020;letter-spacing:2px;">MINIGO</div>
   <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7a96;">Felhő szinkronizálás...</div>
   <div style="width:160px;height:2px;background:#2a3347;border-radius:2px;overflow:hidden;">
@@ -458,8 +424,6 @@
 }
 </style>
 
-<div id="appShell" style="display:none;flex-direction:column;height:100vh;">
-
 <div class="topbar">
   <div class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
     <span></span><span></span><span></span>
@@ -469,13 +433,7 @@
   <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
   <div class="topbar-right">
     <span id="clockDisplay"></span>
-    <div class="user-badge" id="userBadge">👤 admin</div>
-    <button onclick="doLogout()" title="Kijelentkezés"
-      style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all 0.15s;"
-      onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'"
-      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-      ⎋ Ki
-    </button>
+    <div class="user-badge">👤 admin</div>
   </div>
 </div>
 
@@ -773,7 +731,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc as fbDeleteDocFS, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD1aNhDDCfynx8OfZWjt-ql5Z7LiwoYAFo",
@@ -787,79 +744,6 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const storage = getStorage(fbApp);
-const auth = getAuth(fbApp);
-
-// ── AUTH ──────────────────────────────────────────────────────────────────────
-function showLoginScreen() {
-  document.getElementById('appShell').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loadingOverlay').style.display = 'none';
-}
-
-function showAppShell() {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appShell').style.display = 'flex';
-}
-
-async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('login-error');
-  const btn   = document.getElementById('login-btn');
-  if(!email || !pass) { errEl.textContent = 'Add meg az email címet és a jelszót!'; return; }
-  btn.disabled = true; btn.textContent = 'Belépés...';
-  errEl.textContent = '';
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-    // onAuthStateChanged kezeli a továbbit
-  } catch(e) {
-    btn.disabled = false; btn.textContent = '→ Belépés';
-    switch(e.code) {
-      case 'auth/invalid-credential':
-      case 'auth/wrong-password':
-      case 'auth/user-not-found':
-        errEl.textContent = 'Hibás email cím vagy jelszó.'; break;
-      case 'auth/too-many-requests':
-        errEl.textContent = 'Túl sok sikertelen kísérlet. Próbáld újra később.'; break;
-      default:
-        errEl.textContent = 'Hiba: ' + e.message;
-    }
-  }
-}
-
-async function doLogout() {
-  await signOut(auth);
-}
-
-window.doLogin   = doLogin;
-window.doLogout  = doLogout;
-
-// Enter gomb támogatás a login formon
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('login-pass')?.addEventListener('keydown', e => {
-    if(e.key === 'Enter') doLogin();
-  });
-  document.getElementById('login-email')?.addEventListener('keydown', e => {
-    if(e.key === 'Enter') document.getElementById('login-pass')?.focus();
-  });
-});
-
-// ── AUTH STATE LISTENER ───────────────────────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // Bejelentkezve – frissítjük a user badge-et
-    const email = user.email || '';
-    const displayName = email.split('@')[0];
-    const badge = document.getElementById('userBadge');
-    if(badge) badge.textContent = '👤 ' + displayName;
-    // App betöltése
-    showAppShell();
-    loadFromFirestore();
-  } else {
-    // Nincs bejelentkezve
-    showLoginScreen();
-  }
-});
 
 // ── FIREBASE HELPERS ──────────────────────────────────────────────────────────
 async function fbSaveClient(c) {
@@ -943,7 +827,11 @@ window.fbDeleteProject = fbDeleteProject;
 window.fbUploadFile = fbUploadFile;
 window.fbDeleteFile = fbDeleteFile;
 window.loadFromFirestore = loadFromFirestore;
-// Indítást az onAuthStateChanged kezeli
+
+// Indítás
+window.addEventListener('DOMContentLoaded', () => {
+  loadFromFirestore();
+});
 
 // ── ADATOK ────────────────────────────────────────────────────────────────────
 const STATUSES = [
@@ -2018,6 +1906,5 @@ setTimeout(()=>{
   }
 }, 5000);
 </script>
-</div><!-- /appShell -->
 </body>
 </html>
