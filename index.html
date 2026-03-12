@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InfraGo – Projekt Nyomkövető</title>
+<title>MiniGo – Projekt Nyomkövető</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -200,6 +200,30 @@
   .invoice-item:hover .inv-actions { opacity:1; }
   .danger-bar { background:rgba(224,82,82,0.08); border:1px solid var(--danger); border-radius:6px; padding:11px 14px; display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--text); }
 
+  /* MODULE LAUNCHER */
+  .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:40px 24px; }
+  .launcher-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; max-width:720px; width:100%; }
+  .module-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px 28px; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:12px; }
+  .module-tile:hover:not(.tile-disabled) { border-color:var(--accent); background:var(--surface2); transform:translateY(-2px); box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+  .module-tile.tile-disabled { opacity:0.45; cursor:default; }
+  .tile-icon { font-size:36px; line-height:1; }
+  .tile-tag { font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:2px; text-transform:uppercase; padding:2px 8px; border-radius:3px; width:fit-content; }
+  .tile-tag.live { background:rgba(39,174,96,0.15); color:var(--success); border:1px solid var(--success); }
+  .tile-tag.soon { background:rgba(107,122,150,0.15); color:var(--text-dim); border:1px solid var(--border); }
+  .tile-title { font-family:var(--mono); font-size:18px; font-weight:600; color:var(--text-bright); }
+  .tile-desc { font-size:12px; color:var(--text-dim); line-height:1.6; }
+  .tile-accent { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:12px 0 0 12px; }
+  .tile-stats { display:flex; gap:16px; margin-top:4px; }
+  .tile-stat-val { font-family:var(--mono); font-size:16px; font-weight:600; color:var(--text-bright); }
+  .tile-stat-label { font-size:10px; color:var(--text-dim); margin-top:1px; }
+
+  /* MODULE-SPECIFIC SIDEBAR */
+  .module-badge { font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; padding:4px 10px; border-radius:3px; margin:10px 14px 4px; display:block; }
+  .mod-badge-proj { background:rgba(45,125,210,0.12); color:var(--accent2); border:1px solid rgba(45,125,210,0.3); }
+  .mod-badge-rel  { background:rgba(232,160,32,0.12); color:var(--accent); border:1px solid rgba(232,160,32,0.3); }
+
+  @media (max-width:600px) { .launcher-grid { grid-template-columns:1fr; } .module-tile { padding:22px 18px; } }
+
   ::-webkit-scrollbar { width:5px; height:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
@@ -254,7 +278,7 @@
       </button>
     </div>
     <div style="text-align:center;margin-top:16px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#2a3347;">
-      InfraGo MiniGo ERP · Csak jogosult felhasználóknak
+      MiniGo ERP · Csak jogosult felhasználóknak
     </div>
   </div>
 </div>
@@ -464,9 +488,9 @@
   <div class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
     <span></span><span></span><span></span>
   </div>
-  <div class="logo">INFRA<span>GO</span></div>
+  <div class="logo" onclick="showLauncher()" style="cursor:pointer;" title="Főmenü">MINI<span>GO</span></div>
   <span style="color:var(--border);font-family:var(--mono);font-size:11px">|</span>
-  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
+  <span id="activeModuleLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
   <div class="topbar-right">
     <span id="clockDisplay"></span>
     <div class="user-badge" id="userBadge">👤 admin</div>
@@ -481,37 +505,125 @@
 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<div class="layout">
+<!-- MODULE LAUNCHER -->
+<div id="moduleLauncher" class="module-launcher" style="display:none;">
+  <div>
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;">Válassz modult</div>
+      <div style="font-family:var(--mono);font-size:28px;font-weight:600;color:var(--accent);letter-spacing:3px;">MINI<span style="color:var(--text-dim)">GO</span></div>
+    </div>
+    <div class="launcher-grid">
+
+      <!-- PROJEKTKÖVETÉS -->
+      <div class="module-tile" onclick="enterModule('proj')">
+        <div class="tile-accent" style="background:var(--accent2)"></div>
+        <div class="tile-icon">📁</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="tile-title">Projektkövetés</div>
+          <span class="tile-tag live">Aktív</span>
+        </div>
+        <div class="tile-desc">Projektek, megrendelők, szállítók, pénzügyi kimutatások és cashflow kezelése.</div>
+        <div class="tile-stats" id="tile-proj-stats">
+          <div><div class="tile-stat-val" id="tstat-proj-open">–</div><div class="tile-stat-label">nyitott projekt</div></div>
+          <div><div class="tile-stat-val" id="tstat-proj-rev">–</div><div class="tile-stat-label">idei bevétel</div></div>
+        </div>
+      </div>
+
+      <!-- RELIABILITY -->
+      <div class="module-tile" onclick="enterModule('rel')">
+        <div class="tile-accent" style="background:var(--accent)"></div>
+        <div class="tile-icon">⚡</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="tile-title">Reliability</div>
+          <span class="tile-tag live">Aktív</span>
+        </div>
+        <div class="tile-desc">Berendezés hibák, állásidő követés, Pareto elemzés és korrektív akciók kezelése.</div>
+        <div class="tile-stats">
+          <div><div class="tile-stat-val" id="tstat-rel-open">–</div><div class="tile-stat-label">nyitott hibajegy</div></div>
+          <div><div class="tile-stat-val" id="tstat-rel-ca">–</div><div class="tile-stat-label">nyitott CA</div></div>
+        </div>
+      </div>
+
+      <!-- MUNKALAPKÉSZÍTŐ -->
+      <div class="module-tile tile-disabled" onclick="showToast('⚙️ Munkalapkészítő modul – fejlesztés alatt, hamarosan elérhető!','warn')">
+        <div class="tile-accent" style="background:var(--border)"></div>
+        <div class="tile-icon">🔧</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="tile-title" style="color:var(--text-dim)">Munkalapkészítő</div>
+          <span class="tile-tag soon">Hamarosan</span>
+        </div>
+        <div class="tile-desc">Helyszíni munkalapok, feladatkiosztás és elvégzési igazolások digitális kezelése.</div>
+      </div>
+
+      <!-- AJÁNLATKÉSZÍTŐ -->
+      <div class="module-tile tile-disabled" onclick="showToast('📝 Ajánlatkészítő modul – fejlesztés alatt, hamarosan elérhető!','warn')">
+        <div class="tile-accent" style="background:var(--border)"></div>
+        <div class="tile-icon">📝</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="tile-title" style="color:var(--text-dim)">Ajánlatkészítő</div>
+          <span class="tile-tag soon">Hamarosan</span>
+        </div>
+        <div class="tile-desc">Árajánlatok összeállítása, kalkuláció, sablonok és ügyfél-specifikus anyagok generálása.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="layout" id="mainLayout">
   <div class="sidebar" id="mainSidebar">
     <div class="search-box">
       <span class="s-icon">🔍</span>
       <input type="text" id="searchInput" placeholder="Projekt keresés..." oninput="doSearch(this.value)">
     </div>
     <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Navigáció</div>
-      <div class="sidebar-item active" id="nav-dashboard"   onclick="showView('dashboard')">   <span>📊</span> Áttekintés</div>
-      <div class="sidebar-item"        id="nav-cashflow"    onclick="showView('cashflow')">    <span>💰</span> Cashflow</div>
-      <div class="sidebar-item"        id="nav-megrendelok" onclick="showView('megrendelok')"> <span>🏢</span> Megrendelők</div>
-      <div class="sidebar-item"        id="nav-szallitok"   onclick="showView('szallitok')">   <span>🔧</span> Szállítók</div>
-      <div class="sidebar-item"        id="nav-projects"    onclick="showView('projects')">    <span>📁</span> Projektek</div>
+    <div id="sidebar-proj-section">
+      <span class="module-badge mod-badge-proj">📁 Projektkövetés</span>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Navigáció</div>
+        <div class="sidebar-item active" id="nav-dashboard"   onclick="showView('dashboard')">   <span>📊</span> Áttekintés</div>
+        <div class="sidebar-item"        id="nav-cashflow"    onclick="showView('cashflow')">    <span>💰</span> Cashflow</div>
+        <div class="sidebar-item"        id="nav-megrendelok" onclick="showView('megrendelok')"> <span>🏢</span> Megrendelők</div>
+        <div class="sidebar-item"        id="nav-szallitok"   onclick="showView('szallitok')">   <span>🔧</span> Szállítók</div>
+        <div class="sidebar-item"        id="nav-projects"    onclick="showView('projects')">    <span>📁</span> Projektek</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Gyors műveletek</div>
+        <div class="sidebar-item" onclick="openNewProjectModal()">  <span>➕</span> Új projekt</div>
+        <div class="sidebar-item" onclick="openNewClientModal()">   <span>🏢</span> Új megrendelő</div>
+        <div class="sidebar-item" onclick="openNewSupplierModal()"> <span>🔧</span> Új szállító</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Státusz szűrő</div>
+        <div class="sidebar-item" onclick="filterByStatus(-1)"><span style="font-size:9px">●</span>&nbsp;Összes</div>
+        <div class="sidebar-item" onclick="filterByStatus(0)"><span style="font-size:9px;color:#6b7a96">●</span>&nbsp;<span style="font-size:11px">Árajánlat vár</span></div>
+        <div class="sidebar-item" onclick="filterByStatus(3)"><span style="font-size:9px;color:var(--accent)">●</span>&nbsp;<span style="font-size:11px">Folyamatban</span></div>
+        <div class="sidebar-item" onclick="filterByStatus(5)"><span style="font-size:9px;color:#e88a20">●</span>&nbsp;<span style="font-size:11px">Számlázás vár</span></div>
+        <div class="sidebar-item" onclick="filterByStatus(6)"><span style="font-size:9px;color:var(--success)">●</span>&nbsp;<span style="font-size:11px">Számlázva</span></div>
+        <div class="sidebar-item" onclick="filterByStatus(8)"><span style="font-size:9px;color:#3498db">●</span>&nbsp;<span style="font-size:11px">Kész</span></div>
+      </div>
     </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Gyors műveletek</div>
-      <div class="sidebar-item" onclick="openNewProjectModal()">  <span>➕</span> Új projekt</div>
-      <div class="sidebar-item" onclick="openNewClientModal()">   <span>🏢</span> Új megrendelő</div>
-      <div class="sidebar-item" onclick="openNewSupplierModal()"> <span>🔧</span> Új szállító</div>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Státusz szűrő</div>
-      <div class="sidebar-item" onclick="filterByStatus(-1)"><span style="font-size:9px">●</span>&nbsp;Összes</div>
-      <div class="sidebar-item" onclick="filterByStatus(0)"><span style="font-size:9px;color:#6b7a96">●</span>&nbsp;<span style="font-size:11px">Árajánlat vár</span></div>
-      <div class="sidebar-item" onclick="filterByStatus(3)"><span style="font-size:9px;color:var(--accent)">●</span>&nbsp;<span style="font-size:11px">Folyamatban</span></div>
-      <div class="sidebar-item" onclick="filterByStatus(5)"><span style="font-size:9px;color:#e88a20">●</span>&nbsp;<span style="font-size:11px">Számlázás vár</span></div>
-      <div class="sidebar-item" onclick="filterByStatus(6)"><span style="font-size:9px;color:var(--success)">●</span>&nbsp;<span style="font-size:11px">Számlázva</span></div>
-      <div class="sidebar-item" onclick="filterByStatus(8)"><span style="font-size:9px;color:#3498db">●</span>&nbsp;<span style="font-size:11px">Kész</span></div>
+    <div id="sidebar-rel-section" style="display:none">
+      <span class="module-badge mod-badge-rel">⚡ Reliability</span>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Navigáció</div>
+        <div class="sidebar-item" id="nav-r-dashboard"  onclick="showView('r-dashboard')">  <span>📈</span> Áttekintés</div>
+        <div class="sidebar-item" id="nav-r-tickets"    onclick="showView('r-tickets')">    <span>🔴</span> Hibajegyek</div>
+        <div class="sidebar-item" id="nav-r-pareto"     onclick="showView('r-pareto')">     <span>📊</span> Pareto elemzés</div>
+        <div class="sidebar-item" id="nav-r-ca"         onclick="showView('r-ca')">         <span>✅</span> Korrektív akciók</div>
+        <div class="sidebar-item" id="nav-r-equipment"  onclick="showView('r-equipment')">  <span>🏭</span> Berendezések</div>
+        <div class="sidebar-item" id="nav-r-resp"       onclick="showView('r-resp')">       <span>👤</span> Felelősök</div>
+        <div class="sidebar-item" id="nav-r-ftypes"     onclick="showView('r-ftypes')">     <span>📋</span> Hibatípusok</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Gyors műveletek</div>
+        <div class="sidebar-item" onclick="openNewTicketModal()"><span>🔴</span> Új hibajegy</div>
+        <div class="sidebar-item" onclick="openNewCAModal()"><span>✅</span> Új CA</div>
+        <div class="sidebar-item" onclick="openNewEquipmentModal()"><span>🏭</span> Új berendezés</div>
+      </div>
     </div>
   </div>
 
@@ -743,11 +855,11 @@
 <!-- MODAL: KERESZT-RÖGZÍTÉS KÉRDÉS -->
 <div class="modal-overlay" id="crossRegModal">
   <div class="modal" style="width:420px">
-    <div class="modal-title" id="crossRegTitle">u2795 Felvegy�k a m�sik oldalra is?</div>
+    <div class="modal-title" id="crossRegTitle">u2795 Felvegy�k a m�sik oldalra is?</div>
     <div id="crossRegBody" style="font-size:13px;color:var(--text);margin-bottom:18px;line-height:1.6;"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, k�sz�n�m</button>
-      <button class="btn btn-primary" id="crossRegConfirmBtn">u2713 Igen, r�gz�tsd!</button>
+      <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, k�sz�n�m</button>
+      <button class="btn btn-primary" id="crossRegConfirmBtn">u2713 Igen, r�gz�tsd!</button>
     </div>
   </div>
 </div>
@@ -778,6 +890,213 @@
 </div>
 
 
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- RELIABILITY MODALS                                              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<!-- MODAL: ÚJ BERENDEZÉS -->
+<div class="modal-overlay" id="newEquipmentModal">
+  <div class="modal">
+    <div class="modal-title">🏭 Új Berendezés</div>
+    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="neq-name" placeholder="pl. ABB Terra 54 #3"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Típus</label><input class="form-input" id="neq-type" placeholder="pl. DC töltő"></div>
+      <div><label class="form-label">Gyártó</label><input class="form-input" id="neq-manufacturer" placeholder="pl. ABB"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Sorozatszám</label><input class="form-input" id="neq-serial" placeholder="pl. SN-123456"></div>
+      <div><label class="form-label">Belső azonosító</label><input class="form-input" id="neq-assetId" placeholder="pl. EQ-0042"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Helyszín</label><input class="form-input" id="neq-location" placeholder="pl. Haller Parkoló – B szint"></div>
+    <div class="form-row"><label class="form-label">Telepítés dátuma</label><input class="form-input" type="date" id="neq-installedAt"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="neq-notes" placeholder="opcionális"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newEquipmentModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createEquipment()">✓ Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: BERENDEZÉS SZERKESZTÉS -->
+<div class="modal-overlay" id="editEquipmentModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Berendezés szerkesztése</div>
+    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="eeq-name"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Típus</label><input class="form-input" id="eeq-type"></div>
+      <div><label class="form-label">Gyártó</label><input class="form-input" id="eeq-manufacturer"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Sorozatszám</label><input class="form-input" id="eeq-serial"></div>
+      <div><label class="form-label">Belső azonosító</label><input class="form-input" id="eeq-assetId"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Helyszín</label><input class="form-input" id="eeq-location"></div>
+    <div class="form-row"><label class="form-label">Telepítés dátuma</label><input class="form-input" type="date" id="eeq-installedAt"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="eeq-notes"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editEquipmentModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveEquipment()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ FELELŐS -->
+<div class="modal-overlay" id="newRespModal">
+  <div class="modal">
+    <div class="modal-title">👤 Új Felelős</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="nresp-last" placeholder="pl. Nagy"></div>
+      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="nresp-first" placeholder="pl. Béla"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="nresp-email" placeholder="bela@ceg.hu"></div>
+    <div class="form-row"><label class="form-label">Szerepkör / beosztás</label><input class="form-input" id="nresp-role" placeholder="pl. Karbantartási vezető"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newRespModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createResponsible()">✓ Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: FELELŐS SZERKESZTÉS -->
+<div class="modal-overlay" id="editRespModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Felelős szerkesztése</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="eresp-last"></div>
+      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="eresp-first"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Email</label><input class="form-input" id="eresp-email"></div>
+    <div class="form-row"><label class="form-label">Szerepkör / beosztás</label><input class="form-input" id="eresp-role"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editRespModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveResponsible()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ HIBATÍPUS -->
+<div class="modal-overlay" id="newFTypeModal">
+  <div class="modal">
+    <div class="modal-title">📋 Új Hibatípus</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Hibakód *</label><input class="form-input" id="nft-code" placeholder="pl. FT-001"></div>
+      <div><label class="form-label">Kategória</label><input class="form-input" id="nft-category" placeholder="pl. Elektromos"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="nft-name" placeholder="pl. Kommunikációs hiba"></div>
+    <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="nft-desc" placeholder="opcionális"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newFTypeModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createFailureType()">✓ Hozzáadás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HIBATÍPUS SZERKESZTÉS -->
+<div class="modal-overlay" id="editFTypeModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Hibatípus szerkesztése</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Hibakód *</label><input class="form-input" id="eft-code"></div>
+      <div><label class="form-label">Kategória</label><input class="form-input" id="eft-category"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="eft-name"></div>
+    <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="eft-desc"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editFTypeModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveFailureType()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ HIBAJEGY -->
+<div class="modal-overlay" id="newTicketModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">🔴 Új Hibajegy</div>
+    <div class="form-row">
+      <label class="form-label">Berendezés *</label>
+      <select class="form-input" id="ntk-equipment"><option value="">-- válassz berendezést --</option></select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Hibatípus *</label>
+      <select class="form-input" id="ntk-ftype" onchange="rTicketFTypeChange()"><option value="">-- válassz hibatípust --</option></select>
+    </div>
+    <div class="form-row"><label class="form-label">Rövid leírás</label><input class="form-input" id="ntk-shortDesc" placeholder="auto kitöltve hibatípusból"></div>
+    <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="ntk-fullDesc" placeholder="szabad szöveges leírás"></div>
+    <div class="form-row">
+      <label class="form-label">Súlyosság *</label>
+      <select class="form-input" id="ntk-severity">
+        <option value="critical">🔴 Kritikus</option>
+        <option value="high">🟠 Magas</option>
+        <option value="medium" selected>🟡 Közepes</option>
+        <option value="low">🟢 Alacsony</option>
+      </select>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Leállás kezdete</label><input class="form-input" type="datetime-local" id="ntk-downtimeStart"></div>
+      <div><label class="form-label">Leállás vége</label><input class="form-input" type="datetime-local" id="ntk-downtimeEnd"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newTicketModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createTicket()">✓ Hibajegy megnyitása</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TICKET STÁTUSZ / GYÖKÉROK -->
+<div class="modal-overlay" id="ticketDetailModal">
+  <div class="modal" style="width:580px">
+    <div class="modal-title" id="tkdm-title">Hibajegy részletek</div>
+    <div id="tkdm-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('ticketDetailModal')">Bezárás</button>
+      <button class="btn btn-advance" id="tkdm-advBtn" onclick="advanceTicket()">→ Következő státusz</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ÚJ KORREKTÍV AKCIÓ -->
+<div class="modal-overlay" id="newCAModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">✅ Új Korrektív Akció</div>
+    <div class="form-row"><label class="form-label">Cím *</label><input class="form-input" id="nca-title" placeholder="pl. Firmware frissítés minden ABB töltőn"></div>
+    <div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="nca-desc" placeholder="részletes leírás"></div>
+    <div class="form-row">
+      <label class="form-label">Kapcsolódó hibajegy (opcionális)</label>
+      <select class="form-input" id="nca-ticket"><option value="">-- nincs kapcsolódó hibajegy --</option></select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Felelős *</label>
+      <select class="form-input" id="nca-resp"><option value="">-- válassz felelőst --</option></select>
+    </div>
+    <div class="form-row"><label class="form-label">Határidő *</label><input class="form-input" type="date" id="nca-due"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="nca-notes" placeholder="opcionális"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('newCAModal')">Mégse</button>
+      <button class="btn btn-primary" onclick="createCA()">✓ Létrehozás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CA SZERKESZTÉS / LEZÁRÁS -->
+<div class="modal-overlay" id="editCAModal">
+  <div class="modal" style="width:560px">
+    <div class="modal-title">✏️ Korrektív akció szerkesztése</div>
+    <div class="form-row"><label class="form-label">Cím *</label><input class="form-input" id="eca-title"></div>
+    <div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="eca-desc"></div>
+    <div class="form-row">
+      <label class="form-label">Felelős *</label>
+      <select class="form-input" id="eca-resp"></select>
+    </div>
+    <div class="form-row"><label class="form-label">Határidő *</label><input class="form-input" type="date" id="eca-due"></div>
+    <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="eca-notes"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('editCAModal')">Mégse</button>
+      <button class="btn btn-advance" onclick="closeCA()" id="eca-closeBtn">✓ Lezárás</button>
+      <button class="btn btn-primary" onclick="saveCA()">💾 Mentés</button>
+    </div>
+  </div>
+</div>
 
 <!-- Firebase SDK -->
 <script type="module">
@@ -933,12 +1252,27 @@ async function loadFromFirestore() {
     } else {
       for (const p of projects) await fbSaveProject(p);
     }
+    // Load Reliability collections (silently, empty if first run)
+    try {
+      const [eqSnap, ftSnap, respSnap, tkSnap, caSnap] = await Promise.all([
+        getDocs(collection(db,'equipment')),
+        getDocs(collection(db,'failureTypes')),
+        getDocs(collection(db,'responsibles')),
+        getDocs(collection(db,'tickets')),
+        getDocs(collection(db,'correctiveActions')),
+      ]);
+      if(!eqSnap.empty)   equipment      = eqSnap.docs.map(d=>d.data());
+      if(!ftSnap.empty)   failureTypes   = ftSnap.docs.map(d=>d.data());
+      if(!respSnap.empty) responsibles   = respSnap.docs.map(d=>d.data());
+      if(!tkSnap.empty)   rTickets       = tkSnap.docs.map(d=>d.data());
+      if(!caSnap.empty)   correctiveActs = caSnap.docs.map(d=>d.data());
+    } catch(re){ console.warn('Reliability betöltési hiba (nem kritikus):', re); }
   } catch(e) {
     console.error('Firestore betöltési hiba:', e);
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
   }
   showLoadingOverlay(false);
-  showView('dashboard');
+  showLauncher();
 }
 
 function showLoadingOverlay(show) {
@@ -946,6 +1280,18 @@ function showLoadingOverlay(show) {
 }
 
 // Globálissá tesszük a Firebase függvényeket
+// ── RELIABILITY FIREBASE HELPERS ──────────────────────────────────────────────
+async function fbSaveEquipment(e)  { await setDoc(doc(db,'equipment',e.id),e); }
+async function fbDelEquipment(id)  { await fbDeleteDocFS(doc(db,'equipment',id)); }
+async function fbSaveFailureType(f){ await setDoc(doc(db,'failureTypes',f.id),f); }
+async function fbDelFailureType(id){ await fbDeleteDocFS(doc(db,'failureTypes',id)); }
+async function fbSaveResponsible(r){ await setDoc(doc(db,'responsibles',r.id),r); }
+async function fbDelResponsible(id){ await fbDeleteDocFS(doc(db,'responsibles',id)); }
+async function fbSaveTicket(t)     { await setDoc(doc(db,'tickets',t.id),t); }
+async function fbDelTicket(id)     { await fbDeleteDocFS(doc(db,'tickets',id)); }
+async function fbSaveCA(ca)        { await setDoc(doc(db,'correctiveActions',ca.id),ca); }
+async function fbDelCA(id)         { await fbDeleteDocFS(doc(db,'correctiveActions',id)); }
+
 window.fbSaveClient = fbSaveClient;
 window.fbDeleteClient = fbDeleteClient;
 window.fbSaveSupplier = fbSaveSupplier;
@@ -955,6 +1301,11 @@ window.fbDeleteProject = fbDeleteProject;
 window.fbUploadFile = fbUploadFile;
 window.fbDeleteFile = fbDeleteFile;
 window.loadFromFirestore = loadFromFirestore;
+window.fbSaveEquipment=fbSaveEquipment; window.fbDelEquipment=fbDelEquipment;
+window.fbSaveFailureType=fbSaveFailureType; window.fbDelFailureType=fbDelFailureType;
+window.fbSaveResponsible=fbSaveResponsible; window.fbDelResponsible=fbDelResponsible;
+window.fbSaveTicket=fbSaveTicket; window.fbDelTicket=fbDelTicket;
+window.fbSaveCA=fbSaveCA; window.fbDelCA=fbDelCA;
 // Indítást az onAuthStateChanged kezeli
 
 // ── ADATOK ────────────────────────────────────────────────────────────────────
@@ -1381,7 +1732,7 @@ function renderProjectDetail(pid){
     <div class="invoice-item">
       <div class="invoice-left">
         <div class="invoice-ref">${i.ref}</div>
-        <div class="invoice-party">${co?co.name:'Megrendelő'} → InfraGo</div>
+        <div class="invoice-party">${co?co.name:'Megrendelő'} → MiniGo</div>
         ${i.note?`<div class="invoice-note">${i.note}</div>`:''}
       </div>
       <div class="invoice-right">
@@ -1440,7 +1791,7 @@ function renderProjectDetail(pid){
   <div class="panel-title">Pénzügyek</div>
   <div class="finance-grid">
     <div class="finance-box">
-      <div class="finance-box-title">💚 Kimenő számlák (InfraGo bevétele)</div>
+      <div class="finance-box-title">💚 Kimenő számlák (MiniGo bevétele)</div>
       <div class="finance-total" style="color:var(--profit)">${fmt(inc)}</div>
       <div class="finance-label">nettó bevétel</div>
       <div class="invoice-list">${incInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs számla rögzítve.</div>'}</div>
@@ -2078,6 +2429,909 @@ document.getElementById('deleteConfirmBtn').addEventListener('click', ()=>{
   closeModal('deleteConfirmModal');
 });
 
+// ════════════════════════════════════════════════════════════════════
+// ⚡ RELIABILITY MODUL
+// ════════════════════════════════════════════════════════════════════
+
+// ── RELIABILITY ADATOK ───────────────────────────────────────────────────────
+let equipment      = [];
+let failureTypes   = [];
+let responsibles   = [];
+let rTickets       = [];
+let correctiveActs = [];
+
+// Editing state
+let editingEqId=null, editingRespId=null, editingFTypeId=null;
+let editingTicketId=null, editingCAId=null;
+
+// ── SEGÉDFÜGGVÉNYEK ──────────────────────────────────────────────────────────
+function rUUID(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function rToday(){ return new Date().toISOString().split('T')[0]; }
+function rNow(){ return new Date().toLocaleString('hu-HU').replace(',',''); }
+function calcDowntime(start,end){
+  if(!start||!end) return 0;
+  const diff=(new Date(end)-new Date(start))/60000;
+  return diff>0?Math.round(diff):0;
+}
+function fmtDowntime(min){
+  if(!min||min===0) return '–';
+  if(min<60) return min+' perc';
+  const h=Math.floor(min/60), m=min%60;
+  return h+'ó'+(m?` ${m}p`:'');
+}
+function genTicketNum(){
+  const yr=new Date().getFullYear();
+  const maxNum=rTickets.filter(t=>t.ticketNumber&&t.ticketNumber.startsWith('T-'+yr)).reduce((m,t)=>{
+    const n=parseInt((t.ticketNumber.split('-')[2]||'0'),10); return n>m?n:m;
+  },0);
+  return `T-${yr}-${String(maxNum+1).padStart(8,'0')}`;
+}
+function genCANum(){
+  const yr=new Date().getFullYear();
+  const maxNum=correctiveActs.filter(c=>c.caNumber&&c.caNumber.startsWith('CA-'+yr)).reduce((m,c)=>{
+    const n=parseInt((c.caNumber.split('-')[2]||'0'),10); return n>m?n:m;
+  },0);
+  return `CA-${yr}-${String(maxNum+1).padStart(4,'0')}`;
+}
+function caStatus(ca){
+  if(ca.status==='closed') return 'closed';
+  if(ca.dueDate && ca.dueDate < rToday()) return 'overdue';
+  return 'in_progress';
+}
+function severityBadge(s){
+  const map={critical:'🔴 Kritikus',high:'🟠 Magas',medium:'🟡 Közepes',low:'🟢 Alacsony'};
+  const cls={critical:'s-4',high:'s-5',medium:'s-3',low:'s-1'};
+  return `<span class="status-badge ${cls[s]||'s-1'}">${map[s]||s}</span>`;
+}
+function ticketStatusBadge(s){
+  const map={open:'Nyitott',in_progress:'Folyamatban',closed:'Lezárt'};
+  const cls={open:'s-5',in_progress:'s-1',closed:'s-9'};
+  return `<span class="status-badge ${cls[s]||'s-0'}">${map[s]||s}</span>`;
+}
+function caStatusBadge(ca){
+  const s=caStatus(ca);
+  const map={in_progress:'Folyamatban',overdue:'Lejárt!',closed:'Lezárt'};
+  const cls={in_progress:'s-1',overdue:'s-4',closed:'s-9'};
+  return `<span class="status-badge ${cls[s]}">${map[s]}</span>`;
+}
+
+// ── NAVIGÁCIÓ HOOK ───────────────────────────────────────────────────────────
+const _origShowView = showView;
+function _reliabilityShowView(v,x){
+  // Reliability views handled separately
+  const rViews=['r-dashboard','r-tickets','r-ticket-detail','r-pareto','r-ca','r-equipment','r-resp','r-ftypes'];
+  if(rViews.includes(v)){
+    currentView=v; closeSidebar();
+    document.getElementById('searchInput').value='';
+    document.querySelectorAll('.sidebar-item').forEach(e=>e.classList.remove('active'));
+    const navMap={'r-dashboard':'nav-r-dashboard','r-tickets':'nav-r-tickets','r-ticket-detail':'nav-r-tickets',
+      'r-pareto':'nav-r-pareto','r-ca':'nav-r-ca','r-equipment':'nav-r-equipment',
+      'r-resp':'nav-r-resp','r-ftypes':'nav-r-ftypes'};
+    const navEl=document.getElementById(navMap[v]); if(navEl) navEl.classList.add('active');
+    const renders={
+      'r-dashboard':  ()=>{ bc([{l:'⚡ Reliability'},{l:'Áttekintés'}]); mc().innerHTML=renderRDashboard(); },
+      'r-tickets':    ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibajegyek'}]); mc().innerHTML=renderTickets(); },
+      'r-ticket-detail': ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibajegyek',o:"showView('r-tickets')"},{l:x}]); mc().innerHTML=renderTicketDetail(x); },
+      'r-pareto':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Pareto elemzés'}]); mc().innerHTML=renderPareto(); setTimeout(drawPareto,100); },
+      'r-ca':         ()=>{ bc([{l:'⚡ Reliability'},{l:'Korrektív akciók'}]); mc().innerHTML=renderCA(); },
+      'r-equipment':  ()=>{ bc([{l:'⚡ Reliability'},{l:'Berendezések'}]); mc().innerHTML=renderEquipment(x); },
+      'r-resp':       ()=>{ bc([{l:'⚡ Reliability'},{l:'Felelősök'}]); mc().innerHTML=renderResponsibles(); },
+      'r-ftypes':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibatípusok'}]); mc().innerHTML=renderFailureTypes(); },
+    };
+    if(renders[v]) renders[v]();
+    return;
+  }
+  _origShowView(v,x);
+}
+// Override showView with reliability-aware version
+window.showView = _reliabilityShowView;
+// Also patch the module-scope variable so internal calls work
+try { showView = _reliabilityShowView; } catch(e){}
+
+// ── R. ÁTTEKINTÉS (DASHBOARD) ────────────────────────────────────────────────
+function renderRDashboard(){
+  const openTk=rTickets.filter(t=>t.status!=='closed').length;
+  const closedTk=rTickets.filter(t=>t.status==='closed').length;
+  const now=new Date(), mo=now.getMonth(), yr=now.getFullYear();
+  const moDowntime=rTickets.filter(t=>{
+    if(!t.downtimeStart) return false;
+    const d=new Date(t.downtimeStart); return d.getMonth()===mo&&d.getFullYear()===yr;
+  }).reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+  const totDowntime=rTickets.reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+  const openCA=correctiveActs.filter(c=>caStatus(c)!=='closed').length;
+  const overdueCA=correctiveActs.filter(c=>caStatus(c)==='overdue').length;
+
+  // Top 3 berendezés hibák szerint
+  const eqCount={};
+  rTickets.forEach(t=>{ eqCount[t.equipmentName]=(eqCount[t.equipmentName]||0)+1; });
+  const top3=Object.entries(eqCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  // Hibatípus összesítő (mini pareto)
+  const ftCount={};
+  rTickets.forEach(t=>{ ftCount[t.failureTypeName]=(ftCount[t.failureTypeName]||0)+1; });
+  const ftSorted=Object.entries(ftCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxFt=ftSorted.length>0?ftSorted[0][1]:1;
+
+  return `
+  <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+    <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${openTk}</div><div class="stat-label">Nyitott hibajegy</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--success)">${closedTk}</div><div class="stat-label">Lezárt hibajegy</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${overdueCA>0?'var(--danger)':'var(--text-bright)'}">${openCA}</div><div class="stat-label">Nyitott CA${overdueCA>0?` <span style="color:var(--danger);font-size:10px">(${overdueCA} lejárt!)</span>`:''}</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--text-bright)">${Math.round(totDowntime/60)}ó</div><div class="stat-label">Összes állásidő</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+    <div class="cf-chart">
+      <div class="panel-title">Állásidő</div>
+      <div style="display:flex;gap:20px;">
+        <div><div style="font-family:var(--mono);font-size:22px;font-weight:600;color:var(--cost)">${fmtDowntime(moDowntime)}</div><div style="font-size:11px;color:var(--text-dim)">aktuális hónap</div></div>
+        <div><div style="font-family:var(--mono);font-size:22px;font-weight:600;color:var(--text-bright)">${fmtDowntime(totDowntime)}</div><div style="font-size:11px;color:var(--text-dim)">összesített</div></div>
+      </div>
+    </div>
+    <div class="cf-chart">
+      <div class="panel-title">Top 3 legtöbb hibával</div>
+      ${top3.length===0?'<div style="color:var(--text-dim);font-size:12px">Még nincs adat.</div>':''}
+      ${top3.map(([name,cnt])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--text)">${name}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--cost);font-weight:600">${cnt} hiba</span>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="cf-chart">
+    <div class="panel-title">Hibatípus eloszlás (TOP 5)</div>
+    ${ftSorted.length===0?'<div style="color:var(--text-dim);font-size:12px">Még nincs adat.</div>':''}
+    ${ftSorted.map(([name,cnt])=>`<div class="cf-bar-row">
+      <div class="cf-bar-label">${name}</div>
+      <div class="cf-bar-track"><div class="cf-bar-inc" style="width:${Math.round(cnt/maxFt*100)}%"></div></div>
+      <div class="cf-bar-val" style="color:var(--accent)">${cnt} db</div>
+    </div>`).join('')}
+  </div>
+  <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
+    <button class="btn btn-primary" onclick="openNewTicketModal()">🔴 Új hibajegy</button>
+    <button class="btn btn-secondary" onclick="showView('r-tickets')">→ Összes hibajegy</button>
+    <button class="btn btn-secondary" onclick="showView('r-ca')">→ Korrektív akciók</button>
+  </div>`;
+}
+
+// ── BERENDEZÉSEK ─────────────────────────────────────────────────────────────
+function renderEquipment(){
+  const sorted=[...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
+  return `
+  <div class="panel-title">Berendezések (${sorted.length})</div>
+  <div class="grid-2">
+    ${sorted.map(e=>{
+      const cnt=rTickets.filter(t=>t.equipmentId===e.id).length;
+      return `<div class="card" style="cursor:default;">
+        <div class="card-accent-line" style="background:#9b59b6"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px">🏭</span>
+          <span class="divider-tag supplier-tag">Berendezés</span>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <button class="icon-btn edit" onclick="openEditEquipment('${e.id}')" title="Szerkesztés">✏️</button>
+            <button class="icon-btn del"  onclick="deleteEquipment('${e.id}')"   title="Törlés">🗑️</button>
+          </div>
+        </div>
+        <div class="card-name">${e.name}</div>
+        <div class="card-meta">${e.type||''}${e.manufacturer?' · '+e.manufacturer:''}</div>
+        <div class="card-meta" style="margin-top:3px;">${e.assetId?'<span style="font-family:var(--mono);font-size:10px;color:var(--accent2)">'+e.assetId+'</span> · ':''}${e.location||''}</div>
+        <div class="card-meta" style="margin-top:5px;color:${cnt>0?'var(--cost)':'var(--text-dim)'};">${cnt} hibajegy</div>
+      </div>`;}).join('')}
+    <div class="card" style="border-style:dashed;cursor:pointer;" onclick="openNewEquipmentModal()">
+      <div style="font-size:22px;margin-bottom:8px;">➕</div>
+      <div class="card-name" style="color:var(--text-dim)">Új berendezés</div>
+    </div>
+  </div>`;
+}
+
+function openNewEquipmentModal(){
+  ['neq-name','neq-type','neq-manufacturer','neq-serial','neq-assetId','neq-location','neq-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('neq-installedAt').value='';
+  openModal('newEquipmentModal');
+}
+function createEquipment(){
+  const name=document.getElementById('neq-name').value.trim();
+  if(!name){ alert('Add meg a berendezés nevét!'); return; }
+  const e={id:rUUID(),name,
+    type:document.getElementById('neq-type').value.trim(),
+    manufacturer:document.getElementById('neq-manufacturer').value.trim(),
+    serialNumber:document.getElementById('neq-serial').value.trim(),
+    assetId:document.getElementById('neq-assetId').value.trim(),
+    location:document.getElementById('neq-location').value.trim(),
+    installedAt:document.getElementById('neq-installedAt').value,
+    notes:document.getElementById('neq-notes').value.trim(),
+    createdAt:rToday()};
+  equipment.push(e);
+  if(window.fbSaveEquipment) window.fbSaveEquipment(e).catch(err=>console.error(err));
+  closeModal('newEquipmentModal'); showView('r-equipment');
+}
+function openEditEquipment(id){
+  editingEqId=id;
+  const e=equipment.find(x=>x.id===id);
+  document.getElementById('eeq-name').value=e.name;
+  document.getElementById('eeq-type').value=e.type||'';
+  document.getElementById('eeq-manufacturer').value=e.manufacturer||'';
+  document.getElementById('eeq-serial').value=e.serialNumber||'';
+  document.getElementById('eeq-assetId').value=e.assetId||'';
+  document.getElementById('eeq-location').value=e.location||'';
+  document.getElementById('eeq-installedAt').value=e.installedAt||'';
+  document.getElementById('eeq-notes').value=e.notes||'';
+  openModal('editEquipmentModal');
+}
+function saveEquipment(){
+  const name=document.getElementById('eeq-name').value.trim();
+  if(!name){ alert('Add meg a berendezés nevét!'); return; }
+  const e=equipment.find(x=>x.id===editingEqId);
+  e.name=name; e.type=document.getElementById('eeq-type').value.trim();
+  e.manufacturer=document.getElementById('eeq-manufacturer').value.trim();
+  e.serialNumber=document.getElementById('eeq-serial').value.trim();
+  e.assetId=document.getElementById('eeq-assetId').value.trim();
+  e.location=document.getElementById('eeq-location').value.trim();
+  e.installedAt=document.getElementById('eeq-installedAt').value;
+  e.notes=document.getElementById('eeq-notes').value.trim();
+  // Update denormalized name in tickets
+  rTickets.filter(t=>t.equipmentId===e.id).forEach(t=>{ t.equipmentName=e.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
+  if(window.fbSaveEquipment) window.fbSaveEquipment(e).catch(err=>console.error(err));
+  closeModal('editEquipmentModal'); showView('r-equipment');
+}
+function deleteEquipment(id){
+  const e=equipment.find(x=>x.id===id);
+  if(rTickets.some(t=>t.equipmentId===id)){ alert('Nem törölhető: berendezéshez tartoznak hibajegyek.'); return; }
+  openDeleteConfirm(`Törlöd a "${e.name}" berendezést?`, ()=>{
+    equipment=equipment.filter(x=>x.id!==id);
+    if(window.fbDelEquipment) window.fbDelEquipment(id).catch(err=>console.error(err));
+    showView('r-equipment');
+  });
+}
+
+// ── FELELŐSÖK ────────────────────────────────────────────────────────────────
+function renderResponsibles(){
+  const sorted=[...responsibles].sort((a,b)=>(a.lastName+a.firstName).localeCompare(b.lastName+b.firstName,'hu'));
+  return `
+  <div class="panel-title">Felelősök (${sorted.length})</div>
+  <div class="grid-2">
+    ${sorted.map(r=>{
+      const cnt=correctiveActs.filter(c=>c.responsibleId===r.id&&caStatus(c)!=='closed').length;
+      return `<div class="card" style="cursor:default;">
+        <div class="card-accent-line"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:18px">👤</span>
+          <span class="divider-tag">Felelős</span>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <button class="icon-btn edit" onclick="openEditResponsible('${r.id}')">✏️</button>
+            <button class="icon-btn del"  onclick="deleteResponsible('${r.id}')">🗑️</button>
+          </div>
+        </div>
+        <div class="card-name">${r.lastName} ${r.firstName}</div>
+        <div class="card-meta">${r.role||'–'}${r.email?' · '+r.email:''}</div>
+        <div class="card-meta" style="margin-top:5px;">${cnt} aktív CA</div>
+      </div>`;}).join('')}
+    <div class="card" style="border-style:dashed;cursor:pointer;" onclick="openNewRespModal()">
+      <div style="font-size:22px;margin-bottom:8px;">➕</div>
+      <div class="card-name" style="color:var(--text-dim)">Új felelős</div>
+    </div>
+  </div>`;
+}
+
+function openNewRespModal(){
+  ['nresp-last','nresp-first','nresp-email','nresp-role'].forEach(id=>document.getElementById(id).value='');
+  openModal('newRespModal');
+}
+function createResponsible(){
+  const l=document.getElementById('nresp-last').value.trim(), f=document.getElementById('nresp-first').value.trim();
+  if(!l||!f){ alert('Adja meg a nevet!'); return; }
+  const r={id:rUUID(),lastName:l,firstName:f,
+    email:document.getElementById('nresp-email').value.trim(),
+    role:document.getElementById('nresp-role').value.trim(),createdAt:rToday()};
+  responsibles.push(r);
+  if(window.fbSaveResponsible) window.fbSaveResponsible(r).catch(err=>console.error(err));
+  closeModal('newRespModal'); showView('r-resp');
+}
+function openEditResponsible(id){
+  editingRespId=id;
+  const r=responsibles.find(x=>x.id===id);
+  document.getElementById('eresp-last').value=r.lastName;
+  document.getElementById('eresp-first').value=r.firstName;
+  document.getElementById('eresp-email').value=r.email||'';
+  document.getElementById('eresp-role').value=r.role||'';
+  openModal('editRespModal');
+}
+function saveResponsible(){
+  const l=document.getElementById('eresp-last').value.trim(), f=document.getElementById('eresp-first').value.trim();
+  if(!l||!f){ alert('Adja meg a nevet!'); return; }
+  const r=responsibles.find(x=>x.id===editingRespId);
+  r.lastName=l; r.firstName=f;
+  r.email=document.getElementById('eresp-email').value.trim();
+  r.role=document.getElementById('eresp-role').value.trim();
+  const fullName=l+' '+f;
+  correctiveActs.filter(c=>c.responsibleId===r.id).forEach(c=>{ c.responsibleName=fullName; if(window.fbSaveCA) window.fbSaveCA(c).catch(err=>console.error(err)); });
+  if(window.fbSaveResponsible) window.fbSaveResponsible(r).catch(err=>console.error(err));
+  closeModal('editRespModal'); showView('r-resp');
+}
+function deleteResponsible(id){
+  const r=responsibles.find(x=>x.id===id);
+  if(correctiveActs.some(c=>c.responsibleId===id&&caStatus(c)!=='closed')){ alert('Nem törölhető: aktív korrektív akciók vannak hozzárendelve.'); return; }
+  openDeleteConfirm(`Törlöd a "${r.lastName} ${r.firstName}" felelőst?`, ()=>{
+    responsibles=responsibles.filter(x=>x.id!==id);
+    if(window.fbDelResponsible) window.fbDelResponsible(id).catch(err=>console.error(err));
+    showView('r-resp');
+  });
+}
+
+// ── HIBATÍPUSOK ───────────────────────────────────────────────────────────────
+function renderFailureTypes(){
+  const sorted=[...failureTypes].sort((a,b)=>a.code.localeCompare(b.code));
+  return `
+  <div class="panel-title">Hibatípusok (${sorted.length})</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+    ${sorted.map(ft=>{
+      const cnt=rTickets.filter(t=>t.failureTypeId===ft.id).length;
+      return `<div class="project-card">
+        <div class="project-id" style="min-width:90px;">${ft.code}</div>
+        <div class="project-info">
+          <div class="project-company">${ft.category||'–'}</div>
+          <div class="project-name">${ft.name}</div>
+          ${ft.description?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${ft.description}</div>`:''}
+        </div>
+        <span style="font-family:var(--mono);font-size:11px;color:${cnt>0?'var(--cost)':'var(--text-dim)'}">${cnt} hibajegy</span>
+        <div class="row-actions" onclick="event.stopPropagation()">
+          <button class="icon-btn edit" onclick="openEditFType('${ft.id}')">✏️</button>
+          <button class="icon-btn del"  onclick="deleteFType('${ft.id}')">🗑️</button>
+        </div>
+      </div>`;}).join('')}
+  </div>
+  <button class="btn btn-primary" onclick="openNewFTypeModal()">➕ Új hibatípus</button>`;
+}
+
+function openNewFTypeModal(){
+  ['nft-code','nft-name','nft-category','nft-desc'].forEach(id=>document.getElementById(id).value='');
+  openModal('newFTypeModal');
+}
+function createFailureType(){
+  const code=document.getElementById('nft-code').value.trim();
+  const name=document.getElementById('nft-name').value.trim();
+  if(!code||!name){ alert('Hibakód és megnevezés kötelező!'); return; }
+  const ft={id:rUUID(),code,name,
+    category:document.getElementById('nft-category').value.trim(),
+    description:document.getElementById('nft-desc').value.trim(),createdAt:rToday()};
+  failureTypes.push(ft);
+  if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
+  closeModal('newFTypeModal'); showView('r-ftypes');
+}
+function openEditFType(id){
+  editingFTypeId=id;
+  const ft=failureTypes.find(x=>x.id===id);
+  document.getElementById('eft-code').value=ft.code;
+  document.getElementById('eft-name').value=ft.name;
+  document.getElementById('eft-category').value=ft.category||'';
+  document.getElementById('eft-desc').value=ft.description||'';
+  openModal('editFTypeModal');
+}
+function saveFailureType(){
+  const code=document.getElementById('eft-code').value.trim();
+  const name=document.getElementById('eft-name').value.trim();
+  if(!code||!name){ alert('Hibakód és megnevezés kötelező!'); return; }
+  const ft=failureTypes.find(x=>x.id===editingFTypeId);
+  ft.code=code; ft.name=name;
+  ft.category=document.getElementById('eft-category').value.trim();
+  ft.description=document.getElementById('eft-desc').value.trim();
+  rTickets.filter(t=>t.failureTypeId===ft.id).forEach(t=>{ t.failureTypeName=ft.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
+  if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
+  closeModal('editFTypeModal'); showView('r-ftypes');
+}
+function deleteFType(id){
+  const ft=failureTypes.find(x=>x.id===id);
+  if(rTickets.some(t=>t.failureTypeId===id)){ alert('Nem törölhető: hibajegyek tartoznak hozzá.'); return; }
+  openDeleteConfirm(`Törlöd a "${ft.code} – ${ft.name}" hibatípust?`, ()=>{
+    failureTypes=failureTypes.filter(x=>x.id!==id);
+    if(window.fbDelFailureType) window.fbDelFailureType(id).catch(err=>console.error(err));
+    showView('r-ftypes');
+  });
+}
+
+// ── HIBAJEGYEK ────────────────────────────────────────────────────────────────
+let tkFilter={status:'',eqId:'',ftId:'',from:'',to:''};
+
+function renderTickets(){
+  let filtered=[...rTickets];
+  if(tkFilter.status) filtered=filtered.filter(t=>t.status===tkFilter.status);
+  if(tkFilter.eqId)   filtered=filtered.filter(t=>t.equipmentId===tkFilter.eqId);
+  if(tkFilter.ftId)   filtered=filtered.filter(t=>t.failureTypeId===tkFilter.ftId);
+  if(tkFilter.from)   filtered=filtered.filter(t=>t.createdAt>=tkFilter.from);
+  if(tkFilter.to)     filtered=filtered.filter(t=>t.createdAt<=tkFilter.to);
+  filtered.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Hibajegyek (${filtered.length}/${rTickets.length})</span>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openNewTicketModal()">🔴 Új hibajegy</button>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:4px;">STÁTUSZ</div>
+      <select class="form-input" style="padding:5px 8px;font-size:11px;width:140px" onchange="tkFilter.status=this.value;mc().innerHTML=renderTickets()">
+        <option value="">Összes</option>
+        <option value="open" ${tkFilter.status==='open'?'selected':''}>Nyitott</option>
+        <option value="in_progress" ${tkFilter.status==='in_progress'?'selected':''}>Folyamatban</option>
+        <option value="closed" ${tkFilter.status==='closed'?'selected':''}>Lezárt</option>
+      </select>
+    </div>
+    <div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:4px;">BERENDEZÉS</div>
+      <select class="form-input" style="padding:5px 8px;font-size:11px;width:180px" onchange="tkFilter.eqId=this.value;mc().innerHTML=renderTickets()">
+        <option value="">Összes</option>
+        ${equipment.map(e=>`<option value="${e.id}" ${tkFilter.eqId===e.id?'selected':''}>${e.name}</option>`).join('')}
+      </select>
+    </div>
+    <button class="btn btn-secondary" style="padding:5px 10px;font-size:10px" onclick="tkFilter={status:'',eqId:'',ftId:'',from:'',to:''};mc().innerHTML=renderTickets()">✕ Szűrők törlése</button>
+  </div>
+  ${filtered.length===0?'<div class="empty-state"><div class="em-icon">🔴</div><div class="em-title">Nincs hibajegy</div></div>':''}
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    ${filtered.map(t=>`
+      <div class="project-card" onclick="showView('r-ticket-detail','${t.id}')">
+        <div class="project-id" style="min-width:180px;font-size:11px;">${t.ticketNumber}</div>
+        <div class="project-info">
+          <div class="project-company">${t.equipmentName||'–'} · ${t.failureTypeName||'–'}</div>
+          <div class="project-name">${t.shortDesc||t.fullDesc||'–'}</div>
+        </div>
+        ${severityBadge(t.severity)}
+        ${ticketStatusBadge(t.status)}
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${t.downtimeMinutes?fmtDowntime(t.downtimeMinutes):''}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${t.createdAt}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function openNewTicketModal(){
+  const eqSel=document.getElementById('ntk-equipment');
+  eqSel.innerHTML='<option value="">-- válassz berendezést --</option>'+
+    equipment.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  const ftSel=document.getElementById('ntk-ftype');
+  ftSel.innerHTML='<option value="">-- válassz hibatípust --</option>'+
+    failureTypes.map(f=>`<option value="${f.id}">[${f.code}] ${f.name}</option>`).join('');
+  ['ntk-shortDesc','ntk-fullDesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ntk-severity').value='medium';
+  const now=new Date().toISOString().slice(0,16);
+  document.getElementById('ntk-downtimeStart').value=now;
+  document.getElementById('ntk-downtimeEnd').value='';
+  openModal('newTicketModal');
+}
+function rTicketFTypeChange(){
+  const ftId=document.getElementById('ntk-ftype').value;
+  const ft=failureTypes.find(x=>x.id===ftId);
+  if(ft) document.getElementById('ntk-shortDesc').value=ft.name;
+}
+function createTicket(){
+  const eqId=document.getElementById('ntk-equipment').value;
+  const ftId=document.getElementById('ntk-ftype').value;
+  if(!eqId||!ftId){ alert('Berendezés és hibatípus kötelező!'); return; }
+  const eq=equipment.find(x=>x.id===eqId), ft=failureTypes.find(x=>x.id===ftId);
+  const ds=document.getElementById('ntk-downtimeStart').value;
+  const de=document.getElementById('ntk-downtimeEnd').value;
+  const t={
+    id:rUUID(),
+    ticketNumber:genTicketNum(),
+    equipmentId:eqId, equipmentName:eq.name,
+    failureTypeId:ftId, failureTypeName:ft.name,
+    shortDesc:document.getElementById('ntk-shortDesc').value.trim()||ft.name,
+    fullDesc:document.getElementById('ntk-fullDesc').value.trim(),
+    severity:document.getElementById('ntk-severity').value,
+    downtimeStart:ds, downtimeEnd:de,
+    downtimeMinutes:calcDowntime(ds,de),
+    status:'open', rootCause:'', resolution:'',
+    createdAt:rToday(), updatedAt:rToday(), closedAt:'',
+    log:[{time:rNow(),msg:'Hibajegy megnyitva',type:'create'}]
+  };
+  rTickets.push(t);
+  if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
+  closeModal('newTicketModal'); showView('r-ticket-detail',t.id);
+}
+
+// ── HIBAJEGY RÉSZLAP ─────────────────────────────────────────────────────────
+function renderTicketDetail(tid){
+  const t=rTickets.find(x=>x.id===tid);
+  if(!t) return '<div class="empty-state"><div class="em-title">Hibajegy nem található</div></div>';
+  const relCA=correctiveActs.filter(c=>c.ticketId===tid);
+  const stMap={open:'Nyitott',in_progress:'Folyamatban',closed:'Lezárt'};
+  const nextSt={open:'in_progress',in_progress:'closed'};
+  const log=t.log?[...t.log].reverse().map(l=>`<div class="log-item ${l.type||''}"><span class="log-time">${l.time}</span><span class="log-msg">${l.msg}</span></div>`).join(''):'';
+  return `
+  <div class="detail-header">
+    <div>
+      <div class="detail-id">${t.ticketNumber}</div>
+      <div class="detail-company">${t.equipmentName} · ${t.failureTypeName}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap;">
+      ${ticketStatusBadge(t.status)}
+      ${severityBadge(t.severity)}
+      ${t.status!=='closed'?`<button class="btn btn-advance" onclick="advanceTicketDirect('${t.id}')">→ ${stMap[nextSt[t.status]]||'Lezárás'}</button>`:''}
+      <button class="btn btn-secondary" onclick="openDeleteConfirm('Törlöd a hibajegyet?',()=>{ rTickets=rTickets.filter(x=>x.id!==\'${t.id}\'); if(window.fbDelTicket) window.fbDelTicket(\'${t.id}\'); showView(\'r-tickets\'); })">🗑️</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+    <div class="finance-box">
+      <div class="finance-box-title">Leállás adatok</div>
+      <div style="font-size:12px;margin-bottom:6px;"><span style="color:var(--text-dim)">Kezdete:</span> <span style="font-family:var(--mono)">${t.downtimeStart||'–'}</span></div>
+      <div style="font-size:12px;margin-bottom:6px;"><span style="color:var(--text-dim)">Vége:</span> <span style="font-family:var(--mono)">${t.downtimeEnd||'–'}</span></div>
+      <div style="font-size:12px;"><span style="color:var(--text-dim)">Állásidő:</span> <span style="font-family:var(--mono);font-size:16px;font-weight:600;color:var(--cost)">${fmtDowntime(t.downtimeMinutes)}</span></div>
+      ${t.status==='open'||t.status==='in_progress'?`<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
+        <label style="font-family:var(--mono);font-size:9px;color:var(--text-dim)">LEÁLLÁS VÉGE RÖGZÍTÉSE</label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input type="datetime-local" class="form-input" id="tk-dtEnd-${t.id}" value="${t.downtimeEnd||''}" style="flex:1;font-size:11px;padding:5px 8px">
+          <button class="btn btn-advance" style="padding:5px 8px;font-size:10px" onclick="saveTicketDowntimeEnd('${t.id}')">✓</button>
+        </div>
+      </div>`:''}
+    </div>
+    <div class="finance-box">
+      <div class="finance-box-title">Hibaleírás</div>
+      <div style="font-size:12px;margin-bottom:6px;">${t.shortDesc||'–'}</div>
+      <div style="font-size:11px;color:var(--text-dim)">${t.fullDesc||''}</div>
+      ${t.status==='closed'?`<div style="margin-top:10px;"><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:4px;">GYÖKÉROK</div><div style="font-size:11px">${t.rootCause||'–'}</div></div>`:`
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
+        <label style="font-family:var(--mono);font-size:9px;color:var(--text-dim)">GYÖKÉROK (szabad szöveg)</label>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <input class="form-input" id="tk-root-${t.id}" value="${t.rootCause||''}" placeholder="Gyökérok leírása..." style="flex:1;font-size:11px;padding:5px 8px">
+          <button class="btn btn-secondary" style="padding:5px 8px;font-size:10px" onclick="saveTicketRoot('${t.id}')">✓</button>
+        </div>
+      </div>`}
+    </div>
+  </div>
+  <div class="panel-title">Kapcsolódó Korrektív Akciók (${relCA.length})</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+    ${relCA.map(ca=>`<div class="project-card" style="cursor:default;">
+      <div class="project-id" style="min-width:110px;font-size:11px">${ca.caNumber}</div>
+      <div class="project-info"><div class="project-name">${ca.title}</div><div class="project-company">${ca.responsibleName||'–'} · határidő: ${ca.dueDate}</div></div>
+      ${caStatusBadge(ca)}
+      <button class="icon-btn edit" onclick="openEditCA('${ca.id}')">✏️</button>
+    </div>`).join('')}
+    <button class="btn btn-secondary" onclick="openNewCAModalForTicket('${t.id}')" style="width:fit-content">➕ CA hozzáadása</button>
+  </div>
+  <div class="panel-title">Eseménynapló</div>
+  <div class="log-list">${log||'<div style="color:var(--text-dim);font-size:12px">Nincs bejegyzés.</div>'}</div>`;
+}
+
+function advanceTicketDirect(tid){
+  const t=rTickets.find(x=>x.id===tid);
+  if(!t) return;
+  const next={open:'in_progress',in_progress:'closed'};
+  if(!next[t.status]) return;
+  const oldSt=t.status;
+  t.status=next[oldSt];
+  t.updatedAt=rToday();
+  if(t.status==='closed') t.closedAt=rToday();
+  t.log.push({time:rNow(),msg:`Státusz: ${oldSt} → ${t.status}`,type:'advance'});
+  if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
+  showView('r-ticket-detail',tid);
+}
+function saveTicketDowntimeEnd(tid){
+  const t=rTickets.find(x=>x.id===tid);
+  const val=document.getElementById('tk-dtEnd-'+tid)?.value;
+  if(!val){ alert('Add meg a leállás végét!'); return; }
+  t.downtimeEnd=val;
+  t.downtimeMinutes=calcDowntime(t.downtimeStart,val);
+  t.updatedAt=rToday();
+  t.log.push({time:rNow(),msg:`Leállás vége rögzítve: ${val} (${fmtDowntime(t.downtimeMinutes)})`,type:'advance'});
+  if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
+  showView('r-ticket-detail',tid);
+}
+function saveTicketRoot(tid){
+  const t=rTickets.find(x=>x.id===tid);
+  const val=document.getElementById('tk-root-'+tid)?.value.trim();
+  t.rootCause=val; t.updatedAt=rToday();
+  if(val) t.log.push({time:rNow(),msg:`Gyökérok rögzítve`,type:'advance'});
+  if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
+  showView('r-ticket-detail',tid);
+}
+
+// ── KORREKTÍV AKCIÓK ─────────────────────────────────────────────────────────
+function renderCA(){
+  const caWithStatus=correctiveActs.map(c=>({...c,_st:caStatus(c)}));
+  const inProg=caWithStatus.filter(c=>c._st==='in_progress').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const overdue=caWithStatus.filter(c=>c._st==='overdue').sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  const closed=caWithStatus.filter(c=>c._st==='closed').sort((a,b)=>(b.closedAt||'').localeCompare(a.closedAt||''));
+
+  function caRow(ca){ return `<div class="project-card" style="cursor:default;">
+    <div class="project-id" style="min-width:110px;font-size:11px">${ca.caNumber}</div>
+    <div class="project-info">
+      <div class="project-name">${ca.title}</div>
+      <div class="project-company">${ca.responsibleName||'–'} · határidő: ${ca.dueDate}</div>
+    </div>
+    ${caStatusBadge(ca)}
+    <div class="row-actions" onclick="event.stopPropagation()">
+      <button class="icon-btn edit" onclick="openEditCA('${ca.id}')">✏️</button>
+      <button class="icon-btn del"  onclick="deleteCA('${ca.id}')">🗑️</button>
+    </div>
+  </div>`; }
+
+  return `
+  <div style="display:flex;align-items:center;margin-bottom:14px;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Korrektív akciók (${correctiveActs.length})</span>
+    <button class="btn btn-primary" style="margin-left:auto" onclick="openNewCAModal()">➕ Új CA</button>
+  </div>
+  ${overdue.length>0?`<div class="panel-title" style="color:var(--danger)">⚠️ Lejárt határidejű (${overdue.length})</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">${overdue.map(caRow).join('')}</div>`:''}
+  <div class="panel-title">Folyamatban (${inProg.length})</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+    ${inProg.length>0?inProg.map(caRow).join(''):'<div style="color:var(--text-dim);font-size:12px;padding:8px 0">Nincs folyamatban lévő akció.</div>'}
+  </div>
+  <div class="panel-title">Lezárt (${closed.length})</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    ${closed.length>0?closed.map(caRow).join(''):'<div style="color:var(--text-dim);font-size:12px;padding:8px 0">Nincs lezárt akció.</div>'}
+  </div>`;
+}
+
+function openNewCAModal(){
+  const tkSel=document.getElementById('nca-ticket');
+  tkSel.innerHTML='<option value="">-- nincs kapcsolódó hibajegy --</option>'+
+    rTickets.filter(t=>t.status!=='closed').map(t=>`<option value="${t.id}">${t.ticketNumber} – ${t.equipmentName}</option>`).join('');
+  const rSel=document.getElementById('nca-resp');
+  rSel.innerHTML='<option value="">-- válassz felelőst --</option>'+
+    responsibles.map(r=>`<option value="${r.id}">${r.lastName} ${r.firstName}</option>`).join('');
+  ['nca-title','nca-desc','nca-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nca-due').value='';
+  openModal('newCAModal');
+}
+function openNewCAModalForTicket(tid){
+  openNewCAModal();
+  setTimeout(()=>{ document.getElementById('nca-ticket').value=tid; },50);
+}
+function createCA(){
+  const title=document.getElementById('nca-title').value.trim();
+  const respId=document.getElementById('nca-resp').value;
+  const due=document.getElementById('nca-due').value;
+  if(!title||!respId||!due){ alert('Cím, felelős és határidő kötelező!'); return; }
+  const resp=responsibles.find(x=>x.id===respId);
+  const ticketId=document.getElementById('nca-ticket').value;
+  const ca={
+    id:rUUID(), caNumber:genCANum(),
+    ticketId, title,
+    description:document.getElementById('nca-desc').value.trim(),
+    responsibleId:respId, responsibleName:(resp?resp.lastName+' '+resp.firstName:''),
+    dueDate:due, status:'in_progress',
+    notes:document.getElementById('nca-notes').value.trim(),
+    createdAt:rToday(), closedAt:''
+  };
+  correctiveActs.push(ca);
+  if(window.fbSaveCA) window.fbSaveCA(ca).catch(err=>console.error(err));
+  closeModal('newCAModal');
+  if(ticketId) showView('r-ticket-detail',ticketId); else showView('r-ca');
+}
+function openEditCA(id){
+  editingCAId=id;
+  const ca=correctiveActs.find(x=>x.id===id);
+  document.getElementById('eca-title').value=ca.title;
+  document.getElementById('eca-desc').value=ca.description||'';
+  document.getElementById('eca-due').value=ca.dueDate;
+  document.getElementById('eca-notes').value=ca.notes||'';
+  const rSel=document.getElementById('eca-resp');
+  rSel.innerHTML=responsibles.map(r=>`<option value="${r.id}">${r.lastName} ${r.firstName}</option>`).join('');
+  rSel.value=ca.responsibleId;
+  document.getElementById('eca-closeBtn').style.display=ca.status==='closed'?'none':'';
+  openModal('editCAModal');
+}
+function saveCA(){
+  const ca=correctiveActs.find(x=>x.id===editingCAId);
+  ca.title=document.getElementById('eca-title').value.trim();
+  ca.description=document.getElementById('eca-desc').value.trim();
+  ca.dueDate=document.getElementById('eca-due').value;
+  ca.notes=document.getElementById('eca-notes').value.trim();
+  const rId=document.getElementById('eca-resp').value;
+  ca.responsibleId=rId;
+  const r=responsibles.find(x=>x.id===rId);
+  ca.responsibleName=r?r.lastName+' '+r.firstName:'';
+  if(window.fbSaveCA) window.fbSaveCA(ca).catch(err=>console.error(err));
+  closeModal('editCAModal'); showView('r-ca');
+}
+function closeCA(){
+  const ca=correctiveActs.find(x=>x.id===editingCAId);
+  ca.status='closed'; ca.closedAt=rToday();
+  if(window.fbSaveCA) window.fbSaveCA(ca).catch(err=>console.error(err));
+  closeModal('editCAModal'); showView('r-ca');
+}
+function deleteCA(id){
+  const ca=correctiveActs.find(x=>x.id===id);
+  openDeleteConfirm(`Törlöd a "${ca.caNumber}" korrektív akciót?`, ()=>{
+    correctiveActs=correctiveActs.filter(x=>x.id!==id);
+    if(window.fbDelCA) window.fbDelCA(id).catch(err=>console.error(err));
+    showView('r-ca');
+  });
+}
+
+// ── PARETO ELEMZÉS ───────────────────────────────────────────────────────────
+let paretoFilter={period:'all',eqId:''};
+function renderPareto(){
+  return `
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Pareto elemzés</span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+      <select class="form-input" style="padding:5px 8px;font-size:11px;width:130px" onchange="paretoFilter.period=this.value;redrawPareto()">
+        <option value="30" ${paretoFilter.period==='30'?'selected':''}>Utolsó 30 nap</option>
+        <option value="90" ${paretoFilter.period==='90'?'selected':''}>Utolsó 90 nap</option>
+        <option value="365" ${paretoFilter.period==='365'?'selected':''}>Utolsó 1 év</option>
+        <option value="all" ${paretoFilter.period==='all'?'selected':''}>Összes</option>
+      </select>
+      <select class="form-input" style="padding:5px 8px;font-size:11px;width:160px" onchange="paretoFilter.eqId=this.value;redrawPareto()">
+        <option value="">Összes berendezés</option>
+        ${equipment.map(e=>`<option value="${e.id}" ${paretoFilter.eqId===e.id?'selected':''}>${e.name}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="cf-chart">
+      <div class="panel-title">Pareto 1 – Hibák darabszáma</div>
+      <canvas id="pareto1Canvas" height="280"></canvas>
+    </div>
+    <div class="cf-chart">
+      <div class="panel-title">Pareto 2 – Állásidő (óra)</div>
+      <canvas id="pareto2Canvas" height="280"></canvas>
+    </div>
+  </div>`;
+}
+function getFilteredTickets(){
+  let tks=[...rTickets];
+  if(paretoFilter.period!=='all'){
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-parseInt(paretoFilter.period));
+    const cutStr=cutoff.toISOString().split('T')[0];
+    tks=tks.filter(t=>t.createdAt>=cutStr);
+  }
+  if(paretoFilter.eqId) tks=tks.filter(t=>t.equipmentId===paretoFilter.eqId);
+  return tks;
+}
+function drawParetoChart(canvasId, labels, values, yLabel, color){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.offsetWidth||canvas.parentElement.offsetWidth-36||400;
+  canvas.width=W; canvas.height=280;
+  const pad={l:50,r:50,t:20,b:80};
+  const chartW=W-pad.l-pad.r, chartH=280-pad.t-pad.b;
+  ctx.clearRect(0,0,W,280);
+
+  if(labels.length===0){
+    ctx.fillStyle='#6b7a96'; ctx.font='13px IBM Plex Mono,monospace';
+    ctx.textAlign='center'; ctx.fillText('Nincs adat',W/2,150); return;
+  }
+
+  const total=values.reduce((s,v)=>s+v,0);
+  const maxV=Math.max(...values,1);
+  const barW=Math.max(10,chartW/labels.length-8);
+
+  // Cumulative
+  let cumPct=[];
+  let cum=0;
+  values.forEach(v=>{ cum+=v; cumPct.push(cum/total*100); });
+
+  // Bars
+  labels.forEach((lbl,i)=>{
+    const x=pad.l+i*(chartW/labels.length)+4;
+    const barH=values[i]/maxV*chartH;
+    const y=pad.t+chartH-barH;
+    const is80=cumPct[i]<=80||(i>0&&cumPct[i-1]<80);
+    ctx.fillStyle=is80?color:color+'88';
+    ctx.fillRect(x,y,barW,barH);
+    // Label
+    ctx.fillStyle='#6b7a96'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
+    const maxLbl=Math.floor(chartW/labels.length/6);
+    const shortLbl=lbl.length>maxLbl?lbl.slice(0,maxLbl)+'…':lbl;
+    ctx.save(); ctx.translate(x+barW/2,pad.t+chartH+6); ctx.rotate(-Math.PI/4);
+    ctx.fillText(shortLbl,0,0); ctx.restore();
+    // Value
+    ctx.fillStyle='#d4dbe8'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText(values[i],x+barW/2,y-3);
+  });
+
+  // Cumulative line
+  ctx.strokeStyle='#e05252'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath();
+  labels.forEach((lbl,i)=>{
+    const x=pad.l+i*(chartW/labels.length)+barW/2+4;
+    const y=pad.t+chartH-(cumPct[i]/100)*chartH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // 80% line
+  ctx.strokeStyle='#e05252'; ctx.lineWidth=1; ctx.setLineDash([6,4]);
+  const y80=pad.t+chartH-0.8*chartH;
+  ctx.beginPath(); ctx.moveTo(pad.l,y80); ctx.lineTo(W-pad.r,y80); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#e05252'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='left';
+  ctx.fillText('80%',W-pad.r+2,y80+3);
+
+  // Y axis
+  ctx.strokeStyle='#2a3347'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+chartH); ctx.stroke();
+  ctx.fillStyle='#6b7a96'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='right';
+  ctx.fillText(yLabel,pad.l-5,pad.t-5);
+}
+function drawPareto(){
+  const tks=getFilteredTickets();
+  // Pareto 1: count
+  const cnt={};
+  tks.forEach(t=>{ cnt[t.failureTypeName||'?']=(cnt[t.failureTypeName||'?']||0)+1; });
+  const sorted1=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  drawParetoChart('pareto1Canvas',sorted1.map(x=>x[0]),sorted1.map(x=>x[1]),'db','#e8a020');
+  // Pareto 2: downtime
+  const dt={};
+  tks.forEach(t=>{ dt[t.failureTypeName||'?']=(dt[t.failureTypeName||'?']||0)+(t.downtimeMinutes||0); });
+  const sorted2=Object.entries(dt).sort((a,b)=>b[1]-a[1]);
+  drawParetoChart('pareto2Canvas',sorted2.map(x=>x[0]),sorted2.map(x=>Math.round(x[1]/60*10)/10),'óra','#2d7dd2');
+}
+function redrawPareto(){ mc().innerHTML=renderPareto(); setTimeout(drawPareto,100); }
+
+// ── WINDOW EXPOSE ─────────────────────────────────────────────────────────────
+Object.assign(window,{
+  openNewEquipmentModal,createEquipment,openEditEquipment,saveEquipment,deleteEquipment,
+  openNewRespModal,createResponsible,openEditResponsible,saveResponsible,deleteResponsible,
+  openNewFTypeModal,createFailureType,openEditFType,saveFailureType,deleteFType,
+  openNewTicketModal,rTicketFTypeChange,createTicket,advanceTicketDirect,
+  saveTicketDowntimeEnd,saveTicketRoot,
+  openNewCAModal,openNewCAModalForTicket,createCA,openEditCA,saveCA,closeCA,deleteCA,
+  redrawPareto,
+});
+
+// ════════════════════════════════════════════════════════════════════
+// MODULE LAUNCHER LOGIKA
+// ════════════════════════════════════════════════════════════════════
+let activeModule = null; // 'proj' | 'rel' | null
+
+function showLauncher(){
+  activeModule = null;
+  // Update launcher stats
+  const openProj = projects.filter(p=>p.status!==8).length;
+  const curYear  = new Date().getFullYear().toString();
+  const yearInc  = projects.reduce((s,p)=>{
+    return s + (p.incomeInvoices||[]).filter(i=>i.date&&i.date.startsWith(curYear)).reduce((ss,i)=>ss+Number(i.amount),0);
+  },0);
+  const openTk   = rTickets.filter(t=>t.status!=='closed').length;
+  const openCA   = correctiveActs.filter(c=>caStatus(c)!=='closed').length;
+
+  const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  el('tstat-proj-open', openProj);
+  el('tstat-proj-rev',  fmtS(yearInc));
+  el('tstat-rel-open',  openTk);
+  el('tstat-rel-ca',    openCA);
+
+  // Show launcher, hide main layout
+  document.getElementById('moduleLauncher').style.display = 'flex';
+  document.getElementById('mainLayout').style.display     = 'none';
+
+  // Update topbar label
+  const lbl = document.getElementById('activeModuleLabel');
+  if(lbl) lbl.textContent = 'FŐMENÜ';
+
+  // Update breadcrumb
+  bc([{l:'Főmenü'}]);
+}
+
+function enterModule(mod){
+  activeModule = mod;
+  document.getElementById('moduleLauncher').style.display = 'none';
+  document.getElementById('mainLayout').style.display     = 'flex';
+
+  const projSec  = document.getElementById('sidebar-proj-section');
+  const relSec   = document.getElementById('sidebar-rel-section');
+  const switcher = document.getElementById('sidebarModuleSwitcher');
+  const modIcon  = document.getElementById('sidebarModuleIcon');
+  const modName  = document.getElementById('sidebarModuleName');
+  if(switcher) switcher.style.display = '';
+
+  if(mod === 'proj'){
+    if(projSec)  projSec.style.display = '';
+    if(relSec)   relSec.style.display  = 'none';
+    if(modIcon)  modIcon.textContent   = '\u{1F4C1}';
+    if(modName)  modName.textContent   = 'Projektk\u00f6vet\u00e9s';
+    document.getElementById('activeModuleLabel').textContent = 'PROJEKTK\u00d6VET\u00c9S';
+    showView('dashboard');
+  } else if(mod === 'rel'){
+    if(projSec)  projSec.style.display = 'none';
+    if(relSec)   relSec.style.display  = '';
+    if(modIcon)  modIcon.textContent   = '\u26a1';
+    if(modName)  modName.textContent   = 'Reliability';
+    document.getElementById('activeModuleLabel').textContent = 'RELIABILITY';
+    showView('r-dashboard');
+  }
+}
+Object.assign(window, { showLauncher, enterModule });
+
 // ── FUNCTION ALIASES (HTML calls these names) ─────────────────────────────────
 const openEditClientModal   = openEditClient;
 const saveEditClient        = saveClient;
@@ -2140,5 +3394,4 @@ setTimeout(()=>{
 }, 5000);
 </script>
 </div><!-- /appShell -->
-</body>
-</html>
+</
