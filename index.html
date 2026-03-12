@@ -604,6 +604,15 @@
         <div class="sidebar-item" onclick="filterByStatus(6)"><span style="font-size:9px;color:var(--success)">●</span>&nbsp;<span style="font-size:11px">Számlázva</span></div>
         <div class="sidebar-item" onclick="filterByStatus(8)"><span style="font-size:9px;color:#3498db">●</span>&nbsp;<span style="font-size:11px">Kész</span></div>
       </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Típus szűrő</div>
+        <div class="sidebar-item" onclick="filterByType('')"><span style="font-size:9px">◆</span>&nbsp;Mind</div>
+        <div class="sidebar-item" onclick="filterByType('TELEPÍTÉS')"><span style="font-size:9px;color:#2d7dd2">◆</span>&nbsp;<span style="font-size:11px">Telepítés</span></div>
+        <div class="sidebar-item" onclick="filterByType('SZERVÍZ')"><span style="font-size:9px;color:#e8a020">◆</span>&nbsp;<span style="font-size:11px">Szervíz</span></div>
+        <div class="sidebar-item" onclick="filterByType('TANÁCSADÁS')"><span style="font-size:9px;color:#9b59b6">◆</span>&nbsp;<span style="font-size:11px">Tanácsadás</span></div>
+        <div class="sidebar-item" onclick="filterByType('OTTHON')"><span style="font-size:9px;color:#27ae60">◆</span>&nbsp;<span style="font-size:11px">Otthontöltő</span></div>
+      </div>
     </div>
     <div id="sidebar-rel-section" style="display:none">
       <span class="module-badge mod-badge-rel">⚡ Reliability</span>
@@ -643,9 +652,19 @@
         <option value="">-- válassz megrendelőt --</option>
       </select>
     </div>
+    <div class="form-row">
+      <label class="form-label">Projekt típusa *</label>
+      <select class="form-input" id="np-type" onchange="updateIdPreview()">
+        <option value="">-- válassz típust --</option>
+        <option value="TELEPÍTÉS">1. Telepítés, infrastruktúra építés, létesítés</option>
+        <option value="SZERVÍZ">2. Szervíz, javítás, karbantartás</option>
+        <option value="TANÁCSADÁS">3. Tanácsadás, oktatás, előadás</option>
+        <option value="OTTHON">4. Otthontöltő</option>
+      </select>
+    </div>
     <div class="form-row-2">
-      <div><label class="form-label">Helyszín (max 10)</label><input class="form-input" id="np-location" maxlength="10" placeholder="pl. HALLER" oninput="updateIdPreview()"></div>
-      <div><label class="form-label">Ütem (max 5)</label><input class="form-input" id="np-phase" maxlength="5" placeholder="pl. IV" oninput="updateIdPreview()"></div>
+      <div><label class="form-label">Megnevezés_1 (max 20)</label><input class="form-input" id="np-location" maxlength="20" placeholder="pl. HALLER PARKOLÓ" oninput="updateIdPreview()"></div>
+      <div><label class="form-label">Megnevezés_2 (max 20)</label><input class="form-input" id="np-phase" maxlength="20" placeholder="pl. B SZINT" oninput="updateIdPreview()"></div>
     </div>
     <div class="form-row" style="margin-top:10px">
       <label class="form-label">Generált azonosító</label>
@@ -775,6 +794,16 @@
       <select class="form-input" id="ep-client"></select>
     </div>
     <div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="ep-desc"></div>
+    <div class="form-row">
+      <label class="form-label">Projekt típusa</label>
+      <select class="form-input" id="ep-type">
+        <option value="">-- nincs megadva --</option>
+        <option value="TELEPÍTÉS">1. Telepítés, infrastruktúra építés, létesítés</option>
+        <option value="SZERVÍZ">2. Szervíz, javítás, karbantartás</option>
+        <option value="TANÁCSADÁS">3. Tanácsadás, oktatás, előadás</option>
+        <option value="OTTHON">4. Otthontöltő</option>
+      </select>
+    </div>
     <div class="form-row">
       <label class="form-label">Státusz (manuális korrekció)</label>
       <select class="form-input" id="ep-status"></select>
@@ -1652,17 +1681,21 @@ function renderClientProjects(cid){
 }
 
 // ── PROJEKTEK LISTA ───────────────────────────────────────────────────────────
-function renderProjects(list, showClosed){
+function renderProjects(list, showClosed, activeType){
+  const TYPE_LABELS = {'TELEPÍTÉS':'Telepítés','SZERVÍZ':'Szervíz','TANÁCSADÁS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  const TYPE_COLORS = {'TELEPÍTÉS':'#2d7dd2','SZERVÍZ':'#e8a020','TANÁCSADÁS':'#9b59b6','OTTHON':'#27ae60'};
   const CLOSED_STATUS = 8;
   const openList = list.filter(p=>p.status !== CLOSED_STATUS);
   const closedList = list.filter(p=>p.status === CLOSED_STATUS);
   const displayList = showClosed ? closedList : openList;
+  const typeBadge = activeType ? `<span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLORS[activeType]};color:${TYPE_COLORS[activeType]};background:${TYPE_COLORS[activeType]}22;">◆ ${TYPE_LABELS[activeType]||activeType}</span>` : '';
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
     <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
       ${showClosed ? 'Lezárt projektek' : 'Nyitott projektek'} (${displayList.length})
       ${!showClosed && closedList.length>0 ? '<span style=\'color:var(--text-dim);font-size:11px;margin-left:6px\'>· '+closedList.length+' lezárt rejtve</span>' : ''}
     </span>
+    ${typeBadge}
     <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
       <button class="btn ${!showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects')">📂 Nyitott (${openList.length})</button>
       <button class="btn ${showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects','closed')">🔒 Lezárt (${closedList.length})</button>
@@ -1675,12 +1708,18 @@ function renderProjects(list, showClosed){
 function renderProjectRow(p){
   const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
   const pro=pProfit(p), inc=pIncome(p);
+  const TYPE_COLORS = {'TELEPÍTÉS':'#2d7dd2','SZERVÍZ':'#e8a020','TANÁCSADÁS':'#9b59b6','OTTHON':'#27ae60'};
+  const TYPE_ICONS  = {'TELEPÍTÉS':'🔧','SZERVÍZ':'🛠','TANÁCSADÁS':'💬','OTTHON':'🏠'};
+  const typeBadge = p.projectType && TYPE_COLORS[p.projectType]
+    ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[p.projectType]};color:${TYPE_COLORS[p.projectType]};background:${TYPE_COLORS[p.projectType]}22;white-space:nowrap;">${TYPE_ICONS[p.projectType]} ${p.projectType}</span>`
+    : '';
   return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
     <div class="project-id">${p.id}</div>
     <div class="project-info">
       <div class="project-company">${co?co.name:p.clientId}</div>
       <div class="project-name">${p.desc||'–'}</div>
     </div>
+    ${typeBadge}
     <span class="status-badge ${st.cls}">${st.short}</span>
     ${inc>0?`<span style="font-family:var(--mono);font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'};">${pro>=0?'+':''}${fmtS(pro)}</span>`:''}
     <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${p.updatedAt}</span>
@@ -1857,6 +1896,14 @@ function filterByStatus(idx){
   mc().innerHTML=renderProjects(f, isClosed);
 }
 
+function filterByType(typ){
+  if(!typ){ showView('projects'); return; }
+  const TYPE_LABELS = {'TELEPÍTÉS':'Telepítés','SZERVÍZ':'Szervíz','TANÁCSADÁS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  const f=projects.filter(p=>p.projectType===typ);
+  bc([{l:'Projektek',o:"showView('projects')"},{l:TYPE_LABELS[typ]||typ}]);
+  mc().innerHTML=renderProjects(f, false, typ);
+}
+
 // ── MODALS ────────────────────────────────────────────────────────────────────
 const openModal  = id => document.getElementById(id).classList.add('active');
 const closeModal = id => document.getElementById(id).classList.remove('active');
@@ -1877,7 +1924,7 @@ function openNewProjectModal(pre){
   sel.innerHTML='<option value="">-- válassz megrendelőt --</option>'+
     clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   if(pre) sel.value=pre;
-  ['np-location','np-phase','np-desc'].forEach(id=>document.getElementById(id).value='');
+  ['np-type','np-location','np-phase','np-desc'].forEach(id=>document.getElementById(id).value='');
   updateIdPreview(); openModal('newProjectModal');
 }
 function openNewClientModal(){ ['ncl-name','ncl-contact','ncl-email'].forEach(id=>document.getElementById(id).value=''); openModal('newClientModal'); }
@@ -1885,22 +1932,24 @@ function openNewSupplierModal(){ ['ns-name','ns-contact','ns-type'].forEach(id=>
 
 function updateIdPreview(){
   const cid=document.getElementById('np-company').value;
+  const typ=document.getElementById('np-type').value;
   const loc=document.getElementById('np-location').value.trim().toUpperCase();
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
-  if(!cid||!loc||!ph){ document.getElementById('idPreview').textContent='— töltsd ki az összes mezőt —'; return; }
+  if(!cid||!typ||!loc||!ph){ document.getElementById('idPreview').textContent='— töltsd ki az összes mezőt —'; return; }
   const nextNum = projects.length + 1;
   document.getElementById('idPreview').textContent=`${loc}_${ph}_${nextNum}`;
 }
 function createProject(){
   const cid=document.getElementById('np-company').value;
+  const typ=document.getElementById('np-type').value;
   const loc=document.getElementById('np-location').value.trim().toUpperCase();
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   const desc=document.getElementById('np-desc').value.trim();
-  if(!cid||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
+  if(!cid||!typ||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
   const nextNum = projects.length + 1;
   const pid=`${loc}_${ph}_${nextNum}`;
   const now=new Date().toISOString().split('T')[0];
-  const newP={id:pid,clientId:cid,desc,status:0,createdAt:now,updatedAt:now,
+  const newP={id:pid,clientId:cid,projectType:typ,desc,status:0,createdAt:now,updatedAt:now,
     docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
     incomeInvoices:[],costInvoices:[],
     log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create'}]};
@@ -2237,6 +2286,7 @@ function openEditProject(pid){
   cSel.innerHTML = clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   cSel.value = p.clientId;
   document.getElementById('ep-desc').value = p.desc||'';
+  document.getElementById('ep-type').value = p.projectType||'';
   const sSel = document.getElementById('ep-status');
   sSel.innerHTML = STATUSES.map((s,i)=>`<option value="${i}">${s.label}</option>`).join('');
   sSel.value = p.status;
@@ -2246,10 +2296,12 @@ function saveProject(){
   const p = projects.find(x=>x.id===editingProjectId);
   const newClientId = document.getElementById('ep-client').value;
   const newDesc     = document.getElementById('ep-desc').value.trim();
+  const newType     = document.getElementById('ep-type').value;
   const newStatus   = Number(document.getElementById('ep-status').value);
-  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status){
-    p.clientId  = newClientId;
-    p.desc      = newDesc;
+  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status || newType !== (p.projectType||'')){
+    p.clientId    = newClientId;
+    p.desc        = newDesc;
+    p.projectType = newType || undefined;
     if(newStatus !== p.status){
       const oldLabel = STATUSES[p.status].label;
       p.status = newStatus;
@@ -3345,7 +3397,7 @@ const saveEditCostInvoice   = saveCostInvoice;
 
 // ── MODULE SCOPE: expose functions to window for HTML onclick handlers ─────────
 const _expose = [
-  'showView','nav','bc','mc','doSearch','filterByStatus','applyDashboardFilter','resetDashboardFilter',
+  'showView','nav','bc','mc','doSearch','filterByStatus','filterByType','applyDashboardFilter','resetDashboardFilter',
   'openNewProjectModal','openNewClientModal','openNewSupplierModal','updateIdPreview',
   'createProject','createClient','createSupplier',
   'openAdvanceModal','confirmAdvance','openRevertModal','confirmRevert',
@@ -3361,7 +3413,7 @@ const _expose = [
   'openEditDoc','saveDoc','deleteDoc',
   'openModal','closeModal','updateClock'
 ];
-const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,applyDashboardFilter,resetDashboardFilter,
+const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,filterByType,applyDashboardFilter,resetDashboardFilter,
   openNewProjectModal,openNewClientModal,openNewSupplierModal,updateIdPreview,
   createProject,createClient,createSupplier,
   openAdvanceModal,confirmAdvance,openRevertModal,confirmRevert,
