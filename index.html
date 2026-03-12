@@ -1711,25 +1711,43 @@ function renderProjects(list, showClosed, activeType){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
   const CLOSED_STATUS = 8;
-  const openList = list.filter(p=>p.status !== CLOSED_STATUS);
-  const closedList = list.filter(p=>p.status === CLOSED_STATUS);
-  const displayList = showClosed ? closedList : openList;
-  const typeBadge = activeType ? `<span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLORS[activeType]};color:${TYPE_COLORS[activeType]};background:${TYPE_COLORS[activeType]}22;">◆ ${TYPE_LABELS[activeType]||activeType}</span>` : '';
+
+  let displayList;
+  if(activeType){
+    // Típus szűrésnél: mutasd az összes találatot (nyitott + lezárt vegyesen)
+    displayList = list;
+  } else {
+    const openList   = list.filter(p=>p.status !== CLOSED_STATUS);
+    const closedList = list.filter(p=>p.status === CLOSED_STATUS);
+    displayList = showClosed ? closedList : openList;
+  }
+
+  const openCount   = projects.filter(p=>p.status !== CLOSED_STATUS).length;
+  const closedCount = projects.filter(p=>p.status === CLOSED_STATUS).length;
+
+  const typeBadge = activeType
+    ? `<span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLORS[activeType]};color:${TYPE_COLORS[activeType]};background:${TYPE_COLORS[activeType]}22;">◆ ${TYPE_LABELS[activeType]||activeType}</span>`
+    : '';
+
+  const titleText = activeType
+    ? `${TYPE_LABELS[activeType]||activeType} projektek (${displayList.length})`
+    : `${showClosed ? 'Lezárt projektek' : 'Nyitott projektek'} (${displayList.length})`;
+
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
     <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
-      ${showClosed ? 'Lezárt projektek' : 'Nyitott projektek'} (${displayList.length})
-      ${!showClosed && closedList.length>0 ? '<span style=\'color:var(--text-dim);font-size:11px;margin-left:6px\'>· '+closedList.length+' lezárt rejtve</span>' : ''}
+      ${titleText}
     </span>
     ${typeBadge}
     <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
-      <button class="btn ${!showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects')">📂 Nyitott (${openList.length})</button>
-      <button class="btn ${showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects','closed')">🔒 Lezárt (${closedList.length})</button>
+      <button class="btn ${!activeType&&!showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects')">📂 Nyitott (${openCount})</button>
+      <button class="btn ${!activeType&&showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects','closed')">🔒 Lezárt (${closedCount})</button>
       <button class="btn btn-primary" onclick="openNewProjectModal()">➕ Új projekt</button>
     </div>
   </div>
-  ${displayList.length?`<div style="display:flex;flex-direction:column;gap:8px">${displayList.map(renderProjectRow).join('')}</div>`
-    :`<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">${showClosed ? 'Nincs lezárt projekt' : 'Nincs nyitott projekt'}</div></div>`}`;
+  ${displayList.length
+    ? `<div style="display:flex;flex-direction:column;gap:8px">${displayList.map(renderProjectRow).join('')}</div>`
+    : `<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">${activeType ? 'Nincs ilyen típusú projekt' : showClosed ? 'Nincs lezárt projekt' : 'Nincs nyitott projekt'}</div></div>`}`;
 }
 function renderProjectRow(p){
   const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
@@ -1935,30 +1953,39 @@ function filterByStatus(idx){
 }
 
 function filterByType(typ){
-  if(!typ){ showView('projects'); return; }
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
 
-  // Kulcsszavak amire keresünk (ékezetes és ékezet nélküli változat is)
-  const KEYWORDS = {
-    'TELEPITES': ['TELEPITES','TELEP\u00CDT\u00C9S','TELEP'],
-    'SZERVIZ':   ['SZERVIZ','SZERV\u00CDZ'],
-    'TANACSADAS':['TANACSADAS','TAN\u00C1CSAD\u00C1S','TANACS'],
-    'OTTHON':    ['OTTHON']
-  };
+  // Ha üres -> összes projekt
+  if(!typ){
+    nav('nav-projects');
+    bc([{l:'Projektek'}]);
+    mc().innerHTML = renderProjects(projects, false);
+    return;
+  }
 
-  const keywords = KEYWORDS[typ] || [typ];
-  const f = projects.filter(p => {
-    if(!p.projectType) return false;
-    const val = p.projectType.toUpperCase();
-    return keywords.some(k => val.includes(k));
-  });
+  // Normalize tárolt érték -> kulcs (bármilyen formátum)
+  function toKey(v){
+    if(!v) return '';
+    const u = v.toUpperCase();
+    if(u.includes('TELEP')) return 'TELEPITES';
+    if(u.includes('SZERV')) return 'SZERVIZ';
+    if(u.includes('TANAC') || u.includes('TAN\u00C1C')) return 'TANACSADAS';
+    if(u.includes('OTTHON')) return 'OTTHON';
+    return u;
+  }
 
-  // Debug: konzolba írjuk mi volt a találat
-  console.log('[filterByType]', typ, '-> talalt:', f.length,
-    '| osszes projectType:', [...new Set(projects.map(p=>p.projectType||'(ures)'))]);
+  const f = projects.filter(p => toKey(p.projectType) === typ);
 
-  bc([{l:'Projektek',o:"showView('projects')"},{l:TYPE_LABELS[typ]||typ}]);
-  mc().innerHTML=renderProjects(f, false, typ);
+  // Debug log
+  const allTypes = [...new Set(projects.map(p => p.projectType || '(ures)'))];
+  console.log('[filterByType] keresett:', typ,
+    '| talalatok:', f.length,
+    '| osszes tipus a projektekben:', allTypes);
+
+  nav('nav-projects');
+  bc([{l:'Projektek', o:"showView('projects')"}, {l: TYPE_LABELS[typ]||typ, color: TYPE_COLORS[typ]}]);
+  mc().innerHTML = renderProjects(f, false, typ);
 }
 
 // ── MODALS ────────────────────────────────────────────────────────────────────
