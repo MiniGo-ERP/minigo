@@ -613,7 +613,14 @@
         <div class="sidebar-item" onclick="filterByType('TANÁCSADÁS')"><span style="font-size:9px;color:#9b59b6">◆</span>&nbsp;<span style="font-size:11px">Tanácsadás</span></div>
         <div class="sidebar-item" onclick="filterByType('OTTHON')"><span style="font-size:9px;color:#27ae60">◆</span>&nbsp;<span style="font-size:11px">Otthontöltő</span></div>
       </div>
-    </div>
+      <div style="flex:1"></div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section" style="padding-bottom:10px;">
+        <div class="sidebar-item" id="nav-trash" onclick="showView('trash')" style="color:var(--danger);opacity:0.7;">
+          <span>🗑️</span> Kuka
+          <span id="trash-count-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;"></span>
+        </div>
+      </div>
     <div id="sidebar-rel-section" style="display:none">
       <span class="module-badge mod-badge-rel">⚡ Reliability</span>
       <div class="sidebar-section">
@@ -1283,18 +1290,22 @@ async function loadFromFirestore() {
     }
     // Load Reliability collections (silently, empty if first run)
     try {
-      const [eqSnap, ftSnap, respSnap, tkSnap, caSnap] = await Promise.all([
+      const [eqSnap, ftSnap, respSnap, tkSnap, caSnap, trashSnap] = await Promise.all([
         getDocs(collection(db,'equipment')),
         getDocs(collection(db,'failureTypes')),
         getDocs(collection(db,'responsibles')),
         getDocs(collection(db,'tickets')),
         getDocs(collection(db,'correctiveActions')),
+        getDocs(collection(db,'trash')),
       ]);
-      if(!eqSnap.empty)   equipment      = eqSnap.docs.map(d=>d.data());
-      if(!ftSnap.empty)   failureTypes   = ftSnap.docs.map(d=>d.data());
-      if(!respSnap.empty) responsibles   = respSnap.docs.map(d=>d.data());
-      if(!tkSnap.empty)   rTickets       = tkSnap.docs.map(d=>d.data());
-      if(!caSnap.empty)   correctiveActs = caSnap.docs.map(d=>d.data());
+      if(!eqSnap.empty)    equipment      = eqSnap.docs.map(d=>d.data());
+      if(!ftSnap.empty)    failureTypes   = ftSnap.docs.map(d=>d.data());
+      if(!respSnap.empty)  responsibles   = respSnap.docs.map(d=>d.data());
+      if(!tkSnap.empty)    rTickets       = tkSnap.docs.map(d=>d.data());
+      if(!caSnap.empty)    correctiveActs = caSnap.docs.map(d=>d.data());
+      if(!trashSnap.empty) trashBin       = trashSnap.docs.map(d=>d.data());
+      // Auto-purge items older than 5 days
+      purgeOldTrash();
     } catch(re){ console.warn('Reliability betöltési hiba (nem kritikus):', re); }
   } catch(e) {
     console.error('Firestore betöltési hiba:', e);
@@ -1302,6 +1313,7 @@ async function loadFromFirestore() {
   }
   showLoadingOverlay(false);
   showLauncher();
+  updateTrashBadge();
 }
 
 function showLoadingOverlay(show) {
@@ -1335,6 +1347,15 @@ window.fbSaveFailureType=fbSaveFailureType; window.fbDelFailureType=fbDelFailure
 window.fbSaveResponsible=fbSaveResponsible; window.fbDelResponsible=fbDelResponsible;
 window.fbSaveTicket=fbSaveTicket; window.fbDelTicket=fbDelTicket;
 window.fbSaveCA=fbSaveCA; window.fbDelCA=fbDelCA;
+async function fbSaveTrashItem(item) {
+  await setDoc(doc(db, 'trash', item.id), item);
+}
+async function fbDeleteTrashItem(id) {
+  await fbDeleteDocFS(doc(db, 'trash', id));
+}
+window.fbSaveTrashItem = fbSaveTrashItem;
+window.fbDeleteTrashItem = fbDeleteTrashItem;
+
 // Indítást az onAuthStateChanged kezeli
 
 // ── ADATOK ────────────────────────────────────────────────────────────────────
@@ -1350,6 +1371,7 @@ const STATUSES = [
   {label:'Projekt kész',             short:'Kész ✓',          cls:'s-9'},
 ];
 const FOLDERS = ['Árajánlat','TIG','Képek','VBF','EGYÉB'];
+let trashBin = []; // {id, type:'project'|'client'|'supplier', data, deletedAt, label}
 
 let clients = [
   {id:'parkl',  name:'Parkl',  contact:'Horváth Péter', email:'info@parkl.net', counter:34},
@@ -1438,6 +1460,7 @@ function showView(v, x){
   else if(v==='megrendelok'){ nav('nav-megrendelok');bc([{l:'Megrendelők'}]);                         mc().innerHTML=renderClients(); }
   else if(v==='szallitok'){ nav('nav-szallitok');    bc([{l:'Szállítók'}]);                           mc().innerHTML=renderSuppliers(); }
   else if(v==='projects'){ nav('nav-projects');      bc([{l:'Projektek'}]);                           mc().innerHTML=renderProjects(projects, x==='closed'); }
+  else if(v==='trash'){   nav('nav-trash');           bc([{l:'Kuka'}]);                                mc().innerHTML=renderTrash(); updateTrashBadge(); }
   else if(v==='client-projects'){
     const co=clients.find(c=>c.id===x);
     bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:x}]);
@@ -2230,7 +2253,8 @@ function deleteClient(id){
     alert('Nem törölhető: a megrendelőhöz aktív projektek tartoznak. Előbb töröld a projekteket.');
     return;
   }
-  openDeleteConfirm(`Törlöd a "${c.name}" megrendelőt?`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${c.name}" megrendelő. 5 nap után automatikusan törlődik.`, ()=>{
+    moveToTrash('client', id, c, c.name);
     clients = clients.filter(x=>x.id!==id);
     if(window.fbDeleteClient) window.fbDeleteClient(id).catch(e=>console.error(e));
     showView('megrendelok');
@@ -2270,7 +2294,8 @@ function saveSupplier(){
 }
 function deleteSupplier(id){
   const s = suppliers.find(x=>x.id===id);
-  openDeleteConfirm(`Törlöd a "${s.name}" szállítót? (A hozzá rögzített számlák megmaradnak.)`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${s.name}" szállító. 5 nap után automatikusan törlődik.`, ()=>{
+    moveToTrash('supplier', id, s, s.name);
     suppliers = suppliers.filter(x=>x.id!==id);
     if(window.fbDeleteSupplier) window.fbDeleteSupplier(id).catch(e=>console.error(e));
     showView('szallitok');
@@ -2316,14 +2341,140 @@ function saveProject(){
 function deleteProject(pid){
   const p = projects.find(x=>x.id===pid);
   const parentId = p.clientId;
-  openDeleteConfirm(`Törlöd a "${pid}" projektet? (Minden dokumentum és számla elveszik.)`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${pid}" projekt. 5 nap után automatikusan törlődik.`, ()=>{
+    moveToTrash('project', pid, p, pid);
     projects = projects.filter(x=>x.id!==pid);
     if(window.fbDeleteProject) window.fbDeleteProject(pid).catch(e=>console.error(e));
-    showView('client-projects', parentId);
+    showView('projects');
   });
 }
 
-// ── BEVÉTELI SZÁMLA EDIT/DELETE ───────────────────────────────────────────────
+// ── KUKA LOGIKA ──────────────────────────────────────────────────────────────
+function moveToTrash(type, id, data, label){
+  const trashId = 'trash_' + id + '_' + Date.now();
+  const item = { id: trashId, type, originalId: id, data: JSON.parse(JSON.stringify(data)), deletedAt: new Date().toISOString(), label };
+  trashBin.push(item);
+  if(window.fbSaveTrashItem) window.fbSaveTrashItem(item).catch(e=>console.error(e));
+  updateTrashBadge();
+  showToast(`🗑️ "${label}" a kukába került (5 nap múlva törlődik)`);
+}
+
+function purgeOldTrash(){
+  const now = Date.now();
+  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+  const expired = trashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
+  expired.forEach(i => {
+    if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e));
+  });
+  trashBin = trashBin.filter(i => (now - new Date(i.deletedAt).getTime()) <= FIVE_DAYS);
+  updateTrashBadge();
+}
+
+function updateTrashBadge(){
+  const badge = document.getElementById('trash-count-badge');
+  if(!badge) return;
+  if(trashBin.length > 0){
+    badge.style.display = '';
+    badge.textContent = trashBin.length;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function restoreFromTrash(trashId){
+  const item = trashBin.find(i=>i.id===trashId);
+  if(!item) return;
+  if(item.type === 'project'){
+    if(projects.find(p=>p.id===item.originalId)){
+      alert(`Nem lehet visszaállítani: "${item.originalId}" azonosítójú projekt már létezik.`); return;
+    }
+    projects.push(item.data);
+    if(window.fbSaveProject) window.fbSaveProject(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'client'){
+    if(clients.find(c=>c.id===item.originalId)){
+      alert(`Nem lehet visszaállítani: "${item.label}" megrendelő már létezik.`); return;
+    }
+    clients.push(item.data);
+    if(window.fbSaveClient) window.fbSaveClient(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'supplier'){
+    if(suppliers.find(s=>s.id===item.originalId)){
+      alert(`Nem lehet visszaállítani: "${item.label}" szállító már létezik.`); return;
+    }
+    suppliers.push(item.data);
+    if(window.fbSaveSupplier) window.fbSaveSupplier(item.data).catch(e=>console.error(e));
+  }
+  trashBin = trashBin.filter(i=>i.id!==trashId);
+  if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(trashId).catch(e=>console.error(e));
+  updateTrashBadge();
+  showToast(`✓ "${item.label}" visszaállítva`);
+  showView('trash');
+}
+
+function permanentDeleteFromTrash(trashId){
+  const item = trashBin.find(i=>i.id===trashId);
+  if(!item) return;
+  openDeleteConfirm(`Véglegesen törlöd: "${item.label}"? Ez nem vonható vissza!`, ()=>{
+    trashBin = trashBin.filter(i=>i.id!==trashId);
+    if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(trashId).catch(e=>console.error(e));
+    updateTrashBadge();
+    showView('trash');
+  });
+}
+
+function emptyTrash(){
+  if(trashBin.length === 0) return;
+  openDeleteConfirm(`Véglegesen törlöd a kuka összes elemét (${trashBin.length} db)? Ez nem vonható vissza!`, ()=>{
+    trashBin.forEach(i => {
+      if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e));
+    });
+    trashBin = [];
+    updateTrashBadge();
+    showView('trash');
+  });
+}
+
+function renderTrash(){
+  const TYPE_LABEL = {project:'📁 Projekt', client:'🏢 Megrendelő', supplier:'🔧 Szállító'};
+  const TYPE_COLOR = {project:'var(--accent)', client:'var(--accent2)', supplier:'#9b59b6'};
+  const now = Date.now();
+  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+
+  const sorted = [...trashBin].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));
+
+  const rows = sorted.map(item => {
+    const age = now - new Date(item.deletedAt).getTime();
+    const remaining = Math.max(0, Math.ceil((FIVE_DAYS - age) / (24*60*60*1000)));
+    const deletedDate = item.deletedAt.split('T')[0];
+    const urgentStyle = remaining <= 1 ? 'border-color:var(--danger);' : '';
+    return `
+    <div style="background:var(--surface);border:1px solid var(--border);${urgentStyle}border-radius:6px;padding:13px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px;">
+      <div style="font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLOR[item.type]};color:${TYPE_COLOR[item.type]};background:${TYPE_COLOR[item.type]}22;white-space:nowrap;">${TYPE_LABEL[item.type]||item.type}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">${item.label}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Törölve: ${deletedDate}</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:${remaining<=1?'var(--danger)':'var(--text-dim)'};white-space:nowrap;">${remaining} nap</div>
+      <button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="restoreFromTrash('${item.id}')">↩ Visszaállít</button>
+      <button class="icon-btn del" title="Végleges törlés" onclick="permanentDeleteFromTrash('${item.id}')">🗑️</button>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">🗑️ Kuka – ${trashBin.length} elem</span>
+    <div style="margin-left:auto;">
+      ${trashBin.length>0?`<button class="btn btn-danger" style="padding:5px 12px;font-size:10px;" onclick="emptyTrash()">🗑️ Kuka ürítése</button>`:''}
+    </div>
+  </div>
+  ${trashBin.length===0
+    ? `<div class="empty-state"><div class="em-icon">🗑️</div><div class="em-title">A kuka üres</div><div class="em-desc" style="font-size:11px;color:var(--text-dim);margin-top:6px;">A törölt elemek itt jelennek meg, és 5 nap után automatikusan törlődnek.</div></div>`
+    : `<div style="background:rgba(224,82,82,0.07);border:1px solid rgba(224,82,82,0.2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);">
+        ⏳ Az elemek <strong style="color:var(--text)">5 nap</strong> után automatikusan véglegesen törlődnek. Addig visszaállíthatók.
+       </div>${rows}`
+  }`;
+}
+
+// ── KUKA NÉZET REGISZTRÁCIÓ ───────────────────────────────────────────────────
 function openEditIncomeInvoice(pid, idx){
   pendingInvoiceId     = pid;
   editingInvoiceIdx    = idx;
@@ -3411,7 +3562,8 @@ const _expose = [
   'openEditIncomeInvoice','saveIncomeInvoice','deleteIncomeInvoice','saveEditIncomeInvoice',
   'eciSupplierChange','openEditCostInvoice','saveCostInvoice','deleteCostInvoice','saveEditCostInvoice',
   'openEditDoc','saveDoc','deleteDoc',
-  'openModal','closeModal','updateClock'
+  'openModal','closeModal','updateClock',
+  'restoreFromTrash','permanentDeleteFromTrash','emptyTrash'
 ];
 const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,filterByType,applyDashboardFilter,resetDashboardFilter,
   openNewProjectModal,openNewClientModal,openNewSupplierModal,updateIdPreview,
@@ -3432,7 +3584,8 @@ const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,filterByType,applyDash
   openEditClientModal:openEditClient,
   openEditSupplierModal:openEditSupplier,
   saveEditSupplier,confirmDeleteSupplier:deleteSupplier,
-  saveEditProject,saveEditIncomeInvoice,saveEditCostInvoice
+  saveEditProject,saveEditIncomeInvoice,saveEditCostInvoice,
+  restoreFromTrash,permanentDeleteFromTrash,emptyTrash
 };
 Object.assign(window, _fns);
 
