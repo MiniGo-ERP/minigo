@@ -608,9 +608,9 @@
       <div class="sidebar-section">
         <div class="sidebar-label">Típus szűrő</div>
         <div class="sidebar-item" onclick="filterByType('')"><span style="font-size:9px">◆</span>&nbsp;Mind</div>
-        <div class="sidebar-item" onclick="filterByType('TELEPÍTÉS')"><span style="font-size:9px;color:#2d7dd2">◆</span>&nbsp;<span style="font-size:11px">Telepítés</span></div>
-        <div class="sidebar-item" onclick="filterByType('SZERVÍZ')"><span style="font-size:9px;color:#e8a020">◆</span>&nbsp;<span style="font-size:11px">Szervíz</span></div>
-        <div class="sidebar-item" onclick="filterByType('TANÁCSADÁS')"><span style="font-size:9px;color:#9b59b6">◆</span>&nbsp;<span style="font-size:11px">Tanácsadás</span></div>
+        <div class="sidebar-item" onclick="filterByType('TELEPITES')"><span style="font-size:9px;color:#2d7dd2">◆</span>&nbsp;<span style="font-size:11px">Telepítés</span></div>
+        <div class="sidebar-item" onclick="filterByType('SZERVIZ')"><span style="font-size:9px;color:#e8a020">◆</span>&nbsp;<span style="font-size:11px">Szervíz</span></div>
+        <div class="sidebar-item" onclick="filterByType('TANACSADAS')"><span style="font-size:9px;color:#9b59b6">◆</span>&nbsp;<span style="font-size:11px">Tanácsadás</span></div>
         <div class="sidebar-item" onclick="filterByType('OTTHON')"><span style="font-size:9px;color:#27ae60">◆</span>&nbsp;<span style="font-size:11px">Otthontöltő</span></div>
       </div>
       <div style="flex:1"></div>
@@ -664,9 +664,9 @@
       <label class="form-label">Projekt típusa *</label>
       <select class="form-input" id="np-type" onchange="updateIdPreview()">
         <option value="">-- válassz típust --</option>
-        <option value="TELEPÍTÉS">1. Telepítés, infrastruktúra építés, létesítés</option>
-        <option value="SZERVÍZ">2. Szervíz, javítás, karbantartás</option>
-        <option value="TANÁCSADÁS">3. Tanácsadás, oktatás, előadás</option>
+        <option value="TELEPITES">1. Telepítés, infrastruktúra építés, létesítés</option>
+        <option value="SZERVIZ">2. Szervíz, javítás, karbantartás</option>
+        <option value="TANACSADAS">3. Tanácsadás, oktatás, előadás</option>
         <option value="OTTHON">4. Otthontöltő</option>
       </select>
     </div>
@@ -679,6 +679,7 @@
       <div class="id-preview" id="idPreview">— töltsd ki az összes mezőt —</div>
     </div>
     <div class="form-row"><label class="form-label">Leírás (opcionális)</label><input class="form-input" id="np-desc" placeholder="pl. Parkoló EV töltő kiépítés"></div>
+    <div class="form-row"><label class="form-label">Projekt dátuma *</label><input class="form-input" type="date" id="np-date"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createProject()">✓ Létrehozás</button>
@@ -802,13 +803,14 @@
       <select class="form-input" id="ep-client"></select>
     </div>
     <div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="ep-desc"></div>
+    <div class="form-row"><label class="form-label">Projekt dátuma</label><input class="form-input" type="date" id="ep-date"></div>
     <div class="form-row">
       <label class="form-label">Projekt típusa</label>
       <select class="form-input" id="ep-type">
         <option value="">-- nincs megadva --</option>
-        <option value="TELEPÍTÉS">1. Telepítés, infrastruktúra építés, létesítés</option>
-        <option value="SZERVÍZ">2. Szervíz, javítás, karbantartás</option>
-        <option value="TANÁCSADÁS">3. Tanácsadás, oktatás, előadás</option>
+        <option value="TELEPITES">1. Telepítés, infrastruktúra építés, létesítés</option>
+        <option value="SZERVIZ">2. Szervíz, javítás, karbantartás</option>
+        <option value="TANACSADAS">3. Tanácsadás, oktatás, előadás</option>
         <option value="OTTHON">4. Otthontöltő</option>
       </select>
     </div>
@@ -892,11 +894,11 @@
 <!-- MODAL: KERESZT-RÖGZÍTÉS KÉRDÉS -->
 <div class="modal-overlay" id="crossRegModal">
   <div class="modal" style="width:420px">
-    <div class="modal-title" id="crossRegTitle">u2795 Felvegy�k a m�sik oldalra is?</div>
+    <div class="modal-title" id="crossRegTitle">Felvegyuk a masik oldalra is?</div>
     <div id="crossRegBody" style="font-size:13px;color:var(--text);margin-bottom:18px;line-height:1.6;"></div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, k�sz�n�m</button>
-      <button class="btn btn-primary" id="crossRegConfirmBtn">u2713 Igen, r�gz�tsd!</button>
+      <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, koszonom</button>
+      <button class="btn btn-primary" id="crossRegConfirmBtn">Igen, rogzitsd!</button>
     </div>
   </div>
 </div>
@@ -1706,8 +1708,8 @@ function renderClientProjects(cid){
 
 // ── PROJEKTEK LISTA ───────────────────────────────────────────────────────────
 function renderProjects(list, showClosed, activeType){
-  const TYPE_LABELS = {'TELEPÍTÉS':'Telepítés','SZERVÍZ':'Szervíz','TANÁCSADÁS':'Tanácsadás','OTTHON':'Otthontöltő'};
-  const TYPE_COLORS = {'TELEPÍTÉS':'#2d7dd2','SZERVÍZ':'#e8a020','TANÁCSADÁS':'#9b59b6','OTTHON':'#27ae60'};
+  const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
   const CLOSED_STATUS = 8;
   const openList = list.filter(p=>p.status !== CLOSED_STATUS);
   const closedList = list.filter(p=>p.status === CLOSED_STATUS);
@@ -1732,10 +1734,13 @@ function renderProjects(list, showClosed, activeType){
 function renderProjectRow(p){
   const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
   const pro=pProfit(p), inc=pIncome(p);
-  const TYPE_COLORS = {'TELEPÍTÉS':'#2d7dd2','SZERVÍZ':'#e8a020','TANÁCSADÁS':'#9b59b6','OTTHON':'#27ae60'};
-  const TYPE_ICONS  = {'TELEPÍTÉS':'🔧','SZERVÍZ':'🛠','TANÁCSADÁS':'💬','OTTHON':'🏠'};
-  const typeBadge = p.projectType && TYPE_COLORS[p.projectType]
-    ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[p.projectType]};color:${TYPE_COLORS[p.projectType]};background:${TYPE_COLORS[p.projectType]}22;white-space:nowrap;">${TYPE_ICONS[p.projectType]} ${p.projectType}</span>`
+  const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
+  const TYPE_ICONS  = {'TELEPITES':'🔧','SZERVIZ':'🛠','TANACSADAS':'💬','OTTHON':'🏠'};
+  const NORMALIZE   = {'TELEPITES':'TELEPITES','TELEPÍTÉS':'TELEPITES','SZERVIZ':'SZERVIZ','SZERVÍZ':'SZERVIZ','TANACSADAS':'TANACSADAS','TANÁCSADÁS':'TANACSADAS','OTTHON':'OTTHON'};
+  const normType    = p.projectType ? (NORMALIZE[p.projectType] || p.projectType) : null;
+  const typeBadge = normType && TYPE_COLORS[normType]
+    ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[normType]};color:${TYPE_COLORS[normType]};background:${TYPE_COLORS[normType]}22;white-space:nowrap;">${TYPE_ICONS[normType]} ${TYPE_LABELS[normType]||normType}</span>`
     : '';
   return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
     <div class="project-id">${p.id}</div>
@@ -1922,8 +1927,15 @@ function filterByStatus(idx){
 
 function filterByType(typ){
   if(!typ){ showView('projects'); return; }
-  const TYPE_LABELS = {'TELEPÍTÉS':'Telepítés','SZERVÍZ':'Szervíz','TANÁCSADÁS':'Tanácsadás','OTTHON':'Otthontöltő'};
-  const f=projects.filter(p=>p.projectType===typ);
+  const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  // Normalize: handle both old accented keys and new ASCII keys
+  const NORMALIZE = {
+    'TELEPITES':'TELEPITES','TELEPÍTÉS':'TELEPITES',
+    'SZERVIZ':'SZERVIZ','SZERVÍZ':'SZERVIZ',
+    'TANACSADAS':'TANACSADAS','TANÁCSADÁS':'TANACSADAS',
+    'OTTHON':'OTTHON'
+  };
+  const f=projects.filter(p=> p.projectType && NORMALIZE[p.projectType] === typ);
   bc([{l:'Projektek',o:"showView('projects')"},{l:TYPE_LABELS[typ]||typ}]);
   mc().innerHTML=renderProjects(f, false, typ);
 }
@@ -1949,6 +1961,7 @@ function openNewProjectModal(pre){
     clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   if(pre) sel.value=pre;
   ['np-type','np-location','np-phase','np-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('np-date').value = new Date().toISOString().split('T')[0];
   updateIdPreview(); openModal('newProjectModal');
 }
 function openNewClientModal(){ ['ncl-name','ncl-contact','ncl-email'].forEach(id=>document.getElementById(id).value=''); openModal('newClientModal'); }
@@ -1969,11 +1982,12 @@ function createProject(){
   const loc=document.getElementById('np-location').value.trim().toUpperCase();
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   const desc=document.getElementById('np-desc').value.trim();
+  const projDate=document.getElementById('np-date').value || new Date().toISOString().split('T')[0];
   if(!cid||!typ||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
   const nextNum = projects.length + 1;
   const pid=`${loc}_${ph}_${nextNum}`;
   const now=new Date().toISOString().split('T')[0];
-  const newP={id:pid,clientId:cid,projectType:typ,desc,status:0,createdAt:now,updatedAt:now,
+  const newP={id:pid,clientId:cid,projectType:typ,desc,status:0,createdAt:projDate,updatedAt:now,
     docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
     incomeInvoices:[],costInvoices:[],
     log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create'}]};
@@ -1991,15 +2005,15 @@ function createClient(){
   closeModal('newClientModal');
   const existsAsSupplier = suppliers.some(s=>s.name.toLowerCase()===name.toLowerCase());
   if(!existsAsSupplier){
-    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve megrendelőként.<br><br>Szeretnéd <strong>szállítóként / alvállalkozóként</strong> is felvenni ugyanezt a céget?';
-    document.getElementById('crossRegTitle').textContent = '🔧 Felvegyük szállítóként is?';
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rogzitve megrendelokent.<br><br>Szeretned <strong>szallitokent / alvallalkozokent</strong> is felvenni ugyanezt a ceget?';
+    document.getElementById('crossRegTitle').textContent = 'Felvegyuk szallitokent is?';
     document.getElementById('crossRegConfirmBtn').onclick = () => {
       const sid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_s_'+Date.now();
       const newS={id:sid,name,contact:newC.contact||'',type:''};
       suppliers.push(newS);
       if(window.fbSaveSupplier) window.fbSaveSupplier(newS).catch(e=>console.error(e));
       closeModal('crossRegModal');
-      showToast('✓ "'+name+'" szállítóként is rögzítve!');
+      showToast('"'+name+'" szallitokent is rogzitve!');
       showView('megrendelok');
     };
     openModal('crossRegModal');
@@ -2017,15 +2031,15 @@ function createSupplier(){
   closeModal('newSupplierModal');
   const existsAsClient = clients.some(c=>c.name.toLowerCase()===name.toLowerCase());
   if(!existsAsClient){
-    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve szállítóként.<br><br>Szeretnéd <strong>megrendelőként</strong> is felvenni ugyanezt a céget?';
-    document.getElementById('crossRegTitle').textContent = '🏢 Felvegyük megrendelőként is?';
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rogzitve szallitokent.<br><br>Szeretned <strong>megrendelokent</strong> is felvenni ugyanezt a ceget?';
+    document.getElementById('crossRegTitle').textContent = 'Felvegyuk megrendelokent is?';
     document.getElementById('crossRegConfirmBtn').onclick = () => {
       const cid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_c_'+Date.now();
       const newC={id:cid,name,contact:newS.contact||'',email:'',counter:0};
       clients.push(newC);
       if(window.fbSaveClient) window.fbSaveClient(newC).catch(e=>console.error(e));
       closeModal('crossRegModal');
-      showToast('✓ "'+name+'" megrendelőként is rögzítve!');
+      showToast('"'+name+'" megrendelokent is rogzitve!');
       showView('szallitok');
     };
     openModal('crossRegModal');
@@ -2312,6 +2326,7 @@ function openEditProject(pid){
   cSel.innerHTML = clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   cSel.value = p.clientId;
   document.getElementById('ep-desc').value = p.desc||'';
+  document.getElementById('ep-date').value = p.createdAt||'';
   document.getElementById('ep-type').value = p.projectType||'';
   const sSel = document.getElementById('ep-status');
   sSel.innerHTML = STATUSES.map((s,i)=>`<option value="${i}">${s.label}</option>`).join('');
@@ -2322,12 +2337,14 @@ function saveProject(){
   const p = projects.find(x=>x.id===editingProjectId);
   const newClientId = document.getElementById('ep-client').value;
   const newDesc     = document.getElementById('ep-desc').value.trim();
+  const newDate     = document.getElementById('ep-date').value;
   const newType     = document.getElementById('ep-type').value;
   const newStatus   = Number(document.getElementById('ep-status').value);
-  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status || newType !== (p.projectType||'')){
+  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status || newType !== (p.projectType||'') || newDate !== (p.createdAt||'')){
     p.clientId    = newClientId;
     p.desc        = newDesc;
     p.projectType = newType || undefined;
+    if(newDate) p.createdAt = newDate;
     if(newStatus !== p.status){
       const oldLabel = STATUSES[p.status].label;
       p.status = newStatus;
