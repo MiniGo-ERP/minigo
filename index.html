@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
@@ -739,6 +739,18 @@
   </div>
 </div>
 
+
+<!-- MODAL: KERESZT-RÖGZÍTÉS KÉRDÉS -->
+<div class="modal-overlay" id="crossRegModal">
+  <div class="modal" style="width:420px">
+    <div class="modal-title" id="crossRegTitle">u2795 Felvegy�k a m�sik oldalra is?</div>
+    <div id="crossRegBody" style="font-size:13px;color:var(--text);margin-bottom:18px;line-height:1.6;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, k�sz�n�m</button>
+      <button class="btn btn-primary" id="crossRegConfirmBtn">u2713 Igen, r�gz�tsd!</button>
+    </div>
+  </div>
+</div>
 <!-- MODAL: SZÁLLÍTÓI SZÁMLA -->
 <div class="modal-overlay" id="costInvoiceModal">
   <div class="modal">
@@ -1045,7 +1057,7 @@ function showView(v, x){
   else if(v==='cashflow'){ nav('nav-cashflow');      bc([{l:'Cashflow & Nyereség'}]);                 mc().innerHTML=renderCashflow(); }
   else if(v==='megrendelok'){ nav('nav-megrendelok');bc([{l:'Megrendelők'}]);                         mc().innerHTML=renderClients(); }
   else if(v==='szallitok'){ nav('nav-szallitok');    bc([{l:'Szállítók'}]);                           mc().innerHTML=renderSuppliers(); }
-  else if(v==='projects'){ nav('nav-projects');      bc([{l:'Projektek'}]);                           mc().innerHTML=renderProjects(x!==undefined?projects.filter(p=>p.status===x):projects); }
+  else if(v==='projects'){ nav('nav-projects');      bc([{l:'Projektek'}]);                           mc().innerHTML=renderProjects(projects, x==='closed'); }
   else if(v==='client-projects'){
     const co=clients.find(c=>c.id===x);
     bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:x}]);
@@ -1059,20 +1071,65 @@ function showView(v, x){
   }
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────────────────────
+let dashboardDateFrom = null;
+let dashboardDateTo = null;
+function applyDashboardFilter(){
+  dashboardDateFrom = document.getElementById('dash-from').value || null;
+  dashboardDateTo   = document.getElementById('dash-to').value   || null;
+  mc().innerHTML = renderDashboard();
+}
+function resetDashboardFilter(){
+  dashboardDateFrom = null;
+  dashboardDateTo = null;
+  const curYear = new Date().getFullYear().toString();
+  document.getElementById('dash-from').value = curYear + '-01-01';
+  document.getElementById('dash-to').value   = curYear + '-12-31';
+  mc().innerHTML = renderDashboard();
+}
+function filterInvoicesByDate(invoices){
+  return invoices.filter(i=>{
+    if(!i.date) return true;
+    if(dashboardDateFrom && i.date < dashboardDateFrom) return false;
+    if(dashboardDateTo   && i.date > dashboardDateTo)   return false;
+    return true;
+  });
+}
+function pIncomeFiltered(p)  { return filterInvoicesByDate(p.incomeInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
+function pCostFiltered(p)    { return filterInvoicesByDate(p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
 function renderDashboard(){
   const tot=projects.length, act=projects.filter(p=>p.status>0&&p.status<8).length,
         done=projects.filter(p=>p.status===8).length;
-  const tInc=projects.reduce((s,p)=>s+pIncome(p),0),
-        tCost=projects.reduce((s,p)=>s+pCost(p),0), tPro=tInc-tCost;
+  const curYear = new Date().getFullYear().toString();
+  if(dashboardDateFrom === null && dashboardDateTo === null){
+    dashboardDateFrom = curYear + '-01-01';
+    dashboardDateTo   = curYear + '-12-31';
+  }
+  const tInc  = projects.reduce((s,p)=>s+pIncomeFiltered(p),0);
+  const tCost = projects.reduce((s,p)=>s+pCostFiltered(p),0);
+  const tPro  = tInc - tCost;
+  const isCurrentYear = dashboardDateFrom===curYear+'-01-01' && dashboardDateTo===curYear+'-12-31';
+  const periodLabel = isCurrentYear ? curYear+'. év' : (dashboardDateFrom||'?')+' – '+(dashboardDateTo||'?');
   return `
   <div class="stats-row">
     <div class="stat-card"><div class="stat-val">${tot}</div><div class="stat-label">Összes projekt</div></div>
     <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${act}</div><div class="stat-label">Aktív</div></div>
     <div class="stat-card"><div class="stat-val" style="color:var(--success)">${done}</div><div class="stat-label">Befejezett</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:var(--profit)">${fmtS(tInc)}</div><div class="stat-label">Összes bevétel</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${fmtS(tCost)}</div><div class="stat-label">Összes kiadás</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmtS(tPro)}</div><div class="stat-label">Nyereség (nettó)</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--profit)">${fmtS(tInc)}</div><div class="stat-label">Bevétel (${periodLabel})</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${fmtS(tCost)}</div><div class="stat-label">Kiadás (${periodLabel})</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmtS(tPro)}</div><div class="stat-label">Nyereség (${periodLabel})</div></div>
+  </div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">📅 Időszak szűrő</span>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">-tól</label>
+      <input id="dash-from" type="date" class="form-input" style="width:150px;padding:5px 8px;font-size:11px;" value="${dashboardDateFrom||''}">
+      <label style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">-ig</label>
+      <input id="dash-to" type="date" class="form-input" style="width:150px;padding:5px 8px;font-size:11px;" value="${dashboardDateTo||''}">
+      <button class="btn btn-primary" style="padding:5px 12px;font-size:10px;" onclick="applyDashboardFilter()">✓ Alkalmaz</button>
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:10px;" onclick="resetDashboardFilter()">↺ Idei év</button>
+    </div>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-left:auto;">${periodLabel}</span>
   </div>
   <div class="panel-title">Legutóbbi projektek</div>
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
@@ -1089,7 +1146,6 @@ function renderDashboard(){
       </div>`).join('')}
   </div>`;
 }
-
 // ── CASHFLOW ──────────────────────────────────────────────────────────────────
 function renderCashflow(){
   const tInc=projects.reduce((s,p)=>s+pIncome(p),0),
@@ -1245,14 +1301,25 @@ function renderClientProjects(cid){
 }
 
 // ── PROJEKTEK LISTA ───────────────────────────────────────────────────────────
-function renderProjects(list){
+function renderProjects(list, showClosed){
+  const CLOSED_STATUS = 8;
+  const openList = list.filter(p=>p.status !== CLOSED_STATUS);
+  const closedList = list.filter(p=>p.status === CLOSED_STATUS);
+  const displayList = showClosed ? closedList : openList;
   return `
-  <div style="display:flex;align-items:center;margin-bottom:14px;">
-    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Összes projekt (${list.length})</span>
-    <button class="btn btn-primary" style="margin-left:auto" onclick="openNewProjectModal()">➕ Új projekt</button>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
+      ${showClosed ? 'Lezárt projektek' : 'Nyitott projektek'} (${displayList.length})
+      ${!showClosed && closedList.length>0 ? '<span style=\'color:var(--text-dim);font-size:11px;margin-left:6px\'>· '+closedList.length+' lezárt rejtve</span>' : ''}
+    </span>
+    <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
+      <button class="btn ${!showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects')">📂 Nyitott (${openList.length})</button>
+      <button class="btn ${showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects','closed')">🔒 Lezárt (${closedList.length})</button>
+      <button class="btn btn-primary" onclick="openNewProjectModal()">➕ Új projekt</button>
+    </div>
   </div>
-  ${list.length?`<div style="display:flex;flex-direction:column;gap:8px">${list.map(renderProjectRow).join('')}</div>`
-    :`<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">Nincs projekt</div></div>`}`;
+  ${displayList.length?`<div style="display:flex;flex-direction:column;gap:8px">${displayList.map(renderProjectRow).join('')}</div>`
+    :`<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">${showClosed ? 'Nincs lezárt projekt' : 'Nincs nyitott projekt'}</div></div>`}`;
 }
 function renderProjectRow(p){
   const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
@@ -1433,7 +1500,10 @@ function filterByStatus(idx){
   if(idx===-1){ showView('projects'); return; }
   const f=projects.filter(p=>p.status===idx);
   bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
-  mc().innerHTML=renderProjects(f);
+  // Show filtered results regardless of closed/open
+  const CLOSED_STATUS = 8;
+  const isClosed = idx === CLOSED_STATUS;
+  mc().innerHTML=renderProjects(f, isClosed);
 }
 
 // ── MODALS ────────────────────────────────────────────────────────────────────
@@ -1467,8 +1537,8 @@ function updateIdPreview(){
   const loc=document.getElementById('np-location').value.trim().toUpperCase();
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   if(!cid||!loc||!ph){ document.getElementById('idPreview').textContent='— töltsd ki az összes mezőt —'; return; }
-  const co=clients.find(c=>c.id===cid);
-  document.getElementById('idPreview').textContent=`${loc}_${ph}_${co?co.counter+1:'?'}`;
+  const nextNum = projects.length + 1;
+  document.getElementById('idPreview').textContent=`${loc}_${ph}_${nextNum}`;
 }
 function createProject(){
   const cid=document.getElementById('np-company').value;
@@ -1476,8 +1546,8 @@ function createProject(){
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   const desc=document.getElementById('np-desc').value.trim();
   if(!cid||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
-  const co=clients.find(c=>c.id===cid); co.counter++;
-  const pid=`${loc}_${ph}_${co.counter}`;
+  const nextNum = projects.length + 1;
+  const pid=`${loc}_${ph}_${nextNum}`;
   const now=new Date().toISOString().split('T')[0];
   const newP={id:pid,clientId:cid,desc,status:0,createdAt:now,updatedAt:now,
     docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
@@ -1485,7 +1555,6 @@ function createProject(){
     log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create'}]};
   projects.push(newP);
   if(window.fbSaveProject) window.fbSaveProject(newP).catch(e=>console.error(e));
-  if(window.fbSaveClient) window.fbSaveClient(co).catch(e=>console.error(e));
   closeModal('newProjectModal'); showView('project-detail',pid);
 }
 function createClient(){
@@ -1495,7 +1564,24 @@ function createClient(){
   const newC={id,name,contact:document.getElementById('ncl-contact').value.trim(),email:document.getElementById('ncl-email').value.trim(),counter:0};
   clients.push(newC);
   if(window.fbSaveClient) window.fbSaveClient(newC).catch(e=>console.error(e));
-  closeModal('newClientModal'); showView('megrendelok');
+  closeModal('newClientModal');
+  const existsAsSupplier = suppliers.some(s=>s.name.toLowerCase()===name.toLowerCase());
+  if(!existsAsSupplier){
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve megrendelőként.<br><br>Szeretnéd <strong>szállítóként / alvállalkozóként</strong> is felvenni ugyanezt a céget?';
+    document.getElementById('crossRegTitle').textContent = '🔧 Felvegyük szállítóként is?';
+    document.getElementById('crossRegConfirmBtn').onclick = () => {
+      const sid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_s_'+Date.now();
+      const newS={id:sid,name,contact:newC.contact||'',type:''};
+      suppliers.push(newS);
+      if(window.fbSaveSupplier) window.fbSaveSupplier(newS).catch(e=>console.error(e));
+      closeModal('crossRegModal');
+      showToast('✓ "'+name+'" szállítóként is rögzítve!');
+      showView('megrendelok');
+    };
+    openModal('crossRegModal');
+  } else {
+    showView('megrendelok');
+  }
 }
 function createSupplier(){
   const name=document.getElementById('ns-name').value.trim();
@@ -1504,7 +1590,24 @@ function createSupplier(){
   const newS={id,name,contact:document.getElementById('ns-contact').value.trim(),type:document.getElementById('ns-type').value.trim()};
   suppliers.push(newS);
   if(window.fbSaveSupplier) window.fbSaveSupplier(newS).catch(e=>console.error(e));
-  closeModal('newSupplierModal'); showView('szallitok');
+  closeModal('newSupplierModal');
+  const existsAsClient = clients.some(c=>c.name.toLowerCase()===name.toLowerCase());
+  if(!existsAsClient){
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve szállítóként.<br><br>Szeretnéd <strong>megrendelőként</strong> is felvenni ugyanezt a céget?';
+    document.getElementById('crossRegTitle').textContent = '🏢 Felvegyük megrendelőként is?';
+    document.getElementById('crossRegConfirmBtn').onclick = () => {
+      const cid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_c_'+Date.now();
+      const newC={id:cid,name,contact:newS.contact||'',email:'',counter:0};
+      clients.push(newC);
+      if(window.fbSaveClient) window.fbSaveClient(newC).catch(e=>console.error(e));
+      closeModal('crossRegModal');
+      showToast('✓ "'+name+'" megrendelőként is rögzítve!');
+      showView('szallitok');
+    };
+    openModal('crossRegModal');
+  } else {
+    showView('szallitok');
+  }
 }
 
 // ── STÁTUSZ LÉPTETÉS ──────────────────────────────────────────────────────────
@@ -1702,10 +1805,21 @@ function saveClient(){
   const name = document.getElementById('ecl-name').value.trim();
   if(!name){ alert('Add meg a cég nevét!'); return; }
   const c = clients.find(x=>x.id===editingClientId);
+  const oldName = c.name;
   c.name    = name;
   c.contact = document.getElementById('ecl-contact').value.trim();
   c.email   = document.getElementById('ecl-email').value.trim();
   if(window.fbSaveClient) window.fbSaveClient(c).catch(e=>console.error(e));
+  if(oldName !== name){
+    const matchingSuppliers = suppliers.filter(s=>s.name===oldName);
+    matchingSuppliers.forEach(s=>{
+      s.name = name;
+      projects.forEach(p=>(p.costInvoices||[]).forEach(i=>{ if(i.supplierId===s.id) i.supplierName=name; }));
+      if(window.fbSaveSupplier) window.fbSaveSupplier(s).catch(e=>console.error(e));
+      if(window.fbSaveProject) projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===s.id)).forEach(p=>window.fbSaveProject(p));
+    });
+    if(matchingSuppliers.length>0) showToast('✓ A névváltozás a szállító adatoknál is frissítve ('+matchingSuppliers.length+' bejegyzés).');
+  }
   closeModal('editClientModal');
   showView('megrendelok');
 }
@@ -1736,14 +1850,21 @@ function saveSupplier(){
   const name = document.getElementById('es-name').value.trim();
   if(!name){ alert('Add meg a szállító nevét!'); return; }
   const s = suppliers.find(x=>x.id===editingSupplierId);
+  const oldName = s.name;
   s.name    = name;
   s.contact = document.getElementById('es-contact').value.trim();
   s.type    = document.getElementById('es-type').value.trim();
-  // update supplier name in existing invoices too
   projects.forEach(p=>(p.costInvoices||[]).forEach(i=>{ if(i.supplierId===s.id) i.supplierName=name; }));
   if(window.fbSaveSupplier) window.fbSaveSupplier(s).catch(e=>console.error(e));
-  // re-save affected projects too
   if(window.fbSaveProject) projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===s.id)).forEach(p=>window.fbSaveProject(p));
+  if(oldName !== name){
+    const matchingClients = clients.filter(c=>c.name===oldName);
+    matchingClients.forEach(c=>{
+      c.name = name;
+      if(window.fbSaveClient) window.fbSaveClient(c).catch(e=>console.error(e));
+    });
+    if(matchingClients.length>0) showToast('✓ A névváltozás a megrendelő adatoknál is frissítve ('+matchingClients.length+' bejegyzés).');
+  }
   closeModal('editSupplierModal');
   showView('szallitok');
 }
@@ -1970,7 +2091,7 @@ const saveEditCostInvoice   = saveCostInvoice;
 
 // ── MODULE SCOPE: expose functions to window for HTML onclick handlers ─────────
 const _expose = [
-  'showView','nav','bc','mc','doSearch','filterByStatus',
+  'showView','nav','bc','mc','doSearch','filterByStatus','applyDashboardFilter','resetDashboardFilter',
   'openNewProjectModal','openNewClientModal','openNewSupplierModal','updateIdPreview',
   'createProject','createClient','createSupplier',
   'openAdvanceModal','confirmAdvance','openRevertModal','confirmRevert',
@@ -1986,7 +2107,7 @@ const _expose = [
   'openEditDoc','saveDoc','deleteDoc',
   'openModal','closeModal','updateClock'
 ];
-const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,
+const _fns = { showView,nav,bc,mc,doSearch,filterByStatus,applyDashboardFilter,resetDashboardFilter,
   openNewProjectModal,openNewClientModal,openNewSupplierModal,updateIdPreview,
   createProject,createClient,createSupplier,
   openAdvanceModal,confirmAdvance,openRevertModal,confirmRevert,
