@@ -1737,10 +1737,19 @@ function renderProjectRow(p){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
   const TYPE_ICONS  = {'TELEPITES':'🔧','SZERVIZ':'🛠','TANACSADAS':'💬','OTTHON':'🏠'};
-  const NORMALIZE   = {'TELEPITES':'TELEPITES','TELEPÍTÉS':'TELEPITES','SZERVIZ':'SZERVIZ','SZERVÍZ':'SZERVIZ','TANACSADAS':'TANACSADAS','TANÁCSADÁS':'TANACSADAS','OTTHON':'OTTHON'};
-  const normType    = p.projectType ? (NORMALIZE[p.projectType] || p.projectType) : null;
-  const typeBadge = normType && TYPE_COLORS[normType]
-    ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[normType]};color:${TYPE_COLORS[normType]};background:${TYPE_COLORS[normType]}22;white-space:nowrap;">${TYPE_ICONS[normType]} ${TYPE_LABELS[normType]||normType}</span>`
+  // Rugalmas normalizálás: bármilyen tárolt érték -> kulcs
+  function normalizeType(v){
+    if(!v) return null;
+    const u = v.toUpperCase();
+    if(u.includes('TELEP')) return 'TELEPITES';
+    if(u.includes('SZERV')) return 'SZERVIZ';
+    if(u.includes('TANAC') || u.includes('TAN\u00C1C')) return 'TANACSADAS';
+    if(u.includes('OTTHON')) return 'OTTHON';
+    return null;
+  }
+  const normType = normalizeType(p.projectType);
+  const typeBadge = normType
+    ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[normType]};color:${TYPE_COLORS[normType]};background:${TYPE_COLORS[normType]}22;white-space:nowrap;">${TYPE_ICONS[normType]} ${TYPE_LABELS[normType]}</span>`
     : '';
   return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
     <div class="project-id">${p.id}</div>
@@ -1928,14 +1937,26 @@ function filterByStatus(idx){
 function filterByType(typ){
   if(!typ){ showView('projects'); return; }
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
-  // Normalize: handle both old accented keys and new ASCII keys
-  const NORMALIZE = {
-    'TELEPITES':'TELEPITES','TELEPÍTÉS':'TELEPITES',
-    'SZERVIZ':'SZERVIZ','SZERVÍZ':'SZERVIZ',
-    'TANACSADAS':'TANACSADAS','TANÁCSADÁS':'TANACSADAS',
-    'OTTHON':'OTTHON'
+
+  // Kulcsszavak amire keresünk (ékezetes és ékezet nélküli változat is)
+  const KEYWORDS = {
+    'TELEPITES': ['TELEPITES','TELEP\u00CDT\u00C9S','TELEP'],
+    'SZERVIZ':   ['SZERVIZ','SZERV\u00CDZ'],
+    'TANACSADAS':['TANACSADAS','TAN\u00C1CSAD\u00C1S','TANACS'],
+    'OTTHON':    ['OTTHON']
   };
-  const f=projects.filter(p=> p.projectType && NORMALIZE[p.projectType] === typ);
+
+  const keywords = KEYWORDS[typ] || [typ];
+  const f = projects.filter(p => {
+    if(!p.projectType) return false;
+    const val = p.projectType.toUpperCase();
+    return keywords.some(k => val.includes(k));
+  });
+
+  // Debug: konzolba írjuk mi volt a találat
+  console.log('[filterByType]', typ, '-> talalt:', f.length,
+    '| osszes projectType:', [...new Set(projects.map(p=>p.projectType||'(ures)'))]);
+
   bc([{l:'Projektek',o:"showView('projects')"},{l:TYPE_LABELS[typ]||typ}]);
   mc().innerHTML=renderProjects(f, false, typ);
 }
