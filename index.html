@@ -634,21 +634,32 @@
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
         <div class="sidebar-label">Státusz szűrő</div>
-        <div class="sidebar-item" onclick="filterByStatus(-1)"><span style="font-size:9px">●</span>&nbsp;Összes</div>
-        <div class="sidebar-item" onclick="filterByStatus(0)"><span style="font-size:9px;color:#6b7a96">●</span>&nbsp;<span style="font-size:11px">Árajánlat vár</span></div>
-        <div class="sidebar-item" onclick="filterByStatus(3)"><span style="font-size:9px;color:var(--accent)">●</span>&nbsp;<span style="font-size:11px">Folyamatban</span></div>
-        <div class="sidebar-item" onclick="filterByStatus(5)"><span style="font-size:9px;color:#e88a20">●</span>&nbsp;<span style="font-size:11px">Számlázás vár</span></div>
-        <div class="sidebar-item" onclick="filterByStatus(6)"><span style="font-size:9px;color:var(--success)">●</span>&nbsp;<span style="font-size:11px">Számlázva</span></div>
-        <div class="sidebar-item" onclick="filterByStatus(8)"><span style="font-size:9px;color:#3498db">●</span>&nbsp;<span style="font-size:11px">Kész</span></div>
+        <div style="padding:4px 12px 10px;">
+          <div id="statusFilterDisplay" onclick="toggleStatusDropdown()" style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;cursor:pointer;transition:border 0.15s;font-family:var(--mono);font-size:11px;color:var(--text);" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=document.getElementById('statusDropdown').classList.contains('open')?'var(--accent)':'var(--border)'">
+            <span id="statusFilterLabel">● Összes státusz</span>
+            <span id="statusDropArrow" style="color:var(--text-dim);transition:transform 0.2s;">▾</span>
+          </div>
+          <div id="statusDropdown" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:5px;margin-top:4px;overflow:hidden;" class="">
+            <div class="sf-item" onclick="selectStatusFilter(-1,'● Összes státusz')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:var(--text-dim)">●</span> Összes státusz</div>
+          </div>
+        </div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
         <div class="sidebar-label">Típus szűrő</div>
-        <div class="sidebar-item" onclick="filterByType('')"><span style="font-size:9px">◆</span>&nbsp;Mind</div>
-        <div class="sidebar-item" onclick="filterByType('TELEPITES')"><span style="font-size:9px;color:#2d7dd2">◆</span>&nbsp;<span style="font-size:11px">Telepítés</span></div>
-        <div class="sidebar-item" onclick="filterByType('SZERVIZ')"><span style="font-size:9px;color:#e8a020">◆</span>&nbsp;<span style="font-size:11px">Szervíz</span></div>
-        <div class="sidebar-item" onclick="filterByType('TANACSADAS')"><span style="font-size:9px;color:#9b59b6">◆</span>&nbsp;<span style="font-size:11px">Tanácsadás</span></div>
-        <div class="sidebar-item" onclick="filterByType('OTTHON')"><span style="font-size:9px;color:#27ae60">◆</span>&nbsp;<span style="font-size:11px">Otthontöltő</span></div>
+        <div style="padding:4px 12px 10px;">
+          <div id="typeFilterDisplay" onclick="toggleTypeDropdown()" style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;cursor:pointer;transition:border 0.15s;font-family:var(--mono);font-size:11px;color:var(--text);" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=document.getElementById('typeDropdown').classList.contains('open')?'var(--accent)':'var(--border)'">
+            <span id="typeFilterLabel">◆ Mind</span>
+            <span id="typeDropArrow" style="color:var(--text-dim);transition:transform 0.2s;">▾</span>
+          </div>
+          <div id="typeDropdown" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:5px;margin-top:4px;overflow:hidden;">
+            <div class="tf-item" onclick="selectTypeFilter('','◆ Mind','var(--text-dim)')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:var(--text-dim)">◆</span> Mind</div>
+            <div class="tf-item" onclick="selectTypeFilter('TELEPITES','◆ Telepítés','#2d7dd2')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:#2d7dd2">◆</span> Telepítés</div>
+            <div class="tf-item" onclick="selectTypeFilter('SZERVIZ','◆ Szervíz','#e8a020')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:#e8a020">◆</span> Szervíz</div>
+            <div class="tf-item" onclick="selectTypeFilter('TANACSADAS','◆ Tanácsadás','#9b59b6')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:#9b59b6">◆</span> Tanácsadás</div>
+            <div class="tf-item" onclick="selectTypeFilter('OTTHON','◆ Otthontöltő','#27ae60')" style="padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;" onmouseover="this.style.background='rgba(232,160,32,0.08)'" onmouseout="this.style.background=''"><span style="font-size:9px;color:#27ae60">◆</span> Otthontöltő</div>
+          </div>
+        </div>
       </div>
       <div style="flex:1"></div>
       <div class="sidebar-divider"></div>
@@ -1984,14 +1995,132 @@ function doSearch(val){
     :`<div class="empty-state"><div class="em-icon">🔍</div><div class="em-title">Nincs találat</div><div style="font-size:12px;margin-top:4px;color:var(--text-dim)">„${val}" – próbálj más keresési feltételt</div></div>`;
 }
 function filterByStatus(idx){
-  if(idx===-1){ showView('projects'); return; }
+  // Close dropdown if open
+  closeStatusDropdown();
+  if(idx===-1){
+    nav('nav-projects');
+    bc([{l:'Projektek'}]);
+    mc().innerHTML=renderProjects(projects, false);
+    return;
+  }
   const f=projects.filter(p=>p.status===idx);
-  bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
-  // Show filtered results regardless of closed/open
-  const CLOSED_STATUS = 8;
+  const CLOSED_STATUS = 8; // s-9 cls but index 8
   const isClosed = idx === CLOSED_STATUS;
-  mc().innerHTML=renderProjects(f, isClosed);
+  nav('nav-projects');
+  bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
+  // renderProjects with all items regardless of open/closed when filtering by status
+  mc().innerHTML=renderProjectsFiltered(f, idx);
 }
+
+function renderProjectsFiltered(list, statusIdx){
+  const CLOSED_STATUS = 8;
+  const st = STATUSES[statusIdx];
+  const stColors = ['#6b7a96','#2d7dd2','#9b59b6','#e8a020','#e05252','#e88a20','#27ae60','#1abc9c','#3498db','#27ae60'];
+  const color = st ? (stColors[statusIdx]||'var(--text-dim)') : 'var(--text-dim)';
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">
+      ${st ? st.label : 'Szűrt projektek'} (${list.length})
+    </span>
+    <span style="font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 8px;border-radius:3px;border:1px solid ${color};color:${color};background:${color}22;">● ${st?st.short:'?'}</span>
+    <div style="margin-left:auto;">
+      <button class="btn btn-secondary" onclick="showView('projects')">✕ Szűrő törlése</button>
+    </div>
+  </div>
+  ${list.length
+    ? `<div style="display:flex;flex-direction:column;gap:8px">${list.map(renderProjectRow).join('')}</div>`
+    : `<div class="empty-state"><div class="em-icon">📁</div><div class="em-title">Nincs ilyen státuszú projekt</div></div>`}`;
+}
+
+// ── DROPDOWN HELPERS ──────────────────────────────────────────────
+function buildStatusDropdown(){
+  const dd = document.getElementById('statusDropdown');
+  if(!dd || dd.dataset.built) return;
+  dd.dataset.built = '1';
+  dd.innerHTML = '';
+  // "Összes" item
+  const allItem = document.createElement('div');
+  allItem.style.cssText = 'padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;';
+  allItem.innerHTML = '<span style="font-size:9px;color:var(--text-dim)">●</span> Összes státusz';
+  allItem.onmouseover = ()=>allItem.style.background='rgba(232,160,32,0.08)';
+  allItem.onmouseout  = ()=>allItem.style.background='';
+  allItem.onclick = ()=>selectStatusFilter(-1,'● Összes státusz');
+  dd.appendChild(allItem);
+  // One item per status
+  const colors = ['#6b7a96','#2d7dd2','#9b59b6','#e8a020','#e05252','#e88a20','#27ae60','#1abc9c','#3498db','#27ae60'];
+  STATUSES.forEach((s,i)=>{
+    const cnt = projects.filter(p=>p.status===i).length;
+    const item = document.createElement('div');
+    item.style.cssText = 'padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;border-top:1px solid rgba(42,51,71,0.5);';
+    item.innerHTML = `<span style="font-size:9px;color:${colors[i]||'#fff'}">●</span><span style="flex:1">${s.short}</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--bg);padding:1px 6px;border-radius:10px;">${cnt}</span>`;
+    item.onmouseover = ()=>item.style.background='rgba(232,160,32,0.08)';
+    item.onmouseout  = ()=>item.style.background='';
+    item.onclick = ()=>selectStatusFilter(i, `● ${s.short}`);
+    dd.appendChild(item);
+  });
+}
+
+function toggleStatusDropdown(){
+  const dd = document.getElementById('statusDropdown');
+  const arrow = document.getElementById('statusDropArrow');
+  buildStatusDropdown();
+  const isOpen = dd.classList.contains('open');
+  closeTypeDropdown();
+  if(isOpen){ closeStatusDropdown(); }
+  else {
+    dd.style.display='block'; dd.classList.add('open');
+    if(arrow) arrow.style.transform='rotate(180deg)';
+    document.getElementById('statusFilterDisplay').style.borderColor='var(--accent)';
+  }
+}
+function closeStatusDropdown(){
+  const dd=document.getElementById('statusDropdown');
+  const arrow=document.getElementById('statusDropArrow');
+  if(dd){ dd.style.display='none'; dd.classList.remove('open'); }
+  if(arrow) arrow.style.transform='';
+  const disp=document.getElementById('statusFilterDisplay');
+  if(disp) disp.style.borderColor='var(--border)';
+}
+function selectStatusFilter(idx, label){
+  document.getElementById('statusFilterLabel').textContent=label;
+  closeStatusDropdown();
+  filterByStatus(idx);
+}
+
+function toggleTypeDropdown(){
+  const dd = document.getElementById('typeDropdown');
+  const arrow = document.getElementById('typeDropArrow');
+  const isOpen = dd.classList.contains('open');
+  closeStatusDropdown();
+  if(isOpen){ closeTypeDropdown(); }
+  else {
+    dd.style.display='block'; dd.classList.add('open');
+    if(arrow) arrow.style.transform='rotate(180deg)';
+    document.getElementById('typeFilterDisplay').style.borderColor='var(--accent)';
+  }
+}
+function closeTypeDropdown(){
+  const dd=document.getElementById('typeDropdown');
+  const arrow=document.getElementById('typeDropArrow');
+  if(dd){ dd.style.display='none'; dd.classList.remove('open'); }
+  if(arrow) arrow.style.transform='';
+  const disp=document.getElementById('typeFilterDisplay');
+  if(disp) disp.style.borderColor='var(--border)';
+}
+function selectTypeFilter(typ, label, color){
+  document.getElementById('typeFilterLabel').textContent=label;
+  if(color) document.getElementById('typeFilterLabel').style.color=color;
+  closeTypeDropdown();
+  filterByType(typ);
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#statusFilterDisplay') && !e.target.closest('#statusDropdown')) closeStatusDropdown();
+  if(!e.target.closest('#typeFilterDisplay')   && !e.target.closest('#typeDropdown'))   closeTypeDropdown();
+});
+
+Object.assign(window, {toggleStatusDropdown,closeStatusDropdown,selectStatusFilter,toggleTypeDropdown,closeTypeDropdown,selectTypeFilter,filterByStatus,renderProjectsFiltered});
 
 function filterByType(typ){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
@@ -2017,12 +2146,6 @@ function filterByType(typ){
   }
 
   const f = projects.filter(p => toKey(p.projectType) === typ);
-
-  // Debug log
-  const allTypes = [...new Set(projects.map(p => p.projectType || '(ures)'))];
-  console.log('[filterByType] keresett:', typ,
-    '| talalatok:', f.length,
-    '| osszes tipus a projektekben:', allTypes);
 
   nav('nav-projects');
   bc([{l:'Projektek', o:"showView('projects')"}, {l: TYPE_LABELS[typ]||typ, color: TYPE_COLORS[typ]}]);
