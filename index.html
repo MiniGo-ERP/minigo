@@ -1441,21 +1441,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── AUTH STATE LISTENER ───────────────────────────────────────────────────────
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // Bejelentkezve – frissítjük a user badge-et
-    const email = user.email || '';
-    const displayName = email.split('@')[0];
-    const badge = document.getElementById('userBadge');
-    if(badge) badge.textContent = '👤 ' + displayName;
-    // App betöltése
-    showAppShell();
-    loadFromFirestore();
-  } else {
-    // Nincs bejelentkezve
-    showLoginScreen();
-  }
-});
+
 
 // ── FIREBASE HELPERS ──────────────────────────────────────────────────────────
 async function fbSaveClient(c) {
@@ -3911,9 +3897,33 @@ function showLauncher(){
 
   // Update breadcrumb
   bc([{l:'Főmenü'}]);
+  // IDO tile stats
+  try {
+    const td = new Date().toISOString().slice(0,10);
+    const bent = (typeof timeLog!=='undefined'?timeLog:[]).filter(t=>t.date===td&&t.eh!=null).length;
+    const ot = (typeof employees!=='undefined'?employees:[]).filter(e=>!e.deletedAt).reduce((s,e)=>s+(e.overtimeMinutes||0),0);
+    const sign = ot>0?'+':ot<0?'\u2212':'';
+    const abs = Math.abs(ot);
+    const elb = document.getElementById('tstat-ido-bent');
+    const elo = document.getElementById('tstat-ido-ot');
+    if(elb) elb.textContent = bent||'\u2013';
+    if(elo) elo.textContent = ot===0&&bent===0?'\u2013':sign+String(Math.floor(abs/60)).padStart(2,'0')+':'+String(abs%60).padStart(2,'0');
+  } catch(e){}
+  // Tile permissions
+  if(typeof applyTilePermissions === 'function') applyTilePermissions();
+
 }
 
 function enterModule(mod){
+  if(mod === 'idonyilv'){
+    if(typeof ROLE_MODULE_ACCESS !== 'undefined') {
+      const allowed = ROLE_MODULE_ACCESS[currentUserRole]||[];
+      if(!allowed.includes('idonyilv')){ showToast('\uD83D\uDD12 Nincs hozzáférése.','warn'); return; }
+    }
+    if(typeof openIdoModule === 'function') openIdoModule();
+    return;
+  }
+
   activeModule = mod;
   document.getElementById('moduleLauncher').style.display = 'none';
   document.getElementById('mainLayout').style.display     = 'flex';
@@ -4504,37 +4514,18 @@ function _idoSSO() {
 
 // enterModule override
 const _baseEnterModule = enterModule;
-function enterModule(mod) {
-  if(mod==='idonyilv'){
-    if(!(ROLE_MODULE_ACCESS[currentUserRole]||[]).includes('idonyilv')){
-      showToast('\uD83D\uDD12 Nincs hozzáférése.','warn'); return;
-    }
-    openIdoModule(); return;
-  }
-  _baseEnterModule(mod);
-}
+
 
 // showLauncher override with IDO tile stats
 const _baseShowLauncher = showLauncher;
-function showLauncher() {
-  _baseShowLauncher();
-  try {
-    const td = new Date().toISOString().slice(0,10);
-    const bent = (typeof timeLog!=='undefined'?timeLog:[]).filter(t=>t.date===td&&t.eh!=null).length;
-    const ot = (typeof employees!=='undefined'?employees:[]).filter(e=>!e.deletedAt).reduce((s,e)=>s+(e.overtimeMinutes||0),0);
-    const sign = ot>0?'+':ot<0?'\u2212':'';
-    const abs = Math.abs(ot);
-    const elb = document.getElementById('tstat-ido-bent');
-    const elo = document.getElementById('tstat-ido-ot');
-    if(elb) elb.textContent = bent||'\u2013';
-    if(elo) elo.textContent = ot===0&&bent===0?'\u2013':sign+String(Math.floor(abs/60)).padStart(2,'0')+':'+String(abs%60).padStart(2,'0');
-  } catch(e){}
-  applyTilePermissions();
-}
+
 
 Object.assign(window,{enterModule,showLauncher,openIdoModule,closeIdoModule,openRoleManager,renderRoleManager,addRoleRow,saveRoleManager,applyTilePermissions});
 
 
+
+// ── IDO MODULE (isolated scope) ──
+(function(){
 
 const DAILY_MIN = 8*60+30;
 const HU_MONTHS = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
@@ -5417,6 +5408,39 @@ if(cdNote) cdNote.addEventListener('input',function(){
 });
 
 
+
+
+// Expose IDO functions to window for HTML onclick handlers
+Object.assign(window, {
+  ido_showView: typeof ido_showView!=="undefined"?ido_showView:undefined,
+  ido_doLogin: typeof ido_doLogin!=="undefined"?ido_doLogin:undefined,
+  ido_doLogout: typeof ido_doLogout!=="undefined"?ido_doLogout:undefined,
+  ido_renderDashboard: typeof ido_renderDashboard!=="undefined"?ido_renderDashboard:undefined,
+  ido_renderTrash: typeof ido_renderTrash!=="undefined"?ido_renderTrash:undefined,
+  ido_showToast: typeof ido_showToast!=="undefined"?ido_showToast:undefined,
+  ido_toggleSidebar: typeof ido_toggleSidebar!=="undefined"?ido_toggleSidebar:undefined,
+  ido_closeSidebar: typeof ido_closeSidebar!=="undefined"?ido_closeSidebar:undefined,
+  ido_updateTrashBadge: typeof ido_updateTrashBadge!=="undefined"?ido_updateTrashBadge:undefined,
+  ido_fmtDate: typeof ido_fmtDate!=="undefined"?ido_fmtDate:undefined,
+  ido_openExportModal: typeof ido_openExportModal!=="undefined"?ido_openExportModal:undefined,
+  confirmCheckin: typeof confirmCheckin!=="undefined"?confirmCheckin:undefined,
+  confirmCheckout: typeof confirmCheckout!=="undefined"?confirmCheckout:undefined,
+  confirmCloseDay: typeof confirmCloseDay!=="undefined"?confirmCloseDay:undefined,
+  addDayMark: typeof addDayMark!=="undefined"?addDayMark:undefined,
+  removeMark: typeof removeMark!=="undefined"?removeMark:undefined,
+  openDayMarkModal: typeof openDayMarkModal!=="undefined"?openDayMarkModal:undefined,
+  closeDayMarkModal: typeof closeDayMarkModal!=="undefined"?closeDayMarkModal:undefined,
+  openExportModal: typeof openExportModal!=="undefined"?openExportModal:undefined,
+  closeExportModal: typeof closeExportModal!=="undefined"?closeExportModal:undefined,
+  doExport: typeof doExport!=="undefined"?doExport:undefined,
+  confirmDeleteLog: typeof confirmDeleteLog!=="undefined"?confirmDeleteLog:undefined,
+  restoreLog: typeof restoreLog!=="undefined"?restoreLog:undefined,
+  permanentDeleteLog: typeof permanentDeleteLog!=="undefined"?permanentDeleteLog:undefined,
+  openCalendar: typeof openCalendar!=="undefined"?openCalendar:undefined,
+  prevMonth: typeof prevMonth!=="undefined"?prevMonth:undefined,
+  nextMonth: typeof nextMonth!=="undefined"?nextMonth:undefined,
+});
+})();
 </script>
 <!-- IDO OVERLAY -->
 <div id="idoModule" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:900;background:var(--bg);overflow:hidden;">
