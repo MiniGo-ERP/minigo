@@ -245,6 +245,43 @@
   .doc-item .row-actions { opacity:0; }
   .doc-item:hover .row-actions { opacity:1; }
   .danger-zone { background:rgba(224,82,82,0.07); border:1px solid rgba(224,82,82,0.25); border-radius:6px; padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--text); }
+
+  /* ── CUSTOM DATEPICKER ─────────────────────────────────────────── */
+  .dp-wrap { position:relative; display:block; }
+  .dp-input-row { display:flex; align-items:center; gap:0; }
+  .dp-text { flex:1; background:var(--bg); border:1px solid var(--border); border-right:none; border-radius:4px 0 0 4px; padding:8px 10px; font-family:var(--mono); font-size:12px; color:var(--text); outline:none; transition:border 0.15s; cursor:pointer; }
+  .dp-text:focus { border-color:var(--accent); }
+  .dp-text::placeholder { color:var(--text-dim); }
+  .dp-btn { background:var(--surface2); border:1px solid var(--border); border-radius:0 4px 4px 0; padding:0 10px; cursor:pointer; color:var(--text-dim); font-size:14px; height:36px; display:flex; align-items:center; transition:all 0.15s; flex-shrink:0; }
+  .dp-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .dp-popup { position:fixed; z-index:9500; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,0.6); width:272px; display:none; }
+  .dp-popup.open { display:block; }
+  .dp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .dp-nav { background:none; border:1px solid var(--border); border-radius:4px; color:var(--text-dim); cursor:pointer; font-size:14px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .dp-nav:hover { border-color:var(--accent); color:var(--accent); }
+  .dp-month-label { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text-bright); cursor:pointer; padding:4px 8px; border-radius:4px; transition:background 0.15s; }
+  .dp-month-label:hover { background:var(--surface2); }
+  .dp-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .dp-dow { font-family:var(--mono); font-size:9px; color:var(--text-dim); text-align:center; padding:3px 0 6px; letter-spacing:0.5px; }
+  .dp-day { font-family:var(--mono); font-size:11px; text-align:center; padding:5px 2px; border-radius:4px; cursor:pointer; color:var(--text); transition:all 0.12s; border:1px solid transparent; }
+  .dp-day:hover { background:var(--surface2); border-color:var(--border); }
+  .dp-day.today { color:var(--accent2); font-weight:600; }
+  .dp-day.selected { background:var(--accent); color:#0f1117; font-weight:700; border-color:var(--accent); }
+  .dp-day.selected:hover { background:#f0b030; }
+  .dp-day.other-month { color:var(--text-dim); opacity:0.4; }
+  .dp-day.empty { cursor:default; }
+  .dp-footer { margin-top:10px; display:flex; gap:6px; justify-content:space-between; }
+  .dp-today-btn { font-family:var(--mono); font-size:10px; color:var(--accent2); cursor:pointer; background:none; border:1px solid var(--border); border-radius:3px; padding:4px 8px; transition:all 0.15s; }
+  .dp-today-btn:hover { border-color:var(--accent2); }
+  .dp-clear-btn { font-family:var(--mono); font-size:10px; color:var(--text-dim); cursor:pointer; background:none; border:1px solid var(--border); border-radius:3px; padding:4px 8px; transition:all 0.15s; }
+  .dp-clear-btn:hover { border-color:var(--danger); color:var(--danger); }
+  /* Year/month picker overlay */
+  .dp-ym-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:4px; }
+  .dp-ym-item { font-family:var(--mono); font-size:11px; text-align:center; padding:7px 4px; border-radius:4px; cursor:pointer; color:var(--text); border:1px solid transparent; transition:all 0.12s; }
+  .dp-ym-item:hover { background:var(--surface2); border-color:var(--border); }
+  .dp-ym-item.selected { background:var(--accent); color:#0f1117; font-weight:700; }
+  .dp-year-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .dp-year-range { font-family:var(--mono); font-size:11px; color:var(--text-bright); }
 </style>
 </head>
 <body>
@@ -1575,6 +1612,9 @@ function renderCashflow(){
     <div class="cf-stat"><div class="cf-stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmt(tPro)}</div><div class="cf-stat-label">Nyereség (nettó)</div></div>
     <div class="cf-stat"><div class="cf-stat-val" style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${margin}%</div><div class="cf-stat-label">Marzs</div></div>
   </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-secondary" onclick="openExportModal()" style="font-size:11px;">📊 Export XLS</button>
+  </div>
 
   <div class="cf-chart">
     <div class="panel-title">Bevétel vs Kiadás – projektenként</div>
@@ -1743,6 +1783,7 @@ function renderProjects(list, showClosed, activeType){
       <button class="btn ${!activeType&&!showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects')">📂 Nyitott (${openCount})</button>
       <button class="btn ${!activeType&&showClosed?'btn-primary':'btn-secondary'}" onclick="showView('projects','closed')">🔒 Lezárt (${closedCount})</button>
       <button class="btn btn-primary" onclick="openNewProjectModal()">➕ Új projekt</button>
+      <button class="btn btn-secondary" onclick="openExportModal()" title="Export XLS">📊 Export</button>
     </div>
   </div>
   ${displayList.length
@@ -3654,6 +3695,380 @@ const _fns = { nav,bc,mc,doSearch,filterByStatus,filterByType,applyDashboardFilt
   restoreFromTrash,permanentDeleteFromTrash,emptyTrash
 };
 Object.assign(window, _fns);
+
+// ════════════════════════════════════════════════════════════════════
+// CUSTOM DATEPICKER
+// ════════════════════════════════════════════════════════════════════
+(function(){
+  const HU_MONTHS = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+  const HU_DAYS   = ['H','K','Sze','Cs','P','Szo','V'];
+
+  let activeDP = null; // currently open datepicker instance
+  let dpMode   = 'day'; // 'day' | 'month' | 'year'
+  let dpYearStart = 2020;
+
+  function parseDate(str){ // 'YYYY-MM-DD' → {y,m,d} or null
+    if(!str || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return null;
+    const [y,m,d]=str.split('-').map(Number);
+    return {y,m,d};
+  }
+  function fmtDate(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+  function fmtDisplay(str){ // 'YYYY-MM-DD' → 'YYYY. MM. DD.'
+    const p=parseDate(str); if(!p) return '';
+    return `${p.y}. ${String(p.m).padStart(2,'0')}. ${String(p.d).padStart(2,'0')}.`;
+  }
+
+  function getPopup(){ return document.getElementById('dpPopup'); }
+
+  function buildPopup(){
+    const el=document.createElement('div');
+    el.id='dpPopup'; el.className='dp-popup';
+    el.innerHTML=`<div id="dpInner"></div>`;
+    document.body.appendChild(el);
+    document.addEventListener('mousedown', e=>{
+      if(activeDP && !el.contains(e.target) && !e.target.closest('.dp-btn') && !e.target.closest('.dp-text')){
+        closeDP();
+      }
+    });
+    return el;
+  }
+
+  function renderDayView(inst){
+    const popup=getPopup()||buildPopup();
+    const {viewY,viewM} = inst;
+    const today=new Date(), ty=today.getFullYear(), tm=today.getMonth()+1, td=today.getDate();
+    const sel=parseDate(inst.value);
+    // First day of month (0=Sun…6=Sat → convert to Mon-based)
+    const first=new Date(viewY,viewM-1,1).getDay(); // 0=Sun
+    const startOffset=(first+6)%7; // Mon=0
+    const daysInMonth=new Date(viewY,viewM,0).getDate();
+    const daysInPrev=new Date(viewY,viewM-1,0).getDate();
+
+    let cells='';
+    for(let i=0;i<startOffset;i++){
+      const d=daysInPrev-startOffset+1+i;
+      cells+=`<div class="dp-day other-month" data-dp-day="${fmtDate(viewM===1?viewY-1:viewY,viewM===1?12:viewM-1,d)}">${d}</div>`;
+    }
+    for(let d=1;d<=daysInMonth;d++){
+      const ds=fmtDate(viewY,viewM,d);
+      const isSel=sel&&sel.y===viewY&&sel.m===viewM&&sel.d===d;
+      const isToday=ty===viewY&&tm===viewM&&td===d;
+      cells+=`<div class="dp-day${isSel?' selected':''}${isToday&&!isSel?' today':''}" data-dp-day="${ds}">${d}</div>`;
+    }
+    const remaining=(7-((startOffset+daysInMonth)%7))%7;
+    for(let d=1;d<=remaining;d++){
+      cells+=`<div class="dp-day other-month" data-dp-day="${fmtDate(viewM===12?viewY+1:viewY,viewM===12?1:viewM+1,d)}">${d}</div>`;
+    }
+
+    document.getElementById('dpInner').innerHTML=`
+      <div class="dp-header">
+        <button class="dp-nav" id="dpPrev">‹</button>
+        <span class="dp-month-label" id="dpMonthLabel">${HU_MONTHS[viewM-1]} ${viewY}</span>
+        <button class="dp-nav" id="dpNext">›</button>
+      </div>
+      <div class="dp-grid">
+        ${HU_DAYS.map(d=>`<div class="dp-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="dp-footer">
+        <button class="dp-today-btn" id="dpTodayBtn">Ma</button>
+        <button class="dp-clear-btn" id="dpClearBtn">Törlés</button>
+      </div>`;
+
+    // Events
+    document.getElementById('dpPrev').onclick=e=>{ e.stopPropagation(); inst.viewM--; if(inst.viewM<1){inst.viewM=12;inst.viewY--;} renderDayView(inst); positionPopup(inst); };
+    document.getElementById('dpNext').onclick=e=>{ e.stopPropagation(); inst.viewM++; if(inst.viewM>12){inst.viewM=1;inst.viewY++;} renderDayView(inst); positionPopup(inst); };
+    document.getElementById('dpMonthLabel').onclick=e=>{ e.stopPropagation(); dpMode='month'; renderMonthView(inst); };
+    document.getElementById('dpTodayBtn').onclick=e=>{ e.stopPropagation(); const t=new Date(); selectDay(inst,fmtDate(t.getFullYear(),t.getMonth()+1,t.getDate())); };
+    document.getElementById('dpClearBtn').onclick=e=>{ e.stopPropagation(); selectDay(inst,''); };
+    popup.querySelectorAll('[data-dp-day]').forEach(el=>{
+      el.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation(); selectDay(inst,el.dataset.dpDay); });
+    });
+    popup.classList.add('open');
+  }
+
+  function renderMonthView(inst){
+    const popup=getPopup()||buildPopup();
+    document.getElementById('dpInner').innerHTML=`
+      <div class="dp-header">
+        <button class="dp-nav" id="dpYearPrev">‹</button>
+        <span class="dp-month-label" id="dpYearLabel">${inst.viewY}</span>
+        <button class="dp-nav" id="dpYearNext">›</button>
+      </div>
+      <div class="dp-ym-grid">
+        ${HU_MONTHS.map((mn,i)=>`<div class="dp-ym-item${inst.viewM===i+1?' selected':''}" data-dp-month="${i+1}">${mn.slice(0,3)}</div>`).join('')}
+      </div>`;
+    document.getElementById('dpYearPrev').onclick=e=>{ e.stopPropagation(); inst.viewY--; document.getElementById('dpYearLabel').textContent=inst.viewY; renderMonthView(inst); };
+    document.getElementById('dpYearNext').onclick=e=>{ e.stopPropagation(); inst.viewY++; document.getElementById('dpYearLabel').textContent=inst.viewY; renderMonthView(inst); };
+    document.getElementById('dpYearLabel').onclick=e=>{ e.stopPropagation(); dpMode='year'; dpYearStart=Math.floor(inst.viewY/12)*12; renderYearView(inst); };
+    popup.querySelectorAll('[data-dp-month]').forEach(el=>{
+      el.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation(); inst.viewM=parseInt(el.dataset.dpMonth); dpMode='day'; renderDayView(inst); positionPopup(inst); });
+    });
+  }
+
+  function renderYearView(inst){
+    const years=Array.from({length:12},(_,i)=>dpYearStart+i);
+    document.getElementById('dpInner').innerHTML=`
+      <div class="dp-year-nav">
+        <button class="dp-nav" id="dpYearRangePrev">‹</button>
+        <span class="dp-year-range">${dpYearStart} – ${dpYearStart+11}</span>
+        <button class="dp-nav" id="dpYearRangeNext">›</button>
+      </div>
+      <div class="dp-ym-grid">
+        ${years.map(y=>`<div class="dp-ym-item${inst.viewY===y?' selected':''}" data-dp-year="${y}">${y}</div>`).join('')}
+      </div>`;
+    document.getElementById('dpYearRangePrev').onclick=e=>{ e.stopPropagation(); dpYearStart-=12; renderYearView(inst); };
+    document.getElementById('dpYearRangeNext').onclick=e=>{ e.stopPropagation(); dpYearStart+=12; renderYearView(inst); };
+    document.querySelector('#dpPopup').querySelectorAll('[data-dp-year]').forEach(el=>{
+      el.addEventListener('mousedown',e=>{ e.preventDefault(); e.stopPropagation(); inst.viewY=parseInt(el.dataset.dpYear); dpMode='month'; renderMonthView(inst); });
+    });
+  }
+
+  function selectDay(inst, val){
+    inst.value = val;
+    const p=parseDate(val);
+    if(p){ inst.viewY=p.y; inst.viewM=p.m; }
+    // Update visible text input
+    inst.textEl.value = fmtDisplay(val);
+    // Update real hidden input
+    inst.hiddenEl.value = val;
+    // Fire change event so app code picks it up
+    inst.hiddenEl.dispatchEvent(new Event('change',{bubbles:true}));
+    dpMode='day';
+    closeDP();
+  }
+
+  function positionPopup(inst){
+    const popup=getPopup(); if(!popup) return;
+    const rect=inst.btnEl.getBoundingClientRect();
+    const pw=272, ph=300;
+    let left=rect.left, top=rect.bottom+4;
+    if(left+pw>window.innerWidth-8) left=window.innerWidth-pw-8;
+    if(top+ph>window.innerHeight-8) top=rect.top-ph-4;
+    if(left<8) left=8;
+    popup.style.left=left+'px';
+    popup.style.top=top+'px';
+  }
+
+  function openDP(inst){
+    if(activeDP && activeDP!==inst) closeDP();
+    activeDP=inst;
+    dpMode='day';
+    const popup=getPopup()||buildPopup();
+    renderDayView(inst);
+    positionPopup(inst);
+  }
+
+  function closeDP(){
+    const popup=getPopup(); if(popup) popup.classList.remove('open');
+    activeDP=null; dpMode='day';
+  }
+
+  // ── Init: replace every type="date" with custom picker ──────────
+  function initDatepickers(){
+    document.querySelectorAll('input[type="date"]').forEach(origEl=>{
+      if(origEl.dataset.dpInit) return; // already converted
+      origEl.dataset.dpInit='1';
+
+      // Create wrapper
+      const wrap=document.createElement('div');
+      wrap.className='dp-wrap';
+      origEl.parentNode.insertBefore(wrap,origEl);
+
+      // Hide original
+      origEl.type='text'; // keep as text but hide
+      origEl.style.cssText='position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;';
+      wrap.appendChild(origEl);
+
+      // Text input (display)
+      const textEl=document.createElement('input');
+      textEl.type='text';
+      textEl.className='dp-text form-input';
+      textEl.placeholder='ÉÉÉÉ. HH. NN.';
+      textEl.readOnly=true;
+      if(origEl.value) textEl.value=fmtDisplay(origEl.value);
+
+      // Copy over style attribute if any (e.g. width)
+      if(origEl.getAttribute('style') && !origEl.getAttribute('style').includes('position:absolute')){
+        textEl.style.cssText=origEl.getAttribute('style');
+      }
+
+      // Calendar button
+      const btnEl=document.createElement('button');
+      btnEl.type='button';
+      btnEl.className='dp-btn';
+      btnEl.innerHTML='📅';
+      btnEl.title='Naptár';
+
+      // Row container
+      const row=document.createElement('div');
+      row.className='dp-input-row';
+      row.appendChild(textEl);
+      row.appendChild(btnEl);
+      wrap.insertBefore(row, origEl);
+
+      const today=new Date();
+      const initParsed=parseDate(origEl.value);
+      const inst={
+        hiddenEl: origEl,
+        textEl,
+        btnEl,
+        value: origEl.value||'',
+        viewY: initParsed?initParsed.y:today.getFullYear(),
+        viewM: initParsed?initParsed.m:today.getMonth()+1,
+      };
+
+      textEl.addEventListener('click', e=>{ e.stopPropagation(); openDP(inst); });
+      btnEl.addEventListener('mousedown', e=>{ e.preventDefault(); e.stopPropagation();
+        if(activeDP===inst){ closeDP(); } else { openDP(inst); }
+      });
+
+      // Watch for programmatic value changes (e.g. modal open sets value)
+      const origDescriptor=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value');
+      let lastVal=origEl.value;
+      const syncCheck=()=>{
+        if(origEl.value!==lastVal){
+          lastVal=origEl.value;
+          inst.value=origEl.value;
+          const p=parseDate(origEl.value);
+          if(p){inst.viewY=p.y;inst.viewM=p.m;}
+          textEl.value=fmtDisplay(origEl.value);
+        }
+      };
+      // Use MutationObserver as fallback + interval for modal re-opens
+      const mo=new MutationObserver(syncCheck);
+      mo.observe(origEl,{attributes:true,attributeFilter:['value']});
+      setInterval(syncCheck,300);
+    });
+  }
+
+  // Run on load + after dynamic content changes
+  document.addEventListener('DOMContentLoaded', initDatepickers);
+  // Also re-init when modals open (since date fields may be in dynamic HTML)
+  const origOpenModal=window.openModal;
+  if(typeof origOpenModal==='function'){
+    window.openModal=function(id){
+      origOpenModal(id);
+      setTimeout(initDatepickers,80);
+    };
+  }
+  // Re-check periodically for dynamically rendered date inputs
+  setInterval(initDatepickers, 800);
+  window.initDatepickers=initDatepickers;
+})();
+
+// ════════════════════════════════════════════════════════════════════
+// XLS / CSV EXPORT
+// ════════════════════════════════════════════════════════════════════
+function exportProjectsXLS(mode) {
+  // mode: 'projects' | 'invoices' | 'cashflow'
+  const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
+  function normalizeType(v){
+    if(!v) return '';
+    const u=v.toUpperCase();
+    if(u.includes('TELEP')) return 'TELEPITES';
+    if(u.includes('SZERV')) return 'SZERVIZ';
+    if(u.includes('TANAC')||u.includes('TANÁC')) return 'TANACSADAS';
+    if(u.includes('OTTHON')) return 'OTTHON';
+    return v;
+  }
+
+  let rows = [];
+  let filename = '';
+
+  if(!mode || mode==='projects') {
+    filename = 'minigo_projektek_' + new Date().toISOString().slice(0,10) + '.xls';
+    rows.push(['Projekt ID','Megrendelő','Leírás','Típus','Státusz','Bevétel (nettó)','Kiadás (nettó)','Nyereség (nettó)','Marzs %','Létrehozva','Frissítve']);
+    projects.forEach(p => {
+      const co = clients.find(c=>c.id===p.clientId);
+      const st = STATUSES[p.status]||STATUSES[0];
+      const inc = pIncome(p), cost = pCost(p), pro = pProfit(p);
+      const margin = inc>0 ? Math.round(pro/inc*100) : '';
+      const typ = TYPE_LABELS[normalizeType(p.projectType)] || '';
+      rows.push([p.id, co?co.name:'', p.desc||'', typ, st.label, inc, cost, pro, margin, p.createdAt||'', p.updatedAt||'']);
+    });
+  } else if(mode==='invoices') {
+    filename = 'minigo_szamlak_' + new Date().toISOString().slice(0,10) + '.xls';
+    rows.push(['Típus','Projekt ID','Megrendelő','Számla ref','Összeg (nettó)','Dátum','Megjegyzés','Szállító']);
+    projects.forEach(p => {
+      const co = clients.find(c=>c.id===p.clientId);
+      (p.incomeInvoices||[]).forEach(i => {
+        rows.push(['Kimenő',p.id,co?co.name:'',i.ref||'',Number(i.amount)||0,i.date||'',i.note||'','']);
+      });
+      (p.costInvoices||[]).forEach(i => {
+        rows.push(['Szállítói',p.id,co?co.name:'',i.ref||'',Number(i.amount)||0,i.date||'',i.note||'',i.supplierName||'']);
+      });
+    });
+    rows.sort((a,b)=>(b[5]||'').localeCompare(a[5]||''));
+  } else if(mode==='cashflow') {
+    filename = 'minigo_cashflow_' + new Date().toISOString().slice(0,10) + '.xls';
+    rows.push(['Projekt ID','Megrendelő','Bevétel','Kiadás','Nyereség','Marzs %']);
+    projects.filter(p=>pIncome(p)>0||pCost(p)>0).forEach(p => {
+      const co = clients.find(c=>c.id===p.clientId);
+      const inc=pIncome(p),cost=pCost(p),pro=pProfit(p);
+      const margin=inc>0?Math.round(pro/inc*100):'';
+      rows.push([p.id,co?co.name:'',inc,cost,pro,margin]);
+    });
+  }
+
+  // Build HTML table (Excel-compatible XLS via data URI)
+  let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Adatok</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
+  rows.forEach((row, ri) => {
+    html += '<tr>';
+    row.forEach(cell => {
+      const isNum = ri>0 && typeof cell === 'number';
+      html += isNum ? `<td style="mso-number-format:'# ##0';">${cell}</td>` : `<td>${String(cell).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table></body></html>';
+
+  const blob = new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  showToast('✅ Exportálva: '+filename, 'ok');
+  closeModal('exportModal');
+}
+
+function openExportModal(){
+  const el = document.getElementById('exportModal');
+  if(el){ el.classList.add('active'); return; }
+  // Create modal on-the-fly
+  const m = document.createElement('div');
+  m.id = 'exportModal';
+  m.className = 'modal-overlay';
+  m.innerHTML = `
+  <div class="modal" style="width:400px;">
+    <div class="modal-title">📊 Export – Excel / XLS</div>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:18px;">Válaszd ki, milyen adatot szeretnél exportálni:</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <div onclick="exportProjectsXLS('projects')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">📂 Projektek összesítő</div>
+        <div style="font-size:11px;color:var(--text-dim);">Összes projekt: ID, megrendelő, típus, státusz, bevétel, kiadás, nyereség</div>
+      </div>
+      <div onclick="exportProjectsXLS('invoices')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">🧾 Számlák listája</div>
+        <div style="font-size:11px;color:var(--text-dim);">Minden kimenő és szállítói számla, dátum szerint rendezve</div>
+      </div>
+      <div onclick="exportProjectsXLS('cashflow')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">💰 Cashflow összesítő</div>
+        <div style="font-size:11px;color:var(--text-dim);">Projekt szintű bevétel vs kiadás vs nyereség táblázat</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('exportModal')">✕ Mégse</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.classList.add('active');
+  m.addEventListener('click', e=>{ if(e.target===m) closeModal('exportModal'); });
+}
+Object.assign(window, { exportProjectsXLS, openExportModal });
 
 // Az indítást a Firebase loader kezeli (loadFromFirestore → showView('dashboard'))
 // Ha offline/hiba esetén sem töltene be, fallback:
