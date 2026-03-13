@@ -203,8 +203,6 @@
   /* MODULE LAUNCHER */
   .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:40px 24px; }
   .launcher-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:1080px; width:100%; }
-  .module-tile:last-child:nth-child(3n+2) { grid-column: 2; }
-  #tile-idonyilv { grid-column: 2; }
   .module-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px 28px; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:12px; }
   .module-tile:hover:not(.tile-disabled) { border-color:var(--accent); background:var(--surface2); transform:translateY(-2px); box-shadow:0 8px 32px rgba(0,0,0,0.3); }
   .module-tile.tile-disabled { opacity:0.45; cursor:default; }
@@ -716,7 +714,7 @@
     </div>
     <div class="launcher-grid">
 
-      <!-- PROJEKTKÖVETÉS -->
+<!-- PROJEKTKÖVETÉS -->
       <div class="module-tile" onclick="enterModule('proj')">
         <div class="tile-accent" style="background:var(--accent2)"></div>
         <div class="tile-icon">📁</div>
@@ -769,7 +767,7 @@
       </div>
 
       <!-- IDŐNYILVÁNTARTÁS -->
-      <div class="module-tile" id="tile-idonyilv" onclick="enterModule('idonyilv')">
+      <div class="module-tile" id="tile-idonyilv" style="grid-column:3" onclick="enterModule('idonyilv')">
         <div class="tile-accent" style="background:#e8a020"></div>
         <div class="tile-icon">&#9201;</div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -781,8 +779,9 @@
           <div><div class="tile-stat-val" id="tstat-ido-bent">&#8211;</div><div class="tile-stat-label">ma bent van</div></div>
           <div><div class="tile-stat-val" id="tstat-ido-ot" style="color:#e8a020">&#8211;</div><div class="tile-stat-label">&#246;sszes t&#250;l&#243;ra</div></div>
         </div>
-      </div>
-      </div>
+           </div>
+
+    </div>
 
     </div>
   </div>
@@ -4489,10 +4488,7 @@ function openIdoModule() {
 }
 function closeIdoModule() {
   document.getElementById('idoModule').style.display='none';
-  activeModule=null;
-  document.getElementById('moduleLauncher').style.display='flex';
-  document.getElementById('mainLayout').style.display='none';
-  applyTilePermissions();
+  showLauncher();
 }
 function _idoSSO() {
   const role = ROLE_IDO_LEVEL[currentUserRole]||'employee';
@@ -5419,6 +5415,7 @@ if(cdNote) cdNote.addEventListener('input',function(){
 // Expose IDO functions to window for HTML onclick handlers
 Object.assign(window, {
   ido_showView: typeof ido_showView!=="undefined"?ido_showView:undefined,
+  _idoSSO: typeof _idoSSO!=="undefined"?_idoSSO:undefined,
   ido_doLogin: typeof ido_doLogin!=="undefined"?ido_doLogin:undefined,
   ido_doLogout: typeof ido_doLogout!=="undefined"?ido_doLogout:undefined,
   ido_renderDashboard: typeof ido_renderDashboard!=="undefined"?ido_renderDashboard:undefined,
