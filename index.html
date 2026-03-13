@@ -11,7 +11,7 @@
     --accent: #e8a020; --accent2: #2d7dd2; --text: #d4dbe8; --text-dim: #6b7a96;
     --text-bright: #f0f4ff; --success: #27ae60; --danger: #e05252;
     --profit: #2ecc71; --cost: #e05252;
-    --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans', sans-serif; --warning: #e88a20;
+    --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans', sans-serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:var(--sans); background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden; }
@@ -283,6 +283,167 @@
   .dp-ym-item.selected { background:var(--accent); color:#0f1117; font-weight:700; }
   .dp-year-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
   .dp-year-range { font-family:var(--mono); font-size:11px; color:var(--text-bright); }
+
+  .tile-tag.hr{background:rgba(232,160,32,0.15);color:var(--accent);border:1px solid var(--accent);}
+/* IDO */
+
+
+#idoModule * {margin:0;padding:0;box-sizing:border-box;}
+#idoModule body {font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+#idoModule .topbar {height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;}
+#idoModule .logo {font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);letter-spacing:2px;}
+#idoModule .logo span {color:var(--text-dim);}
+#idoModule .topbar-right {margin-left:auto;display:flex;align-items:center;gap:10px;}
+#idoModule .user-badge {background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text);}
+#idoModule .layout {display:flex;flex:1;overflow:hidden;}
+#idoModule .sidebar {width:232px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+#idoModule .sidebar-section {padding:14px 0 6px;}
+#idoModule .sidebar-label {font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;padding:0 16px 8px;}
+#idoModule .nav-item {display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text-dim);transition:all .15s;border-left:2px solid transparent;}
+#idoModule .nav-item:hover {background:var(--surface2);color:var(--text);}
+#idoModule .nav-item.active {background:rgba(232,160,32,.1);color:var(--accent);border-left-color:var(--accent);}
+#idoModule .sidebar-divider {height:1px;background:var(--border);margin:6px 0;}
+#idoModule .module-badge {font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin:10px 14px 4px;display:block;background:rgba(232,160,32,.12);color:var(--accent);border:1px solid rgba(232,160,32,.3);}
+#idoModule .main {flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#idoModule .breadcrumb {height:38px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;font-family:var(--mono);font-size:11px;color:var(--text-dim);flex-shrink:0;}
+#idoModule .content {flex:1;overflow-y:auto;padding:24px;}
+#idoModule .panel-title {font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+#idoModule .panel-title::after {content:'';flex:1;height:1px;background:var(--border);}
+#idoModule .btn {font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.5px;padding:7px 14px;border-radius:4px;cursor:pointer;border:1px solid;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-transform:uppercase;}
+#idoModule .btn-primary {background:var(--accent);border-color:var(--accent);color:#0f1117;}
+#idoModule .btn-primary:hover {background:#f0b030;}
+#idoModule .btn-secondary {background:transparent;border-color:var(--border);color:var(--text-dim);}
+#idoModule .btn-secondary:hover {border-color:var(--text-dim);color:var(--text);}
+#idoModule .btn-danger {background:rgba(224,82,82,.1);border-color:var(--danger);color:var(--danger);}
+#idoModule .btn-success {background:rgba(39,174,96,.12);border-color:var(--success);color:var(--success);}
+#idoModule .modal-overlay {display:none;position:fixed;inset:0;background:rgba(0,0,0,.76);z-index:100;align-items:center;justify-content:center;}
+#idoModule .modal-overlay.active {display:flex;}
+#idoModule .modal {background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:26px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto;}
+#idoModule .modal-title {font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);margin-bottom:18px;letter-spacing:1px;text-transform:uppercase;}
+#idoModule .form-row {margin-bottom:13px;}
+#idoModule .form-label {font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:block;}
+#idoModule .form-input {width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border .15s;}
+#idoModule .form-input:focus {border-color:var(--accent);}
+#idoModule .form-input::placeholder {color:var(--text-dim);}
+#idoModule .modal-actions {display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+#idoModule .form-row-2 {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;}
+#idoModule .stat-row {display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
+#idoModule .stat-card {background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;}
+#idoModule .stat-val {font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text-bright);}
+#idoModule .stat-label {font-size:11px;color:var(--text-dim);margin-top:3px;}
+#idoModule .cal-wrap {overflow-x:auto;}
+#idoModule .cal-nav {display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+#idoModule .cal-nav-btn {background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;font-size:15px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+#idoModule .cal-nav-btn:hover {border-color:var(--accent);color:var(--accent);}
+#idoModule .cal-month-lbl {font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text-bright);min-width:160px;text-align:center;}
+#idoModule .cal-grid {display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:560px;}
+#idoModule .cal-dow {font-family:var(--mono);font-size:9px;color:var(--text-dim);text-align:center;padding:4px 0 7px;letter-spacing:1px;text-transform:uppercase;}
+#idoModule .cal-day {min-height:68px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 7px;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;gap:3px;}
+#idoModule .cal-day:hover {border-color:var(--accent2);background:var(--surface2);}
+#idoModule .cal-day.other-month {opacity:.25;cursor:default;}
+#idoModule .cal-day.other-month:hover {border-color:var(--border);background:var(--surface);}
+#idoModule .cal-day.istoday {background:rgba(232,160,32,.13);border-color:var(--accent);}
+#idoModule .cal-day.holiday {background:rgba(45,125,210,.18);border-color:#2d7dd2;}
+#idoModule .cal-day.vacation {background:rgba(39,174,96,.18);border-color:#27ae60;}
+#idoModule .cal-day.slide {background:rgba(107,122,150,.18);border-color:#6b7a96;}
+#idoModule .cal-day.sick {background:rgba(224,82,82,.18);border-color:#e05252;}
+#idoModule .cal-day.worked {background:rgba(45,125,210,.08);}
+#idoModule .cal-day.weekend:not(.holiday):not(.vacation):not(.slide):not(.sick) {opacity:.55;}
+#idoModule .cal-day-num {font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-dim);}
+#idoModule .cal-day.istoday .cal-day-num {color:var(--accent);}
+#idoModule .cal-tag {font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;width:fit-content;}
+#idoModule .tag-sz {background:rgba(39,174,96,.2);color:#27ae60;border:1px solid #27ae60;}
+#idoModule .tag-cs {background:rgba(107,122,150,.2);color:#6b7a96;border:1px solid #6b7a96;}
+#idoModule .tag-uh {background:rgba(45,125,210,.2);color:#2d7dd2;border:1px solid #2d7dd2;}
+#idoModule .tag-bs {background:rgba(224,82,82,.2);color:#e05252;border:1px solid #e05252;}
+#idoModule .cal-time {font-family:var(--mono);font-size:10px;color:var(--text-dim);}
+#idoModule .cal-ot {font-family:var(--mono);font-size:9px;}
+#idoModule .ot-pos {color:var(--success);}
+#idoModule .ot-neg {color:var(--danger);}
+#idoModule .cal-legend {display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:var(--text-dim);}
+#idoModule .leg-dot {display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;border:1px solid;}
+#idoModule .data-table-wrap {overflow-x:auto;}#idoModule .data-table {width:100%;border-collapse:collapse;}
+#idoModule .data-table th {font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+#idoModule .data-table td {padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+#idoModule .data-table tr:hover td {background:var(--surface2);}
+#idoModule .emp-name {font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);}
+#idoModule .emp-email {font-size:11px;color:var(--text-dim);}
+#idoModule .ot-badge {font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:3px;border:1px solid;}
+#idoModule .ot-badge.pos {background:rgba(39,174,96,.15);color:var(--success);border-color:var(--success);}
+#idoModule .ot-badge.neg {background:rgba(224,82,82,.15);color:var(--danger);border-color:var(--danger);}
+#idoModule .ot-badge.zero {background:var(--surface2);color:var(--text-dim);border-color:var(--border);}
+#idoModule .row-acts {display:flex;gap:5px;opacity:0;transition:opacity .15s;}
+#idoModule .data-table tr:hover .row-acts {opacity:1;}
+#idoModule .icon-btn {background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 7px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;line-height:1;}
+#idoModule .icon-btn:hover {background:var(--surface2);}
+#idoModule .icon-btn.del:hover {border-color:var(--danger);color:var(--danger);}
+#idoModule .icon-btn.edit:hover {border-color:var(--accent2);color:var(--accent2);}
+#idoModule .pill {font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap;border:1px solid;}
+#idoModule .checkin-wrap {display:flex;align-items:center;justify-content:center;height:100%;}
+#idoModule .checkin-card {background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;width:100%;max-width:400px;text-align:center;}
+#idoModule .time-big {font-family:var(--mono);font-size:46px;font-weight:700;color:var(--text-bright);letter-spacing:2px;margin:14px 0 4px;}
+#idoModule .date-big {font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:28px;}
+#idoModule .time-inp-row {display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px;}
+#idoModule .time-inp {background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 8px;font-family:var(--mono);font-size:20px;color:var(--text-bright);text-align:center;width:68px;outline:none;transition:border .15s;}
+#idoModule .time-inp:focus {border-color:var(--accent);}
+#idoModule .time-sep {font-family:var(--mono);font-size:24px;color:var(--text-dim);}
+#idoModule .trash-item {background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+#idoModule .prog-bar {height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px;}
+#idoModule .prog-fill {height:100%;background:var(--danger);border-radius:2px;}
+#idoModule .exp-row {cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color .15s;}
+#idoModule .exp-row:hover {border-color:var(--accent);}
+#idoModule .exp-fmt {font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;background:rgba(232,160,32,.15);color:var(--accent);border:1px solid rgba(232,160,32,.3);margin-left:6px;vertical-align:middle;}
+#idoModule .danger-bar {background:rgba(224,82,82,.08);border:1px solid var(--danger);border-radius:6px;padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:13px;}
+#idoModule ::-webkit-scrollbar {width:5px;height:5px;}
+#idoModule ::-webkit-scrollbar-track {background:transparent;}
+#idoModule ::-webkit-scrollbar-thumb {background:var(--border);border-radius:3px;}
+#idoModule #toast {position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:6px;font-family:var(--mono);font-size:12px;max-width:320px;transition:opacity .4s;display:none;}
+
+/* ── HAMBURGER BUTTON ── */
+#idoModule .hamburger {display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:5px 8px;cursor:pointer;color:var(--text-dim);font-size:16px;flex-shrink:0;}
+#idoModule .sidebar-overlay {display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:49;}
+#idoModule .sidebar-overlay.active {display:block;}
+
+/* ── MOBILE TOPBAR ── */
+@media(max-width:768px){
+#idoModule .hamburger {display:flex;align-items:center;}
+#idoModule #clockEl {display:none;}
+#idoModule .topbar {padding:0 12px;gap:10px;}
+#idoModule .topbar-right {gap:6px;}
+#idoModule .user-badge {max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;padding:3px 7px;}
+
+  /* Sidebar slides in on mobile */
+#idoModule .sidebar {position:fixed;top:0;left:-240px;height:100%;z-index:50;transition:left .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.4);}
+#idoModule .sidebar.open {left:0;}
+
+  /* Layout: no flex row split */
+#idoModule .layout {flex-direction:column;}
+#idoModule .main {width:100%;}
+#idoModule .content {padding:14px;}
+
+  /* Stat cards 2-col on mobile */
+#idoModule .stat-row {grid-template-columns:1fr 1fr;}
+
+  /* Tables: horizontal scroll */
+#idoModule .data-table {font-size:11px;}
+#idoModule .data-table th, #idoModule .data-table td {padding:7px 8px;}
+#idoModule .row-acts {opacity:1;}
+
+  /* Modal full-width */
+#idoModule .modal {width:95vw;padding:18px;}
+#idoModule .form-row-2 {grid-template-columns:1fr;}
+
+  /* Checkin card */
+#idoModule .checkin-card {padding:24px 18px;}
+#idoModule .time-big {font-size:36px;}
+}
+
+/* ── TABLET ── */
+@media(min-width:769px) and (max-width:1024px){
+#idoModule .sidebar {width:200px;}
+#idoModule .content {padding:18px;}
+#idoModule #clockEl {font-size:11px;}
+}
 </style>
 </head>
 <body>
@@ -531,9 +692,7 @@
   <span id="activeModuleLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
   <div class="topbar-right">
     <span id="clockDisplay"></span>
-    <button id="roleAdminBtn" onclick="openRoleManager()" title="Jogosultságok kezelése"
-      style="display:none;background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.3);border-radius:4px;padding:4px 10px;color:#e8a020;font-size:11px;cursor:pointer;font-family:var(--mono);transition:all 0.15s;"
-      onmouseover="this.style.background='rgba(232,160,32,0.2)'" onmouseout="this.style.background='rgba(232,160,32,0.1)'">⚙ Jogok</button>
+    <button id="roleAdminBtn" onclick="openRoleManager()" style="display:none;background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.3);border-radius:4px;padding:4px 10px;color:#e8a020;font-size:11px;cursor:pointer;font-family:var(--mono);">&#9881; Jogok</button>
     <div class="user-badge" id="userBadge">👤 admin</div>
     <button onclick="doLogout()" title="Kijelentkezés"
       style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all 0.15s;"
@@ -605,25 +764,25 @@
           <span class="tile-tag soon">Hamarosan</span>
         </div>
         <div class="tile-desc">Árajánlatok összeállítása, kalkuláció, sablonok és ügyfél-specifikus anyagok generálása.</div>
-      </div>
 
       <!-- IDŐNYILVÁNTARTÁS -->
-      <div class="module-tile" onclick="enterModule('idonyilv')" id="tile-idonyilv">
+      <div class="module-tile" id="tile-idonyilv" onclick="enterModule('idonyilv')">
         <div class="tile-accent" style="background:#e8a020"></div>
-        <div class="tile-icon">⏱</div>
+        <div class="tile-icon">&#9201;</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="tile-title">Időnyilvántartás</div>
-          <span class="tile-tag" style="background:rgba(232,160,32,0.15);color:#e8a020;border:1px solid rgba(232,160,32,0.4);">Aktív</span>
+          <div class="tile-title">Id&#337;nyilv&#225;ntart&#225;s</div>
+          <span class="tile-tag hr">Akt&#237;v</span>
         </div>
-        <div class="tile-desc">Munkaidő rögzítés, göngyölített túlóra, szabadság és jelenlét kezelése az egész csapatnak.</div>
-        <div class="tile-stats" id="tile-idonyilv-stats">
-          <div><div class="tile-stat-val" id="tstat-ido-bent">–</div><div class="tile-stat-label">ma bent van</div></div>
-          <div><div class="tile-stat-val" id="tstat-ido-ot" style="color:#e8a020">–</div><div class="tile-stat-label">összes túlóra</div></div>
+        <div class="tile-desc">Munkaid&#337; r&#246;gz&#237;t&#233;s, g&#246;ngy&#246;l&#237;tett t&#250;l&#243;ra, szabads&#225;g &#233;s jelenl&#233;t kezel&#233;se.</div>
+        <div class="tile-stats">
+          <div><div class="tile-stat-val" id="tstat-ido-bent">&#8211;</div><div class="tile-stat-label">ma bent van</div></div>
+          <div><div class="tile-stat-val" id="tstat-ido-ot" style="color:#e8a020">&#8211;</div><div class="tile-stat-label">&#246;sszes t&#250;l&#243;ra</div></div>
         </div>
+      </div>
       </div>
 
     </div>
- </div>
+  </div>
 </div>
 
 <div class="layout" id="mainLayout">
@@ -714,44 +873,6 @@
   <div class="main">
     <div class="breadcrumb" id="breadcrumb"></div>
     <div class="content" id="mainContent"></div>
-  </div>
-</div>
-
-<!-- MODAL: ROLE MANAGER -->
-<div class="modal-overlay" id="roleManagerModal" onclick="if(event.target===this)this.classList.remove('active')">
-  <div class="modal" style="max-width:540px;">
-    <div class="modal-title">⚙ Jogosultságok kezelése</div>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">
-      Rendelj szerepkört minden felhasználóhoz (Firebase e-mail alapján). A változások azonnal érvénybe lépnek a következő belépésnél.
-    </p>
-    <div style="overflow-x:auto;margin-bottom:14px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-          <tr style="border-bottom:1px solid var(--border);">
-            <th style="text-align:left;padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">E-mail</th>
-            <th style="text-align:left;padding:6px 8px;font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Szerepkör</th>
-            <th style="width:40px;"></th>
-          </tr>
-        </thead>
-        <tbody id="roleManagerBody"></tbody>
-      </table>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
-      <input id="rmNewEmail" class="form-input" type="email" placeholder="uj.felhasznalo@ceg.hu" style="flex:1;font-size:12px;padding:7px 10px;">
-      <button onclick="addRoleRow()" class="btn btn-secondary" style="white-space:nowrap;padding:7px 14px;">+ Hozzáad</button>
-    </div>
-    <div style="background:rgba(232,160,32,0.07);border:1px solid rgba(232,160,32,0.2);border-radius:5px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);">
-      <b style="color:#e8a020;">Szerepkörök összefoglalója:</b><br>
-      <b>Superadmin</b> – Teljes hozzáférés minden modulhoz + jogkezelés<br>
-      <b>Admin</b> – Projektkövetés + Reliability + Időnyilvántartás (admin szint)<br>
-      <b>HR Manager</b> – Csak Időnyilvántartás (admin szint), projektek nem láthatók<br>
-      <b>Munkavállaló</b> – Csak Időnyilvántartás (saját nap, saját naptár)<br>
-      <b>Olvasó</b> – Projektkövetés + Reliability (csak olvasás), Időnyilvántartás nem
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="document.getElementById('roleManagerModal').classList.remove('active')">Mégse</button>
-      <button class="btn btn-primary" onclick="saveRoleManager()">&#10003; Mentés Firestore-ba</button>
-    </div>
   </div>
 </div>
 
@@ -1320,117 +1441,18 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── AUTH STATE LISTENER ───────────────────────────────────────────────────────
-// ── JOGOSULTSÁG-KEZELÉS ──────────────────────────────────────────────────────
-// Szerepkör definíciók
-// superadmin : Teljes MiniGo + Időnyilvántartás admin jog
-// admin      : Projektkövetés + Reliability teljes + Időnyilvántartás saját + riportok
-// hr         : Csak Időnyilvántartás (admin szintű HR jog), projektekhez nincs hozzáférés
-// employee   : Csak Időnyilvántartás (saját nap rögzítés, saját naptár)
-// viewer     : MiniGo olvasó (projektek, reliability – szerkesztés nélkül)
-//
-// Firestore: 'userRoles' kollekcióban tárolt email→role mapping
-// Fallback: ha nincs Firestore rekord, alapértelmezett szerep = 'viewer'
-
-let currentUserRole = 'viewer';
-let currentUserEmail = '';
-
-const ROLE_LABELS = {
-  superadmin: 'Superadmin',
-  admin:      'Admin',
-  hr:         'HR Manager',
-  employee:   'Munkavállaló',
-  viewer:     'Olvasó'
-};
-
-// Melyik modul érhető el az adott szerepkörhöz
-const ROLE_MODULE_ACCESS = {
-  superadmin: ['proj','rel','idonyilv'],
-  admin:      ['proj','rel','idonyilv'],
-  hr:         ['idonyilv'],
-  employee:   ['idonyilv'],
-  viewer:     ['proj','rel'],
-};
-
-// Időnyilvántartás belső szintje az adott MiniGo role-hoz
-const ROLE_IDO_LEVEL = {
-  superadmin: 'admin',
-  admin:      'admin',
-  hr:         'admin',
-  employee:   'employee',
-  viewer:     'employee',   // viewer ha mégis hozzáfér, csak saját idő
-};
-
-async function loadUserRole(email) {
-  try {
-    const snap = await getDoc(doc(db, 'userRoles', email.toLowerCase()));
-    if(snap.exists()) {
-      currentUserRole = snap.data().role || 'superadmin';
-    } else {
-      // Nincs még role rekord → alapértelmezett superadmin
-      // (bevezetési időszakban mindenki teljes hozzáférést kap,
-      //  amíg a Superadmin be nem állítja a szerepköröket)
-      currentUserRole = 'superadmin';
-    }
-  } catch(e) {
-    // Firestore nem elérhető → mindenki superadmin (offline fallback)
-    currentUserRole = 'superadmin';
-  }
-  // Badge frissítése role felirattal
-  const badge = document.getElementById('userBadge');
-  const displayName = email.split('@')[0];
-  if(badge) badge.textContent = '👤 ' + displayName + '  [' + (ROLE_LABELS[currentUserRole]||currentUserRole) + ']';
-  // localStorage-ba menti az időnyilvántartás modulnak is
-  localStorage.setItem('mg_current_role', ROLE_IDO_LEVEL[currentUserRole] || 'employee');
-  localStorage.setItem('mg_current_email', email.toLowerCase());
-  // Superadmin gomb
-  updateRoleAdminBtn();
-}
-
-function applyTilePermissions() {
-  const allowed = ROLE_MODULE_ACCESS[currentUserRole] || [];
-  // Projektkövetés
-  const projTile = document.querySelector('[onclick*="enterModule(\'proj\')"]');
-  if(projTile) {
-    if(!allowed.includes('proj')) {
-      projTile.classList.add('tile-disabled');
-      projTile.setAttribute('onclick', 'showToast("🔒 Ehhez a modulhoz nincs hozzáférése.","warn")');
-      const tag = projTile.querySelector('.tile-tag');
-      if(tag) { tag.className='tile-tag soon'; tag.textContent='Zárolt'; }
-    }
-  }
-  // Reliability
-  const relTile = document.querySelector('[onclick*="enterModule(\'rel\')"]');
-  if(relTile) {
-    if(!allowed.includes('rel')) {
-      relTile.classList.add('tile-disabled');
-      relTile.setAttribute('onclick', 'showToast("🔒 Ehhez a modulhoz nincs hozzáférése.","warn")');
-      const tag = relTile.querySelector('.tile-tag');
-      if(tag) { tag.className='tile-tag soon'; tag.textContent='Zárolt'; }
-    }
-  }
-  // Időnyilvántartás
-  const idoTile = document.getElementById('tile-idonyilv');
-  if(idoTile) {
-    if(!allowed.includes('idonyilv')) {
-      idoTile.classList.add('tile-disabled');
-      idoTile.setAttribute('onclick', 'showToast("🔒 Ehhez a modulhoz nincs hozzáférése.","warn")');
-      const tag = idoTile.querySelector('.tile-tag');
-      if(tag) { tag.className='tile-tag soon'; tag.textContent='Zárolt'; }
-    }
-  }
-}
-
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
-    currentUserEmail = user.email || '';
-    // Role betöltése Firestore-ból
-    await loadUserRole(currentUserEmail);
+    // Bejelentkezve – frissítjük a user badge-et
+    const email = user.email || '';
+    const displayName = email.split('@')[0];
+    const badge = document.getElementById('userBadge');
+    if(badge) badge.textContent = '👤 ' + displayName;
     // App betöltése
     showAppShell();
     loadFromFirestore();
   } else {
-    currentUserRole  = 'viewer';
-    currentUserEmail = '';
+    // Nincs bejelentkezve
     showLoginScreen();
   }
 });
@@ -1519,7 +1541,6 @@ async function loadFromFirestore() {
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
   }
   showLoadingOverlay(false);
-  applyTilePermissions(); // role már betöltve, csempék jogok szerint jelennek meg
   showLauncher();
   updateTrashBadge();
 }
@@ -3880,25 +3901,6 @@ function showLauncher(){
   el('tstat-rel-open',  openTk);
   el('tstat-rel-ca',    openCA);
 
-  // Időnyilvántartás tile stats (from shared mgEmp/mgTimeLog if available)
-  try {
-    const mgEmps = JSON.parse(localStorage.getItem('mg_employees')||'[]');
-    const mgLogs = JSON.parse(localStorage.getItem('mg_timelog')||'[]');
-    const td = new Date().toISOString().slice(0,10);
-    const bentCount = mgLogs.filter(function(t){return t.date===td&&t.empId;}).length;
-    const totalOT   = mgEmps.filter(function(e){return !e.deletedAt;}).reduce(function(s,e){return s+(e.overtimeMinutes||0);},0);
-    const sign = totalOT>0?'+':totalOT<0?'−':'';
-    const abs  = Math.abs(totalOT);
-    const otStr= sign+String(Math.floor(abs/60)).padStart(2,'0')+':'+String(abs%60).padStart(2,'0');
-    el('tstat-ido-bent', bentCount || '–');
-    el('tstat-ido-ot',   bentCount===0 && totalOT===0 ? '–' : otStr);
-  } catch(e) {
-    el('tstat-ido-bent','–'); el('tstat-ido-ot','–');
-  }
-
-  // Role-based tile access
-  applyTilePermissions();
-
   // Show launcher, hide main layout
   document.getElementById('moduleLauncher').style.display = 'flex';
   document.getElementById('mainLayout').style.display     = 'none';
@@ -3913,28 +3915,6 @@ function showLauncher(){
 
 function enterModule(mod){
   activeModule = mod;
-
-  // Időnyilvántartás: önálló HTML fájl, megnyitás új lapon, role + email átadása URL paraméterben
-  if(mod === 'idonyilv'){
-    const allowed = ROLE_MODULE_ACCESS[currentUserRole] || [];
-    if(!allowed.includes('idonyilv')){
-      showToast('🔒 Ehhez a modulhoz nincs hozzáférése.','warn');
-      activeModule = null;
-      return;
-    }
-    // Átadjuk az időnyilvántartás modulnak a belépett felhasználó adatait
-    const role  = ROLE_IDO_LEVEL[currentUserRole] || 'employee';
-    const email = encodeURIComponent(currentUserEmail);
-    const url   = 'idonyilvantartas.html?sso=1&email='+email+'&role='+role;
-    // localStorage előkészítés (biztonságosabb mint URL param)
-    localStorage.setItem('mg_sso_email', currentUserEmail.toLowerCase());
-    localStorage.setItem('mg_sso_role',  role);
-    localStorage.setItem('mg_sso_ts',    Date.now().toString());
-    openIdoModule();
-    activeModule = null;
-    return;
-  }
-
   document.getElementById('moduleLauncher').style.display = 'none';
   document.getElementById('mainLayout').style.display     = 'flex';
 
@@ -3962,79 +3942,6 @@ function enterModule(mod){
   }
 }
 Object.assign(window, { showLauncher, enterModule });
-
-// ── ROLE MANAGER ─────────────────────────────────────────────────────────────
-let roleManagerData = []; // [{email, role}]
-
-async function openRoleManager() {
-  // Only superadmin
-  if(currentUserRole !== 'superadmin') { showToast('Nincs jogosultsága.','warn'); return; }
-  const modal = document.getElementById('roleManagerModal');
-  if(!modal) return;
-  // Load from Firestore
-  roleManagerData = [];
-  try {
-    const snap = await getDocs(collection(db, 'userRoles'));
-    snap.forEach(d => roleManagerData.push({email: d.id, role: d.data().role||'viewer'}));
-  } catch(e) { /* offline */ }
-  renderRoleManager();
-  modal.classList.add('active');
-}
-
-function renderRoleManager() {
-  const tbody = document.getElementById('roleManagerBody');
-  if(!tbody) return;
-  const roles = ['superadmin','admin','hr','employee','viewer'];
-  let html = '';
-  if(roleManagerData.length === 0) {
-    html = '<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:20px;font-size:12px;">Még nincs role hozzárendelés. Adj hozzá egyet.</td></tr>';
-  }
-  roleManagerData.forEach(function(u, i) {
-    html += '<tr>';
-    html += '<td style="font-family:var(--mono);font-size:12px;">'+u.email+'</td>';
-    html += '<td><select class="form-input" style="padding:4px 8px;font-size:12px;" onchange="roleManagerData['+i+'].role=this.value">';
-    roles.forEach(function(r) {
-      html += '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+( ROLE_LABELS[r]||r )+'</option>';
-    });
-    html += '</select></td>';
-    html += '<td><button onclick="removeRoleRow('+i+')" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:3px 8px;border-radius:3px;cursor:pointer;font-size:11px;">✕</button></td>';
-    html += '</tr>';
-  });
-  tbody.innerHTML = html;
-}
-
-function removeRoleRow(i) {
-  roleManagerData.splice(i,1);
-  renderRoleManager();
-}
-
-function addRoleRow() {
-  const email = document.getElementById('rmNewEmail').value.trim().toLowerCase();
-  if(!email) { showToast('Add meg az e-mail címet!','warn'); return; }
-  if(roleManagerData.find(u=>u.email===email)) { showToast('Ez az e-mail már szerepel a listában!','warn'); return; }
-  roleManagerData.push({email, role:'viewer'});
-  document.getElementById('rmNewEmail').value = '';
-  renderRoleManager();
-}
-
-async function saveRoleManager() {
-  if(currentUserRole !== 'superadmin') return;
-  try {
-    for(const u of roleManagerData) {
-      await setDoc(doc(db, 'userRoles', u.email), {role: u.role, updatedAt: new Date().toISOString()});
-    }
-    showToast('Jogosultságok mentve!','ok');
-    document.getElementById('roleManagerModal').classList.remove('active');
-  } catch(e) {
-    showToast('Mentési hiba: '+e.message,'warn');
-  }
-}
-
-// Superadmin gomb megjelenítése bejelentkezés után
-function updateRoleAdminBtn() {
-  const btn = document.getElementById('roleAdminBtn');
-  if(btn) btn.style.display = currentUserRole==='superadmin' ? '' : 'none';
-}
 
 // ── FUNCTION ALIASES (HTML calls these names) ─────────────────────────────────
 const openEditClientModal   = openEditClient;
@@ -4416,1180 +4323,7 @@ function exportProjectsXLS(mode) {
     });
     html += '</tr>';
   });
-  html += '</table>
-<!-- ═══════════════════════════════════════════════════════
-     IDŐNYILVÁNTARTÁS MODUL (beépített, önálló névtér)
-     ═══════════════════════════════════════════════════════ -->
-<style id="idoModuleStyles">
-#idoModule * {#idoModule margin:0;padding:0;box-sizing:border-box;}
-body {#idoModule font-family:var(--sans);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
-.topbar {#idoModule height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;}
-.logo {#idoModule font-family:var(--mono);font-weight:700;font-size:15px;color:var(--accent);letter-spacing:2px;}
-.logo span {#idoModule color:var(--text-dim);}
-.topbar-right {#idoModule margin-left:auto;display:flex;align-items:center;gap:10px;}
-.user-badge {#idoModule background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text);}
-.layout {#idoModule display:flex;flex:1;overflow:hidden;}
-.sidebar {#idoModule width:232px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
-.sidebar-section {#idoModule padding:14px 0 6px;}
-.sidebar-label {#idoModule font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;padding:0 16px 8px;}
-.nav-item {#idoModule display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text-dim);transition:all .15s;border-left:2px solid transparent;}
-.nav-item:hover {#idoModule background:var(--surface2);color:var(--text);}
-.nav-item.active {#idoModule background:rgba(232,160,32,.1);color:var(--accent);border-left-color:var(--accent);}
-.sidebar-divider {#idoModule height:1px;background:var(--border);margin:6px 0;}
-.module-badge {#idoModule font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin:10px 14px 4px;display:block;background:rgba(232,160,32,.12);color:var(--accent);border:1px solid rgba(232,160,32,.3);}
-.main {#idoModule flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.breadcrumb {#idoModule height:38px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;font-family:var(--mono);font-size:11px;color:var(--text-dim);flex-shrink:0;}
-.content {#idoModule flex:1;overflow-y:auto;padding:24px;}
-.panel-title {#idoModule font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
-.panel-title::after {#idoModule content:'';flex:1;height:1px;background:var(--border);}
-.btn {#idoModule font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.5px;padding:7px 14px;border-radius:4px;cursor:pointer;border:1px solid;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-transform:uppercase;}
-.btn-primary {#idoModule background:var(--accent);border-color:var(--accent);color:#0f1117;}
-.btn-primary:hover {#idoModule background:#f0b030;}
-.btn-secondary {#idoModule background:transparent;border-color:var(--border);color:var(--text-dim);}
-.btn-secondary:hover {#idoModule border-color:var(--text-dim);color:var(--text);}
-.btn-danger {#idoModule background:rgba(224,82,82,.1);border-color:var(--danger);color:var(--danger);}
-.btn-success {#idoModule background:rgba(39,174,96,.12);border-color:var(--success);color:var(--success);}
-.modal-overlay {#idoModule display:none;position:fixed;inset:0;background:rgba(0,0,0,.76);z-index:100;align-items:center;justify-content:center;}
-.modal-overlay.active {#idoModule display:flex;}
-.modal {#idoModule background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:26px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto;}
-.modal-title {#idoModule font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);margin-bottom:18px;letter-spacing:1px;text-transform:uppercase;}
-.form-row {#idoModule margin-bottom:13px;}
-.form-label {#idoModule font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:block;}
-.form-input {#idoModule width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 10px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border .15s;}
-.form-input:focus {#idoModule border-color:var(--accent);}
-.form-input::placeholder {#idoModule color:var(--text-dim);}
-.modal-actions {#idoModule display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
-.form-row-2 {#idoModule display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;}
-.stat-row {#idoModule display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px;}
-.stat-card {#idoModule background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;}
-.stat-val {#idoModule font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text-bright);}
-.stat-label {#idoModule font-size:11px;color:var(--text-dim);margin-top:3px;}
-.cal-wrap {#idoModule overflow-x:auto;}
-.cal-nav {#idoModule display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
-.cal-nav-btn {#idoModule background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-dim);cursor:pointer;font-size:15px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
-.cal-nav-btn:hover {#idoModule border-color:var(--accent);color:var(--accent);}
-.cal-month-lbl {#idoModule font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text-bright);min-width:160px;text-align:center;}
-.cal-grid {#idoModule display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:560px;}
-.cal-dow {#idoModule font-family:var(--mono);font-size:9px;color:var(--text-dim);text-align:center;padding:4px 0 7px;letter-spacing:1px;text-transform:uppercase;}
-.cal-day {#idoModule min-height:68px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px 7px;cursor:pointer;transition:all .12s;display:flex;flex-direction:column;gap:3px;}
-.cal-day:hover {#idoModule border-color:var(--accent2);background:var(--surface2);}
-.cal-day.other-month {#idoModule opacity:.25;cursor:default;}
-.cal-day.other-month:hover {#idoModule border-color:var(--border);background:var(--surface);}
-.cal-day.istoday {#idoModule background:rgba(232,160,32,.13);border-color:var(--accent);}
-.cal-day.holiday {#idoModule background:rgba(45,125,210,.18);border-color:#2d7dd2;}
-.cal-day.vacation {#idoModule background:rgba(39,174,96,.18);border-color:#27ae60;}
-.cal-day.slide {#idoModule background:rgba(107,122,150,.18);border-color:#6b7a96;}
-.cal-day.sick {#idoModule background:rgba(224,82,82,.18);border-color:#e05252;}
-.cal-day.worked {#idoModule background:rgba(45,125,210,.08);}
-.cal-day.weekend:not(.holiday):not(.vacation):not(.slide):not(.sick) {#idoModule opacity:.55;}
-.cal-day-num {#idoModule font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-dim);}
-.cal-day.istoday .cal-day-num {#idoModule color:var(--accent);}
-.cal-tag {#idoModule font-family:var(--mono);font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;width:fit-content;}
-.tag-sz {#idoModule background:rgba(39,174,96,.2);color:#27ae60;border:1px solid #27ae60;}
-.tag-cs {#idoModule background:rgba(107,122,150,.2);color:#6b7a96;border:1px solid #6b7a96;}
-.tag-uh {#idoModule background:rgba(45,125,210,.2);color:#2d7dd2;border:1px solid #2d7dd2;}
-.tag-bs {#idoModule background:rgba(224,82,82,.2);color:#e05252;border:1px solid #e05252;}
-.cal-time {#idoModule font-family:var(--mono);font-size:10px;color:var(--text-dim);}
-.cal-ot {#idoModule font-family:var(--mono);font-size:9px;}
-.ot-pos {#idoModule color:var(--success);}
-.ot-neg {#idoModule color:var(--danger);}
-.cal-legend {#idoModule display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;color:var(--text-dim);}
-.leg-dot {#idoModule display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;border:1px solid;}
-.data-table-wrap {#idoModule overflow-x:auto;}.data-table {#idoModule width:100%;border-collapse:collapse;}
-.data-table th {#idoModule font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
-.data-table td {#idoModule padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
-.data-table tr:hover td {#idoModule background:var(--surface2);}
-.emp-name {#idoModule font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);}
-.emp-email {#idoModule font-size:11px;color:var(--text-dim);}
-.ot-badge {#idoModule font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:3px;border:1px solid;}
-.ot-badge.pos {#idoModule background:rgba(39,174,96,.15);color:var(--success);border-color:var(--success);}
-.ot-badge.neg {#idoModule background:rgba(224,82,82,.15);color:var(--danger);border-color:var(--danger);}
-.ot-badge.zero {#idoModule background:var(--surface2);color:var(--text-dim);border-color:var(--border);}
-.row-acts {#idoModule display:flex;gap:5px;opacity:0;transition:opacity .15s;}
-.data-table tr:hover .row-acts {#idoModule opacity:1;}
-.icon-btn {#idoModule background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 7px;cursor:pointer;font-size:12px;color:var(--text-dim);transition:all .15s;line-height:1;}
-.icon-btn:hover {#idoModule background:var(--surface2);}
-.icon-btn.del:hover {#idoModule border-color:var(--danger);color:var(--danger);}
-.icon-btn.edit:hover {#idoModule border-color:var(--accent2);color:var(--accent2);}
-.pill {#idoModule font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;padding:3px 8px;border-radius:3px;white-space:nowrap;border:1px solid;}
-.checkin-wrap {#idoModule display:flex;align-items:center;justify-content:center;height:100%;}
-.checkin-card {#idoModule background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;width:100%;max-width:400px;text-align:center;}
-.time-big {#idoModule font-family:var(--mono);font-size:46px;font-weight:700;color:var(--text-bright);letter-spacing:2px;margin:14px 0 4px;}
-.date-big {#idoModule font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-bottom:28px;}
-.time-inp-row {#idoModule display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px;}
-.time-inp {#idoModule background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px 8px;font-family:var(--mono);font-size:20px;color:var(--text-bright);text-align:center;width:68px;outline:none;transition:border .15s;}
-.time-inp:focus {#idoModule border-color:var(--accent);}
-.time-sep {#idoModule font-family:var(--mono);font-size:24px;color:var(--text-dim);}
-.trash-item {#idoModule background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
-.prog-bar {#idoModule height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:5px;}
-.prog-fill {#idoModule height:100%;background:var(--danger);border-radius:2px;}
-.exp-row {#idoModule cursor:pointer;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color .15s;}
-.exp-row:hover {#idoModule border-color:var(--accent);}
-.exp-fmt {#idoModule font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;background:rgba(232,160,32,.15);color:var(--accent);border:1px solid rgba(232,160,32,.3);margin-left:6px;vertical-align:middle;}
-.danger-bar {#idoModule background:rgba(224,82,82,.08);border:1px solid var(--danger);border-radius:6px;padding:11px 14px;display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:13px;}
-::-webkit-scrollbar {#idoModule width:5px;height:5px;}
-::-webkit-scrollbar-track {#idoModule background:transparent;}
-::-webkit-scrollbar-thumb {#idoModule background:var(--border);border-radius:3px;}
-#toast {#idoModule position:fixed;bottom:24px;right:24px;z-index:9999;padding:10px 18px;border-radius:6px;font-family:var(--mono);font-size:12px;max-width:320px;transition:opacity .4s;display:none;}
-
-/* ── HAMBURGER BUTTON ── */
-.hamburger {#idoModule display:none;background:none;border:1px solid var(--border);border-radius:4px;padding:5px 8px;cursor:pointer;color:var(--text-dim);font-size:16px;flex-shrink:0;}
-.sidebar-overlay {#idoModule display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:49;}
-.sidebar-overlay.active {display:block;}
-
-/* ── MOBILE TOPBAR ── */
-@#idoModule media(max-width:768px) {#idoModule .hamburger {#idoModule display:flex;align-items:center;}
-  #clockEl {#idoModule display:none;}
-  .topbar {#idoModule padding:0 12px;gap:10px;}
-  .topbar-right {#idoModule gap:6px;}
-  .user-badge {#idoModule max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;padding:3px 7px;}
-
-  /* Sidebar slides in on mobile */
-  .sidebar {#idoModule position:fixed;top:0;left:-240px;height:100%;z-index:50;transition:left .25s ease;box-shadow:4px 0 20px rgba(0,0,0,.4);}
-  .sidebar.open {#idoModule left:0;}
-
-  /* Layout: no flex row split */
-  .layout {#idoModule flex-direction:column;}
-  .main {#idoModule width:100%;}
-  .content {#idoModule padding:14px;}
-
-  /* Stat cards 2-col on mobile */
-  .stat-row {#idoModule grid-template-columns:1fr 1fr;}
-
-  /* Tables: horizontal scroll */
-  .data-table {#idoModule font-size:11px;}
-  .data-table th,.data-table td {#idoModule padding:7px 8px;}
-  .row-acts {#idoModule opacity:1;}
-
-  /* Modal full-width */
-  .modal {#idoModule width:95vw;padding:18px;}
-  .form-row-2 {#idoModule grid-template-columns:1fr;}
-
-  /* Checkin card */
-  .checkin-card {#idoModule padding:24px 18px;}
-  .time-big {font-size:36px;}
-}
-
-/* ── TABLET ── */
-@#idoModule media(min-width:769px) and (max-width:1024px) {#idoModule .sidebar {#idoModule width:200px;}
-  .content {#idoModule padding:18px;}
-  #clockEl {font-size:11px;}
-}
-</style>
-
-<div id="idoModule" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:900;background:var(--bg);overflow:auto;">
-  <!-- Vissza gomb -->
-  <div style="position:fixed;top:0;left:0;right:0;height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:901;">
-    <button onclick="closeIdoModule()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 12px;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;letter-spacing:1px;" onmouseover="this.style.background='rgba(232,160,32,.1)'" onmouseout="this.style.background='transparent'">← VISSZA A FŐMENÜBE</button>
-    <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;">IDŐNYILVÁNTARTÁS</span>
-  </div>
-  <!-- IDO tartalom (44px top offset a visszagomb miatt) -->
-  <div style="padding-top:44px;height:100%;">
-
-
-<!-- LOGIN -->
-<div id="ido-loginScreen" style="display:flex;position:fixed;inset:0;background:#0f1117;z-index:10000;align-items:center;justify-content:center;padding:20px;">
-  <div style="width:100%;max-width:380px;">
-    <div style="text-align:center;margin-bottom:32px;">
-      <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent);letter-spacing:3px;">MINI<span style="color:var(--text-dim)">GO</span></div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:6px;">ID&#336;NYILV&#193;NTAT&#193;S</div>
-    </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 28px;">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:18px;">BEJELENTKEZ&#201;S</div>
-      <div class="form-row"><label class="form-label">E-mail c&#237;m</label><input class="form-input" id="ido-li-email" type="email" placeholder="pelda@ceg.hu" autocomplete="email"></div>
-      <div class="form-row"><label class="form-label">Jelszó</label><input class="form-input" id="ido-li-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="ido-li-remember" style="accent-color:var(--accent)"><label for="li-remember" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer">Bejelentkezés megjegyzése</label></div>
-      <div id="ido-li-err" style="font-family:var(--mono);font-size:11px;color:var(--danger);margin-bottom:12px;min-height:16px;"></div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;padding:11px;" onclick="doLogin()">&#8594; Belépés</button>
-    </div>
-    <div style="text-align:center;margin-top:14px;font-family:var(--mono);font-size:10px;color:#2a3347;">Demo: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c6a7a2abafa886abafa8afa1a9e8aeb3">[email&#160;protected]</a> / admin123</div>
-  </div>
-</div>
-
-<!-- APP -->
-<div id="ido-app" style="display:none;flex-direction:column;height:100vh;height:100dvh;">
-<div class="topbar">
-  <button class="hamburger" onclick="toggleSidebar()" aria-label="Menü">&#9776;</button>
-  <div class="logo">MINI<span>GO</span></div>
-  <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
-  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; ID&#336;NYILV&#193;NTAT&#193;S</span>
-  <div class="topbar-right">
-    <span id="ido-clockEl" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);"></span>
-    <div class="user-badge" id="ido-userBadge">&#128100; &ndash;</div>
-    <button onclick="doLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">&#9099; Ki</button>
-  </div>
-</div>
-<div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="closeSidebar()"></div>
-<div class="layout">
-  <div class="sidebar">
-    <div style="padding:14px 0 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Navigáció</div>
-      <div class="nav-item active" id="ido-nav-dashboard" onclick="ido_showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
-      <div class="nav-item" id="ido-nav-calendar" onclick="ido_showView('calendar')"><span>&#128197;</span> Naptár</div>
-      <div class="nav-item" id="ido-nav-checkin" onclick="ido_showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
-      <div class="nav-item admin-only" id="ido-nav-employees" onclick="ido_showView('employees')"><span>&#128101;</span> Munkavállalók</div>
-      <div class="nav-item admin-only" id="ido-nav-reports" onclick="ido_showView('reports')"><span>&#128200;</span> Kimutatások</div>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Gyors műveletek</div>
-      <div class="nav-item admin-only" onclick="openNewEmpModal()"><span>&#10133;</span> Új munkavállaló</div>
-    </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Exportálás</div>
-      <div class="nav-item" onclick="openExportModal()"><span>&#128202;</span> Export XLS</div>
-    </div>
-    <div style="flex:1"></div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section" style="padding-bottom:10px;">
-      <div class="nav-item admin-only" id="ido-nav-trash" onclick="ido_showView('trash')" style="color:var(--danger);opacity:.7;"><span>&#128465;</span> Kuka<span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
-    </div>
-  </div>
-  <div class="main">
-    <div class="breadcrumb" id="ido-bc"><span style="color:var(--text)">Áttekintés</span></div>
-    <div class="content" id="ido-mc"></div>
-  </div>
-</div>
-</div>
-
-<!-- MODAL: NEW EMP -->
-<div class="modal-overlay" id="ido-mNewEmp">
-  <div class="modal">
-    <div class="modal-title">&#10133; Új Munkavállaló Felvétele</div>
-    <div class="form-row-2">
-      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="ido-ne-last" placeholder="Kovács"></div>
-      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="ido-ne-first" placeholder="János"></div>
-    </div>
-    <div class="form-row"><label class="form-label">E-mail cím * (bejelentkezési név)</label><input class="form-input" id="ido-ne-email" type="email" placeholder="kovacs.janos@ceg.hu"></div>
-    <div class="form-row"><label class="form-label">Jelszó * (min. 6 karakter)</label><input class="form-input" id="ido-ne-pass" type="password"></div>
-    <div class="form-row-2">
-      <div><label class="form-label">Éves szabadnapok száma *</label><input class="form-input" id="ido-ne-vdays" type="number" min="0" max="50" value="20"></div>
-      <div><label class="form-label">Belépés dátuma</label><input class="form-input" id="ido-ne-start" type="date"></div>
-    </div>
-    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ido-ne-role"><option value="employee">Munkavállaló</option><option value="admin">Admin</option></select></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('mNewEmp')">Mégse</button>
-      <button class="btn btn-primary" onclick="createEmp()">&#10003; Létrehozás</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: EDIT EMP -->
-<div class="modal-overlay" id="ido-mEditEmp">
-  <div class="modal">
-    <div class="modal-title">&#9999; Munkavállaló Szerkesztése</div>
-    <div class="form-row-2">
-      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="ido-ee-last"></div>
-      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="ido-ee-first"></div>
-    </div>
-    <div class="form-row"><label class="form-label">E-mail cím</label><input class="form-input" id="ido-ee-email" type="email"></div>
-    <div class="form-row"><label class="form-label">Új jelszó (üresen hagyva nem változik)</label><input class="form-input" id="ido-ee-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
-    <div class="form-row-2">
-      <div><label class="form-label">Éves szabadnapok</label><input class="form-input" id="ido-ee-vdays" type="number" min="0" max="50"></div>
-      <div><label class="form-label">Belépés dátuma</label><input class="form-input" id="ido-ee-start" type="date"></div>
-    </div>
-    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ido-ee-role"><option value="employee">Munkavállaló</option><option value="admin">Admin</option></select></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('mEditEmp')">Mégse</button>
-      <button class="btn btn-danger" onclick="confirmDelEmp(editingId)">&#128465; Törlés</button>
-      <button class="btn btn-primary" onclick="saveEmp()">&#10003; Mentés</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: CHECKIN -->
-<div class="modal-overlay" id="ido-mCheckin">
-  <div class="modal" style="max-width:400px;text-align:center;">
-    <div class="modal-title" style="text-align:left;">&#128336; Munkakezdés Rögzítése</div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Nap:</div>
-    <input class="form-input" id="ido-ci-date" type="date" style="margin-bottom:16px;">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Munkakezdés időpontja:</div>
-    <div class="time-inp-row">
-      <input class="time-inp" id="ido-ci-sh" type="number" min="0" max="23" placeholder="08">
-      <span class="time-sep">:</span>
-      <input class="time-inp" id="ido-ci-sm" type="number" min="0" max="59" placeholder="00">
-    </div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin:14px 0 8px;">Munkavégzés vége (opcionális):</div>
-    <div class="time-inp-row" style="margin-bottom:6px;">
-      <input class="time-inp" id="ido-ci-eh" type="number" min="0" max="23" placeholder="&ndash;">
-      <span class="time-sep">:</span>
-      <input class="time-inp" id="ido-ci-em" type="number" min="0" max="59" placeholder="&ndash;">
-    </div>
-    <div id="ido-ci-preview" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;min-height:18px;"></div>
-    <div class="modal-actions" style="justify-content:center;">
-      <button class="btn btn-secondary" onclick="closeModal('mCheckin')">Mégse</button>
-      <button class="btn btn-primary" style="padding:10px 28px;" onclick="confirmCheckin()">&#10003; Megerősítés</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: DAY -->
-<div class="modal-overlay" id="ido-mDay">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-title" id="ido-mDayTitle">Nap kezelése</div>
-    <div id="ido-mDayBody"></div>
-    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('mDay')">Bezárás</button></div>
-  </div>
-</div>
-
-<!-- MODAL: EXPORT -->
-<div class="modal-overlay" id="ido-mExport">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-title">&#128202; Riport &amp; Export</div>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">Válaszd ki a riportot. Az XLS fájlok Excelben nyithatók, a CSV bármely táblázatkezelőben.</p>
-
-    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 6px;">&#128336; Munkaidő</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-      <div onclick="doExport('timelog')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Munkaidő napló <span class="exp-fmt">XLS</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Minden bejegyzés, kezdés, befejezés, ledolgozott, delta, megjegyzés</div>
-      </div>
-      <div onclick="doExport('overtime')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Göngyölített túlóra – havi bontás <span class="exp-fmt">XLS</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Munkavállalónként, havi és éves összesítővel, + és – értékek</div>
-      </div>
-    </div>
-
-    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;">&#127796; Szabadság &amp; Hiányzások</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-      <div onclick="doExport('vacation')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Szabadság összesítő <span class="exp-fmt">XLS</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Éves keret, felhasznált, maradék – munkavállalónként</div>
-      </div>
-      <div onclick="doExport('absences')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Hiányzások &amp; Betegségek <span class="exp-fmt">XLS</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Betegszabadság, csúsztatás, szabadnap napok listája dátummal</div>
-      </div>
-    </div>
-
-    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;">&#128200; Havi statisztika</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-      <div onclick="doExport('monthly_stats')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Havi összesítő statisztika <span class="exp-fmt">XLS</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Havi bontás: csúsztatás (±), túlóra, beteg, szabadnap – mindenki</div>
-      </div>
-      <div onclick="doExport('notes')" class="exp-row">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Napi munkavégzés naplója <span class="exp-fmt">CSV</span></div>
-        <div style="font-size:11px;color:var(--text-dim);">Minden nap lezáráskor írt megjegyzés, munkavállalónként</div>
-      </div>
-    </div>
-
-    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('mExport')">&#10005; Bezárás</button></div>
-  </div>
-</div>
-
-<!-- MODAL: CONFIRM DELETE -->
-<div class="modal-overlay" id="ido-mDelConfirm">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-title">&#128465; Törlés megerősítése</div>
-    <div class="danger-bar"><span>&#9888;</span><span id="ido-delMsg">Biztosan törölni szeretnéd?</span></div>
-    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">A törölt elem 5 napig visszaállítható a Kukából.</div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('mDelConfirm')">Mégse</button>
-      <button class="btn btn-danger" id="ido-delBtn">&#128465; Törlés</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- MODAL: CLOSE DAY -->
-<div class="modal-overlay" id="ido-mCloseDay">
-  <div class="modal" style="max-width:420px;">
-    <div class="modal-title">&#9209; Munkanap lezárása</div>
-    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;" id="ido-closeDay-date"></div>
-    <div class="form-row">
-      <label class="form-label">Munkavégzés befejezése</label>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <input class="time-inp" id="ido-cd-eh" type="number" min="0" max="23" placeholder="17">
-        <span class="time-sep">:</span>
-        <input class="time-inp" id="ido-cd-em" type="number" min="0" max="59" placeholder="00">
-      </div>
-    </div>
-    <div class="form-row" style="margin-top:14px;">
-      <label class="form-label">Mit csin&#225;ltam ma? <span style="color:var(--text-dim);font-size:9px;" id="ido-cd-chars">0 / 1000</span></label>
-      <textarea id="ido-cd-note" class="form-input" rows="5" maxlength="1000" placeholder="R&#246;vid le&#237;r&#225;s a mai munkav&#233;gz&#233;sr&#337;l..." style="resize:vertical;font-family:var(--sans);font-size:13px;line-height:1.5;"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('mCloseDay')">M&#233;gse</button>
-      <button class="btn btn-primary" onclick="confirmCloseDay()">&#10003; Munkanap lez&#225;r&#225;sa</button>
-    </div>
-  </div>
-</div>
-
-<div id="ido-toast"></div>
-
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-
-const DAILY_MIN = 8*60+30;
-const HU_MONTHS = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
-const HU_DAYS = ['H','K','Sze','Cs','P','Szo','V'];
-const HU_HOL_FIXED = ['01-01','03-15','05-01','08-20','10-23','11-01','12-25','12-26'];
-const HU_HOL_SPEC = {'2025':['2025-04-18','2025-04-21','2025-06-09'],'2026':['2026-04-03','2026-04-06','2026-05-25']};
-
-let currentUser=null, editingId=null;
-let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1, calEmpId=null;
-
-let employees=[
-  {id:'admin',email:'admin@minigo.hu',pass:'admin123',role:'admin',firstName:'Admin',lastName:'MiniGo',vacationDays:20,startDate:'2023-01-01',overtimeMinutes:0,deletedAt:null},
-  {id:'emp1',email:'kovacs.janos@minigo.hu',pass:'janos123',role:'employee',firstName:'János',lastName:'Kovács',vacationDays:20,startDate:'2024-03-01',overtimeMinutes:45,deletedAt:null},
-  {id:'emp2',email:'nagy.anna@minigo.hu',pass:'anna123',role:'employee',firstName:'Anna',lastName:'Nagy',vacationDays:25,startDate:'2023-06-01',overtimeMinutes:-90,deletedAt:null},
-];
-let timeLog=[
-  {id:'tl1',empId:'emp1',date:'2026-03-10',sh:8,sm:0,eh:17,em:0,worked:540,otDelta:30,note:'Sprint tervezés, kód review, deployment előkészítés'},
-  {id:'tl2',empId:'emp1',date:'2026-03-11',sh:8,sm:30,eh:16,em:30,worked:480,otDelta:-30,note:'Hibajavítás, meetingek'},
-  {id:'tl3',empId:'emp2',date:'2026-03-10',sh:9,sm:0,eh:17,em:30,worked:510,otDelta:0,note:''},
-];
-let dayMarks=[
-  {id:'dm1',empId:'emp1',date:'2026-03-16',type:'vacation'},
-  {id:'dm2',empId:'emp1',date:'2026-03-17',type:'vacation'},
-  {id:'dm3',empId:'emp2',date:'2026-03-20',type:'slide'},
-];
-let trash=[];
-
-// ── pending close modal state
-let pendingCloseLogId=null;
-
-const pad2=n=>String(n).padStart(2,'0');
-const today=()=>new Date().toISOString().slice(0,10);
-function fmtOT(m){var s=m<0?'-':'';var a=Math.abs(m);return s+pad2(Math.floor(a/60))+':'+pad2(a%60);}
-function ido_fmtDate(s){if(!s)return'';var p=s.split('-');return p[0]+'. '+p[1]+'. '+p[2]+'.';}
-function isHol(d){var y=d.slice(0,4);var md=d.slice(5);return HU_HOL_FIXED.indexOf(md)>=0||((HU_HOL_SPEC[y]||[]).indexOf(d)>=0);}
-function isWknd(d){var dw=new Date(d).getDay();return dw===0||dw===6;}
-function usedVac(empId,year){return dayMarks.filter(function(d){return d.empId===empId&&d.type==='vacation'&&d.date.startsWith(year);}).length;}
-function openModal(id){document.getElementById(id).classList.add('active');}
-function closeModal(id){document.getElementById(id).classList.remove('active');}
-function ido_showToast(msg,type){
-  type=type||'ok';
-  var t=document.getElementById('toast');
-  t.style.background=type==='warn'?'#2a1a1a':'#1a2a1a';
-  t.style.border=type==='warn'?'1px solid #e05252':'1px solid #27ae60';
-  t.style.color=type==='warn'?'#e05252':'#27ae60';
-  t.textContent=msg; t.style.display='block'; t.style.opacity='1';
-  setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.style.display='none';},400);},3000);
-}
-setInterval(function(){
-  var e=document.getElementById('clockEl');
-  if(e){var n=new Date();e.textContent=n.getFullYear()+'. '+pad2(n.getMonth()+1)+'. '+pad2(n.getDate())+'. '+pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());}
-},1000);
-
-// ── AUTH ──
-function ido_doLogin(){
-  var email=document.getElementById('li-email').value.trim().toLowerCase();
-  var pass=document.getElementById('li-pass').value;
-  var emp=null;
-  for(var i=0;i<employees.length;i++){
-    if(employees[i].email.toLowerCase()===email&&employees[i].pass===pass&&!employees[i].deletedAt){emp=employees[i];break;}
-  }
-  if(!emp){document.getElementById('li-err').textContent='Hibás e-mail cím vagy jelszó.';return;}
-  currentUser=emp;
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('userBadge').textContent=(emp.role==='admin'?'[ADMIN] ':'')+emp.firstName+' '+emp.lastName;
-  calEmpId=emp.id;
-  // remember
-  if(document.getElementById('li-remember').checked){
-    localStorage.setItem('mg_email',emp.email);
-    localStorage.setItem('mg_pass',emp.pass);
-    localStorage.setItem('mg_remember','1');
-  } else {
-    localStorage.removeItem('mg_email');
-    localStorage.removeItem('mg_pass');
-    localStorage.removeItem('mg_remember');
-  }
-  var adminEls=document.querySelectorAll('.admin-only');
-  for(var i=0;i<adminEls.length;i++) adminEls[i].style.display=emp.role==='admin'?'':'none';
-  ido_showView('dashboard');
-}
-function ido_doLogout(){
-  currentUser=null;
-  document.getElementById('app').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  if(!localStorage.getItem('mg_remember')){document.getElementById('li-pass').value='';}
-  document.getElementById('li-err').textContent='';
-}
-document.getElementById('li-pass').addEventListener('keydown',function(e){if(e.key==='Enter')ido_doLogin();});
-// Auto-fill saved credentials + SSO fogadás MiniGo launcherből
-(function(){
-  // SSO: ha a MiniGo launcher hívta meg (5 percen belül)
-  var ssoTs=localStorage.getItem('mg_sso_ts');
-  var ssoEmail=localStorage.getItem('mg_sso_email');
-  var ssoRole=localStorage.getItem('mg_sso_role');
-  if(ssoTs && ssoEmail && (Date.now()-parseInt(ssoTs))<5*60*1000){
-    // Érvényes SSO token - auto bejelentkezés
-    localStorage.removeItem('mg_sso_ts'); // single-use token
-    var emp=null;
-    for(var i=0;i<employees.length;i++){
-      if(employees[i].email.toLowerCase()===ssoEmail.toLowerCase()&&!employees[i].deletedAt){
-        emp=employees[i]; break;
-      }
-    }
-    if(emp){
-      // Ha SSO-val admin jogot kapott de a helyi employees-ban employee lenne, felülírjuk
-      if(ssoRole==='admin'&&emp.role!=='admin') emp.role='admin';
-      currentUser=emp;
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('app').style.display='flex';
-      document.getElementById('userBadge').textContent=(emp.role==='admin'?'[ADMIN] ':'')+emp.firstName+' '+emp.lastName+' \u2022 MiniGo SSO';
-      calEmpId=emp.id;
-      var adminEls=document.querySelectorAll('.admin-only');
-      for(var i=0;i<adminEls.length;i++) adminEls[i].style.display=emp.role==='admin'?'':'none';
-      ido_showView('dashboard');
-      return; // ne fusson le az alap prefill
-    }
-    // Ha nincs ilyen email a helyi listában: hozzuk létre vendég profilként
-    if(ssoEmail){
-      var parts=ssoEmail.split('@');
-      var name=parts[0].replace(/[._]/g,' ');
-      var newEmp={id:'sso_'+Date.now(),email:ssoEmail.toLowerCase(),pass:'sso',role:ssoRole||'employee',
-        firstName:name,lastName:'',vacationDays:20,startDate:new Date().toISOString().slice(0,10),overtimeMinutes:0,deletedAt:null};
-      employees.push(newEmp);
-      currentUser=newEmp;
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('app').style.display='flex';
-      document.getElementById('userBadge').textContent=(newEmp.role==='admin'?'[ADMIN] ':'')+name+' \u2022 MiniGo SSO';
-      calEmpId=newEmp.id;
-      var adminEls=document.querySelectorAll('.admin-only');
-      for(var i=0;i<adminEls.length;i++) adminEls[i].style.display=newEmp.role==='admin'?'':'none';
-      ido_showView('dashboard');
-      return;
-    }
-  }
-  // Normál remember-me prefill
-  var rem=localStorage.getItem('mg_remember');
-  if(rem){
-    var em=localStorage.getItem('mg_email');
-    var pa=localStorage.getItem('mg_pass');
-    if(em) document.getElementById('li-email').value=em;
-    if(pa) document.getElementById('li-pass').value=pa;
-    document.getElementById('li-remember').checked=true;
-  }
-})();
-
-// ── NAV ──
-function ido_showView(v){
-  var items=document.querySelectorAll('.nav-item');
-  for(var i=0;i<items.length;i++) items[i].classList.remove('active');
-  var ne=document.getElementById('nav-'+v); if(ne) ne.classList.add('active');
-  var titles={dashboard:'Áttekintés',calendar:'Naptár',checkin:'Munkaidő rögzítése',employees:'Munkavállalók',reports:'Kimutatások',trash:'Kuka'};
-  document.getElementById('bc').innerHTML='<span style="color:var(--text)">'+(titles[v]||v)+'</span>';
-  var content='';
-  if(v==='dashboard') content=ido_renderDashboard();
-  else if(v==='calendar') content=renderCalendar();
-  else if(v==='checkin') content=renderCheckin();
-  else if(v==='employees') content=renderEmployees();
-  else if(v==='reports') content=renderReports();
-  else if(v==='trash') content=ido_renderTrash();
-  document.getElementById('mc').innerHTML=content;
-  ido_updateTrashBadge();
-}
-
-// ── DASHBOARD ──
-function ido_renderDashboard(){
-  var yr=String(new Date().getFullYear());
-  var td=today();
-  var activeEmps=employees.filter(function(e){return !e.deletedAt;});
-
-  // ── Admin stat tiles: full company view
-  var html='';
-  if(currentUser.role==='admin'){
-    var totalOT=0, totalVacUsed=0, totalVacLeft=0, bentCount=0, betegCount=0, csusztCount=0, szabCount=0;
-    activeEmps.forEach(function(e){
-      totalOT+=e.overtimeMinutes;
-      var vu=usedVac(e.id,yr); totalVacUsed+=vu; totalVacLeft+=(e.vacationDays-vu);
-      if(timeLog.some(function(t){return t.empId===e.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;})) bentCount++;
-      if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='sick';})) betegCount++;
-      if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='slide';})) csusztCount++;
-      if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='vacation';})) szabCount++;
-    });
-    var n=activeEmps.length;
-    html+='<div class="panel-title">Vállalati összesítő &ndash; ma</div>';
-    html+='<div class="stat-row" style="margin-bottom:24px;">';
-    html+='<div class="stat-card"><div class="stat-val" style="color:'+(totalOT>=0?'#27ae60':'#e05252')+'">'+(totalOT>0?'+':'')+fmtOT(totalOT)+'</div><div class="stat-label">Összes göngyölített túlóra</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#2d7dd2">'+totalVacLeft+'</div><div class="stat-label">Szabad szabadnapkeret (össz.)</div></div>';
-    html+='<div class="stat-card"><div class="stat-val">'+totalVacUsed+'</div><div class="stat-label">Felhasznált szabadnap (össz.)</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#27ae60">'+bentCount+' / '+n+'</div><div class="stat-label">Ma bent van</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#e05252">'+betegCount+'</div><div class="stat-label">Betegszabadságon ma</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#6b7a96">'+csusztCount+'</div><div class="stat-label">Csúsztatáson ma</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#27ae60">'+szabCount+'</div><div class="stat-label">Szabadságon ma</div></div>';
-    html+='</div>';
-
-    // Employee overview table
-    html+='<div class="panel-title">Munkavállalók áttekintése</div>';
-    html+='<div style="overflow-x:auto;margin-bottom:24px;"><table class="data-table"><thead><tr><th>Név</th><th>Göngyölített</th><th>Szabadnap</th><th>Ma</th></tr></thead><tbody>';
-    activeEmps.forEach(function(e){
-      var ot=e.overtimeMinutes; var otCls=ot>0?'pos':ot<0?'neg':'zero';
-      var present=timeLog.some(function(t){return t.empId===e.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;});
-      var sick=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='sick';});
-      var slide=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='slide';});
-      var vac=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='vacation';});
-      var statusHTML=sick?'<span class="pill" style="color:#e05252;border-color:#e05252;background:rgba(224,82,82,.1);">Beteg</span>':
-        slide?'<span class="pill" style="color:#6b7a96;border-color:#6b7a96;background:rgba(107,122,150,.1);">Csúsztat</span>':
-        vac?'<span class="pill" style="color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,.1);">Szabadság</span>':
-        present?'<span class="pill" style="color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,.1);">Bent</span>':
-        '<span class="pill" style="color:var(--text-dim);border-color:var(--border);">Hiányzik</span>';
-      html+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td>';
-      html+='<td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td>';
-      html+='<td style="font-family:var(--mono);font-size:12px;">'+usedVac(e.id,yr)+'/'+e.vacationDays+'</td>';
-      html+='<td>'+statusHTML+'</td></tr>';
-    });
-    html+='</tbody></table></div>';
-  }
-
-  // ── Personal stat tiles (always shown, own data)
-  var vUsed=usedVac(currentUser.id,yr);
-  var vLeft=currentUser.vacationDays-vUsed;
-  var checkedIn=timeLog.some(function(t){return t.empId===currentUser.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;});
-  var openLog=timeLog.find(function(t){return t.empId===currentUser.id&&t.date===td&&(t.eh===null||t.eh===undefined);});
-
-  if(currentUser.role!=='admin'){
-    var otColor=currentUser.overtimeMinutes>=0?'#27ae60':'#e05252';
-    var ciColor=checkedIn?'#27ae60':'#e88a20';
-    html+='<div class="stat-row" style="margin-bottom:20px;">';
-    html+='<div class="stat-card"><div class="stat-val" style="color:'+otColor+'">'+(currentUser.overtimeMinutes>0?'+':'')+fmtOT(currentUser.overtimeMinutes)+'</div><div class="stat-label">Göngyölített túlóra</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:#2d7dd2">'+vLeft+'</div><div class="stat-label">Maradék szabadnap</div></div>';
-    html+='<div class="stat-card"><div class="stat-val">'+vUsed+' / '+currentUser.vacationDays+'</div><div class="stat-label">Felhasznált szabadnap</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:'+ciColor+'">'+(checkedIn?'Bent':'&ndash;')+'</div><div class="stat-label">Mai jelenlét</div></div>';
-    html+='</div>';
-  }
-
-  // ── Recent log with live row for open entry
-  var myLogs=timeLog.filter(function(t){return t.empId===currentUser.id;}).slice().sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,8);
-  html+='<div class="panel-title">Legutóbbi bejegyzések</div>';
-  if(myLogs.length===0){
-    html+='<div style="color:var(--text-dim);font-size:13px;padding:20px 0;">Még nincs rögzített munkaidő.</div>';
-  } else {
-    html+='<div style="overflow-x:auto;"><table class="data-table" id="ido-recentLogTbl"><thead><tr><th>Dátum</th><th>Kezdés</th><th>Befejezés</th><th>Ledolgozott</th><th>Megjegyzés</th><th>Göngyölített</th></tr></thead><tbody>';
-    myLogs.forEach(function(l){
-      var isOpen=l.eh===null||l.eh===undefined;
-      var otCls=l.otDelta>0?'pos':l.otDelta<0?'neg':'zero';
-      var rowStyle=isOpen?'cursor:pointer;background:rgba(232,160,32,.07);':'';
-      var rowClick=isOpen?'onclick="askCloseDay(\''+l.id+'\')"':'';
-      var endCell=isOpen?'<span id="ido-liveClock" style="color:#e8a020;font-family:var(--mono);font-size:12px;">&#9201; folyamatban</span>':
-        '<span style="font-family:var(--mono);font-size:12px;">'+pad2(l.eh)+':'+pad2(l.em)+'</span>';
-      var workedCell=isOpen?'<span style="color:var(--text-dim);font-size:12px;" id="ido-liveWorked">&ndash;</span>':
-        '<span style="font-family:var(--mono);font-size:12px;">'+(l.worked!==null?fmtOT(l.worked):'&ndash;')+'</span>';
-      var noteVal=l.note?l.note.trim():'';
-      var noteShort=noteVal?noteVal.slice(0,30)+(noteVal.length>30?'&hellip;':''):'<span style="color:var(--text-dim);">&ndash;</span>';
-      var deltaCell=isOpen?'<span style="color:var(--text-dim);">?</span>':'<span class="ot-badge '+otCls+'">'+(l.otDelta>0?'+':'')+fmtOT(l.otDelta)+'</span>';
-      html+='<tr style="'+rowStyle+'" '+rowClick+' title="'+(isOpen?'Kattints a munkanap lezárásához':'')+'">';
-      html+='<td style="font-family:var(--mono);font-size:12px;">'+ido_fmtDate(l.date)+(isOpen?' <span style="color:#e8a020;font-size:10px;">&#9679;</span>':'')+'</td>';
-      html+='<td style="font-family:var(--mono);font-size:12px;">'+pad2(l.sh)+':'+pad2(l.sm)+'</td>';
-      html+='<td>'+endCell+'</td>';
-      html+='<td>'+workedCell+'</td>';
-      html+='<td style="max-width:160px;font-size:12px;">'+noteShort+'</td>';
-      html+='<td>'+deltaCell+'</td></tr>';
-    });
-    html+='</tbody></table></div>';
-  }
-
-  // live clock update for open entry
-  if(openLog){
-    setTimeout(function(){
-      setInterval(function(){
-        var lc=document.getElementById('liveClock');
-        var lw=document.getElementById('liveWorked');
-        if(!lc) return;
-        var n=new Date();
-        lc.textContent='⏱ '+pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());
-        if(lw){var w=(n.getHours()*60+n.getMinutes())-(openLog.sh*60+openLog.sm);lw.textContent=fmtOT(Math.max(0,w));}
-      },1000);
-    },100);
-  }
-
-  html+='<div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">';
-  html+='<button class="btn btn-primary" onclick="ido_showView(\'checkin\')">&#9654; Munkakezdés</button>';
-  html+='<button class="btn btn-secondary" onclick="ido_showView(\'calendar\')">&#128197; Naptár</button>';
-  html+='</div>';
-  return html;
-}
-
-// ── ASK CLOSE DAY ──
-function askCloseDay(logId){
-  pendingCloseLogId=logId;
-  var log=timeLog.find(function(t){return t.id===logId;});
-  if(!log) return;
-  document.getElementById('closeDay-date').textContent=ido_fmtDate(log.date)+' – Kezdés: '+pad2(log.sh)+':'+pad2(log.sm);
-  var n=new Date();
-  document.getElementById('cd-eh').value=pad2(n.getHours());
-  document.getElementById('cd-em').value=pad2(n.getMinutes());
-  document.getElementById('cd-note').value='';
-  document.getElementById('cd-chars').textContent='0 / 1000';
-  openModal('mCloseDay');
-}
-function confirmCloseDay(){
-  var log=timeLog.find(function(t){return t.id===pendingCloseLogId;});
-  if(!log) return;
-  var eh=parseInt(document.getElementById('cd-eh').value);
-  var em=parseInt(document.getElementById('cd-em').value);
-  var note=document.getElementById('cd-note').value.trim().slice(0,1000);
-  if(isNaN(eh)||isNaN(em)){ido_showToast('Add meg a befejezési időt!','warn');return;}
-  if(!note){ido_showToast('A napi megjegyzés kötelező a lezáráshoz!','warn');document.getElementById('cd-note').focus();return;}
-  var worked=(eh*60+em)-(log.sh*60+log.sm);
-  if(worked<0){ido_showToast('A befejezés nem lehet a kezdés előtt!','warn');return;}
-  var otDelta=worked-DAILY_MIN;
-  log.eh=eh; log.em=em; log.worked=worked; log.otDelta=otDelta; log.note=note;
-  // Fix: csak az employees tömbben frissítjük - currentUser ugyanaz az objektum referencia
-  var emp=employees.find(function(e){return e.id===currentUser.id;});
-  if(emp) emp.overtimeMinutes+=otDelta;
-  // currentUser IS emp (same reference), do NOT add again
-  closeModal('mCloseDay');
-  ido_showToast('Munkanap lezárva!','ok');
-  ido_showView('dashboard');
-}
-
-// ── CALENDAR ──
-function renderCalendar(){
-  var emp=employees.find(function(e){return e.id===calEmpId;})||currentUser;
-  var empSel='';
-  if(currentUser.role==='admin'){
-    empSel='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">Munkavállaló:</span><select class="form-input" style="width:auto;padding:5px 10px;font-size:12px;" onchange="calEmpId=this.value;refreshCal()">';
-    employees.filter(function(e){return !e.deletedAt;}).forEach(function(e){
-      empSel+='<option value="'+e.id+'"'+(calEmpId===e.id?' selected':'')+'>'+e.lastName+' '+e.firstName+'</option>';
-    });
-    empSel+='</select></div>';
-  }
-  var y=calYear, m=calMonth;
-  var dim=new Date(y,m,0).getDate();
-  var firstDow=(new Date(y,m-1,1).getDay()+6)%7;
-  var dip=new Date(y,m-1,0).getDate();
-  var td=today();
-  var cells='';
-  for(var i=0;i<firstDow;i++) cells+='<div class="cal-day other-month"><span class="cal-day-num">'+(dip-firstDow+1+i)+'</span></div>';
-  for(var d=1;d<=dim;d++){
-    var ds=y+'-'+pad2(m)+'-'+pad2(d);
-    var mark=null; for(var i=0;i<dayMarks.length;i++){if(dayMarks[i].empId===emp.id&&dayMarks[i].date===ds){mark=dayMarks[i];break;}}
-    var log=null; for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===emp.id&&timeLog[i].date===ds){log=timeLog[i];break;}}
-    var hol=isHol(ds), wknd=isWknd(ds), isT=ds===td;
-    var cls='cal-day';
-    if(isT) cls+=' istoday';
-    else if(mark&&mark.type==='vacation') cls+=' vacation';
-    else if(mark&&mark.type==='slide') cls+=' slide';
-    else if(mark&&mark.type==='sick') cls+=' sick';
-    else if(hol) cls+=' holiday';
-    else if(wknd) cls+=' weekend';
-    else if(log) cls+=' worked';
-    var tag='';
-    if(mark&&mark.type==='vacation') tag='<span class="cal-tag tag-sz">SZ</span>';
-    else if(mark&&mark.type==='slide') tag='<span class="cal-tag tag-cs">CS</span>';
-    else if(mark&&mark.type==='sick') tag='<span class="cal-tag tag-bs">BS</span>';
-    else if(hol) tag='<span class="cal-tag tag-uh">ÜH</span>';
-    var time=log?'<span class="cal-time">'+pad2(log.sh)+':'+pad2(log.sm)+(log.eh!==null&&log.eh!==undefined?' &ndash; '+pad2(log.eh)+':'+pad2(log.em):'&nbsp;&#9201;')+'</span>':'';
-    // OT: always show, zero in green
-    var ot='';
-    if(log&&log.eh!==null&&log.eh!==undefined){
-      var otCls2=log.otDelta<0?'ot-neg':'ot-pos';
-      ot='<span class="cal-ot '+otCls2+'">'+(log.otDelta>0?'+':'')+fmtOT(log.otDelta)+'</span>';
-    }
-    // Note preview in calendar cell
-    var noteHtml='';
-    if(log&&log.note){
-      var short=log.note.slice(0,22)+(log.note.length>22?'&hellip;':'');
-      noteHtml='<span style="font-size:9px;color:var(--text-dim);line-height:1.2;display:block;margin-top:2px;">'+short+'</span>';
-    }
-    cells+='<div class="'+cls+'" onclick="openDayModal(\''+ds+'\',\''+emp.id+'\')"><div style="display:flex;align-items:center;justify-content:space-between;"><span class="cal-day-num">'+d+'</span>'+tag+'</div>'+time+ot+noteHtml+'</div>';
-  }
-  var rem=(7-(firstDow+dim)%7)%7;
-  for(var d=1;d<=rem;d++) cells+='<div class="cal-day other-month"><span class="cal-day-num">'+d+'</span></div>';
-  var mOT=0; timeLog.filter(function(t){return t.empId===emp.id&&t.date.startsWith(y+'-'+pad2(m));}).forEach(function(t){mOT+=t.otDelta;});
-  var vUsed=usedVac(emp.id,String(y));
-  var mOTcolor=mOT>=0?'#27ae60':'#e05252';
-  var totColor=emp.overtimeMinutes>=0?'#27ae60':'#e05252';
-  return empSel+
-    '<div class="cal-nav">'+
-    '<button class="cal-nav-btn" onclick="calNav(-1)">&#8249;</button>'+
-    '<span class="cal-month-lbl">'+HU_MONTHS[m-1]+' '+y+'</span>'+
-    '<button class="cal-nav-btn" onclick="calNav(1)">&#8250;</button>'+
-    '<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;">'+
-    '<span>Havi: <b style="color:'+mOTcolor+'">'+(mOT>0?'+':'')+fmtOT(mOT)+'</b></span>'+
-    '<span>Összes: <b style="color:'+totColor+'">'+(emp.overtimeMinutes>0?'+':'')+fmtOT(emp.overtimeMinutes)+'</b></span>'+
-    '<span>Szabadnap: <b style="color:#2d7dd2">'+vUsed+'/'+emp.vacationDays+'</b></span>'+
-    '</span></div>'+
-    '<div class="cal-legend">'+
-    '<span><span class="leg-dot" style="background:rgba(232,160,32,.13);border-color:#e8a020"></span>Ma</span>'+
-    '<span><span class="leg-dot" style="background:rgba(45,125,210,.18);border-color:#2d7dd2"></span>Ünnepnap (ÜH)</span>'+
-    '<span><span class="leg-dot" style="background:rgba(39,174,96,.18);border-color:#27ae60"></span>Szabadnap (SZ)</span>'+
-    '<span><span class="leg-dot" style="background:rgba(107,122,150,.18);border-color:#6b7a96"></span>Csúsztatás (CS)</span>'+
-    '<span><span class="leg-dot" style="background:rgba(224,82,82,.18);border-color:#e05252"></span>Betegszabadság (BS)</span>'+
-    '<span><span class="leg-dot" style="background:rgba(45,125,210,.08);border-color:var(--border)"></span>Ledolgozott</span>'+
-    '</div>'+
-    '<div class="cal-wrap"><div class="cal-grid">'+
-    HU_DAYS.map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('')+
-    cells+'</div></div>';
-}
-function calNav(d){calMonth+=d;if(calMonth>12){calMonth=1;calYear++;}if(calMonth<1){calMonth=12;calYear--;}refreshCal();}
-function refreshCal(){document.getElementById('mc').innerHTML=renderCalendar();}
-
-// ── DAY MODAL ──
-function openDayModal(dateStr,empId){
-  var emp=employees.find(function(e){return e.id===empId;});
-  var mark=null; for(var i=0;i<dayMarks.length;i++){if(dayMarks[i].empId===empId&&dayMarks[i].date===dateStr){mark=dayMarks[i];break;}}
-  var log=null; for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===empId&&timeLog[i].date===dateStr){log=timeLog[i];break;}}
-  var hol=isHol(dateStr), wknd=isWknd(dateStr);
-  var p=dateStr.split('-'); var y=p[0],mo=p[1],d=p[2];
-  var canEdit=currentUser.role==='admin'||currentUser.id===empId;
-  document.getElementById('mDayTitle').textContent=y+'. '+mo+'. '+d+'. \u2013 '+emp.lastName+' '+emp.firstName;
-  var body='';
-  if(hol) body+='<div style="background:rgba(45,125,210,.1);border:1px solid #2d7dd2;border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#2d7dd2;">Magyar munkaszüneti nap</div>';
-  if(wknd&&!hol) body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-dim);">Hétvége</div>';
-  if(log){
-    var isOpen=log.eh===null||log.eh===undefined;
-    body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px;margin-bottom:12px;">';
-    body+='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Rögzített munkaidő</div>';
-    body+='<div style="font-family:var(--mono);font-size:13px;">Kezdés: '+pad2(log.sh)+':'+pad2(log.sm)+'</div>';
-    if(!isOpen){
-      body+='<div style="font-family:var(--mono);font-size:13px;">Befejezés: '+pad2(log.eh)+':'+pad2(log.em)+'</div>';
-      if(log.worked!==null) body+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:4px;">Ledolgozott: '+fmtOT(log.worked)+' &nbsp;&Delta;: <span style="color:'+(log.otDelta>=0?'#27ae60':'#e05252')+'">'+(log.otDelta>0?'+':'')+fmtOT(log.otDelta)+'</span></div>';
-    } else {
-      body+='<div style="font-family:var(--mono);font-size:12px;color:#e8a020;">&#9201; Folyamatban...</div>';
-    }
-    // Note section with expand
-    if(log.note){
-      var isLong=log.note.length>120;
-      body+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
-      body+='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Napi megjegyzés</div>';
-      if(isLong){
-        body+='<div id="ido-noteShort" style="font-size:12px;color:var(--text);">'+log.note.slice(0,120)+'&hellip; <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteShort\').style.display=\'none\';document.getElementById(\'noteFull\').style.display=\'block\'">Tovább &#9660;</span></div>';
-        body+='<div id="ido-noteFull" style="display:none;font-size:12px;color:var(--text);white-space:pre-wrap;">'+log.note+' <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteFull\').style.display=\'none\';document.getElementById(\'noteShort\').style.display=\'block\'">&#9650; Kevesebb</span></div>';
-      } else {
-        body+='<div style="font-size:12px;color:var(--text);">'+log.note+'</div>';
-      }
-      body+='</div>';
-    }
-    body+='</div>';
-  }
-  if(mark){
-    var markLabel=mark.type==='vacation'?'Szabadnap (SZ)':mark.type==='slide'?'Csúsztatás (CS)':'Betegszabadság (BS)';
-    body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px;margin-bottom:12px;"><div style="font-family:var(--mono);font-size:13px;">Jelölés: '+markLabel+'</div></div>';
-  }
-  if(canEdit){
-    body+='<div style="display:flex;flex-direction:column;gap:8px;">';
-    if(!mark&&!hol&&!wknd){
-      var vLeft=(emp.vacationDays||0)-usedVac(empId,y);
-      if(vLeft>0) body+='<button class="btn btn-success" style="justify-content:center;" onclick="markDay(\''+dateStr+'\',\''+empId+'\',\'vacation\');closeModal(\'mDay\');refreshCal()">&#127796; Szabadnap jelölése ('+vLeft+' maradt)</button>';
-      // Csúsztatás: always shown, no restriction, can go negative
-      body+='<button class="btn btn-secondary" style="justify-content:center;" onclick="markDay(\''+dateStr+'\',\''+empId+'\',\'slide\');closeModal(\'mDay\');refreshCal()">&#9193; Csúsztatás jelölése (egyenleg: '+(emp.overtimeMinutes>0?'+':'')+fmtOT(emp.overtimeMinutes)+')</button>';
-      body+='<button class="btn btn-danger" style="justify-content:center;background:rgba(224,82,82,.1);" onclick="markDay(\''+dateStr+'\',\''+empId+'\',\'sick\');closeModal(\'mDay\');refreshCal()">&#129298; Betegszabadság jelölése</button>';
-    }
-    if(mark) body+='<button class="btn btn-secondary" style="justify-content:center;" onclick="removeMark(\''+dateStr+'\',\''+empId+'\');closeModal(\'mDay\');refreshCal()">&#10005; Jelölés törlése</button>';
-    if(!log&&!hol&&!wknd) body+='<button class="btn btn-primary" style="justify-content:center;" onclick="closeModal(\'mDay\');openCheckinForDay(\''+dateStr+'\')">&#9654; Munkaidő rögzítése</button>';
-    if(log&&(log.eh===null||log.eh===undefined)) body+='<button class="btn btn-primary" style="justify-content:center;" onclick="closeModal(\'mDay\');askCloseDay(\''+log.id+'\')">&#9209; Munkanap lezárása</button>';
-    if(log) body+='<button class="btn btn-danger" style="justify-content:center;" onclick="delLog(\''+log.id+'\',\''+empId+'\');closeModal(\'mDay\');refreshCal()">&#128465; Munkaidő törlése</button>';
-    body+='</div>';
-  }
-  document.getElementById('mDayBody').innerHTML=body;
-  openModal('mDay');
-}
-
-function markDay(dateStr,empId,type){
-  dayMarks=dayMarks.filter(function(d){return !(d.empId===empId&&d.date===dateStr);});
-  if(type==='vacation'){
-    var emp=employees.find(function(e){return e.id===empId;});
-    var y=dateStr.slice(0,4);
-    if(usedVac(empId,y)>=emp.vacationDays){ido_showToast('Nincs több felhasználható szabadnap!','warn');return;}
-  }
-  if(type==='slide'){
-    // Csúsztatás mehet mínuszba - nincs ellenőrzés, levonjuk DAILY_MIN-t
-    var emp=employees.find(function(e){return e.id===empId;});
-    if(emp) emp.overtimeMinutes-=DAILY_MIN;
-  }
-  dayMarks.push({id:'dm'+Date.now(),empId:empId,date:dateStr,type:type});
-  ido_showToast('Jelölés elmentve','ok');
-}
-function removeMark(dateStr,empId){
-  var mark=dayMarks.find(function(d){return d.empId===empId&&d.date===dateStr;});
-  if(mark&&mark.type==='slide'){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes+=DAILY_MIN;}
-  dayMarks=dayMarks.filter(function(d){return !(d.empId===empId&&d.date===dateStr);});
-  ido_showToast('Jelölés törölve','ok');
-}
-function delLog(logId,empId){
-  var log=timeLog.find(function(t){return t.id===logId;});
-  if(log&&log.otDelta){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes-=log.otDelta;}
-  timeLog=timeLog.filter(function(t){return t.id!==logId;});
-  ido_showToast('Munkaidő törölve','ok');
-}
-
-// ── CHECKIN VIEW ──
-function renderCheckin(){
-  var n=new Date();
-  var otColor=currentUser.overtimeMinutes>=0?'#27ae60':'#e05252';
-  return '<div class="checkin-wrap"><div class="checkin-card">'+
-    '<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#e8a020;letter-spacing:3px;">MINI<span style="color:var(--text-dim)">GO</span></div>'+
-    '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:18px;">ID&#336;NYILV&#193;NTAT&#193;S</div>'+
-    '<div style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:4px;">Üdvözöljük, <b style="color:var(--text-bright)">'+currentUser.firstName+' '+currentUser.lastName+'</b>!</div>'+
-    '<div class="time-big" id="ido-ciClock">'+pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds())+'</div>'+
-    '<div class="date-big">'+n.getFullYear()+'. '+pad2(n.getMonth()+1)+'. '+pad2(n.getDate())+'.</div>'+
-    '<button class="btn btn-primary" style="width:100%;justify-content:center;font-size:14px;padding:14px;margin-bottom:12px;" onclick="openCheckinModal()">&#9654; Munkakezdés rögzítése</button>'+
-    '<button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="ido_showView(\'calendar\')">&#128197; Naptár megtekintése</button>'+
-    '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">'+
-    '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Göngyölített egyenlegem</div>'+
-    '<div style="font-family:var(--mono);font-size:22px;font-weight:600;color:'+otColor+'">'+(currentUser.overtimeMinutes>0?'+':'')+fmtOT(currentUser.overtimeMinutes)+'</div>'+
-    '</div></div></div>';
-}
-setInterval(function(){var e=document.getElementById('ciClock');if(e){var n=new Date();e.textContent=pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());}},1000);
-
-function openCheckinModal(){
-  var n=new Date();
-  document.getElementById('ci-date').value=today();
-  document.getElementById('ci-sh').value=pad2(n.getHours());
-  document.getElementById('ci-sm').value=pad2(n.getMinutes());
-  document.getElementById('ci-eh').value=''; document.getElementById('ci-em').value='';
-  document.getElementById('ci-preview').textContent='';
-  openModal('mCheckin');
-}
-function openCheckinForDay(dateStr){
-  document.getElementById('ci-date').value=dateStr;
-  document.getElementById('ci-sh').value='08'; document.getElementById('ci-sm').value='00';
-  document.getElementById('ci-eh').value=''; document.getElementById('ci-em').value='';
-  document.getElementById('ci-preview').textContent='';
-  openModal('mCheckin');
-}
-function updateCiPreview(){
-  var sh=parseInt(document.getElementById('ci-sh').value)||0;
-  var sm=parseInt(document.getElementById('ci-sm').value)||0;
-  var ehV=document.getElementById('ci-eh').value;
-  var emV=document.getElementById('ci-em').value;
-  var el=document.getElementById('ci-preview');
-  if(ehV!==''&&emV!==''){
-    var worked=(parseInt(ehV)*60+parseInt(emV))-(sh*60+sm);
-    var ot=worked-DAILY_MIN;
-    el.textContent='Ledolgozott: '+fmtOT(Math.max(0,worked))+'   \u0394: '+(ot>=0?'+':'')+fmtOT(ot);
-    el.style.color=ot>=0?'#27ae60':'#e05252';
-  } else { el.textContent=''; }
-}
-['ci-sh','ci-sm','ci-eh','ci-em'].forEach(function(id){
-  var el=document.getElementById(id); if(el) el.addEventListener('input',updateCiPreview);
-});
-function confirmCheckin(){
-  var dateStr=document.getElementById('ci-date').value;
-  if(!dateStr){ido_showToast('Add meg a dátumot!','warn');return;}
-  var sh=parseInt(document.getElementById('ci-sh').value);
-  var sm=parseInt(document.getElementById('ci-sm').value);
-  if(isNaN(sh)||isNaN(sm)){ido_showToast('Add meg a munkakezdés időpontját!','warn');return;}
-  for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===currentUser.id&&timeLog[i].date===dateStr){ido_showToast('Erre a napra már van bejegyzés!','warn');return;}}
-  var ehV=document.getElementById('ci-eh').value;
-  var emV=document.getElementById('ci-em').value;
-  var hasEnd=ehV!==''&&emV!=='';
-  var eh=hasEnd?parseInt(ehV):null;
-  var em=hasEnd?parseInt(emV):null;
-  var worked=null, otDelta=0;
-  if(hasEnd&&eh!==null&&em!==null){
-    worked=(eh*60+em)-(sh*60+sm);
-    otDelta=worked-DAILY_MIN;
-    // Fix: csak az employees tömbben frissítjük egyszer
-    var emp=employees.find(function(e){return e.id===currentUser.id;});
-    if(emp) emp.overtimeMinutes+=otDelta;
-  }
-  timeLog.push({id:'tl'+Date.now(),empId:currentUser.id,date:dateStr,sh:sh,sm:sm,eh:eh,em:em,worked:worked,otDelta:otDelta,note:''});
-  closeModal('mCheckin');
-  ido_showToast('Munkaidő sikeresen rögzítve!','ok');
-  // If no end time set, offer to go to dashboard to see live row
-  ido_showView('dashboard');
-}
-
-// ── EMPLOYEES ──
-function renderEmployees(){
-  if(currentUser.role!=='admin') return '<div style="color:#e05252;padding:20px;">Nincs jogosultsága.</div>';
-  var yr=String(new Date().getFullYear());
-  var list=employees.filter(function(e){return !e.deletedAt;});
-  var rows='';
-  list.forEach(function(e){
-    var ot=e.overtimeMinutes; var otCls=ot>0?'pos':ot<0?'neg':'zero';
-    var rolePill=e.role==='admin'?'<span class="pill" style="color:#e8a020;border-color:#e8a020;background:rgba(232,160,32,.1);">Admin</span>':'<span class="pill" style="color:var(--text-dim);border-color:var(--border);">Alkalmazott</span>';
-    rows+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td><td>'+rolePill+'</td><td style="font-family:var(--mono);font-size:12px;">'+usedVac(e.id,yr)+'/'+e.vacationDays+'</td><td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+ido_fmtDate(e.startDate)+'</td><td><div class="row-acts"><button class="icon-btn edit" onclick="openEditEmp(\''+e.id+'\')">&#9999;</button><button class="icon-btn del" onclick="confirmDelEmp(\''+e.id+'\')">&#128465;</button></div></td></tr>';
-  });
-  return '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">'+
-    '<button class="btn btn-primary" onclick="openNewEmpModal()">+ Új munkavállaló</button>'+
-    '<button class="btn btn-secondary" onclick="openExportModal()">Export</button>'+
-    '</div><div class="panel-title">Munkavállalók ('+list.length+')</div>'+
-    '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Név / E-mail</th><th>Szerepkör</th><th>Szabadnap</th><th>Göngyölített</th><th>Belépés</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
-}
-function openNewEmpModal(){
-  ['ne-last','ne-first','ne-email','ne-pass'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('ne-vdays').value=20;
-  document.getElementById('ne-start').value=today();
-  document.getElementById('ne-role').value='employee';
-  openModal('mNewEmp');
-}
-function createEmp(){
-  var last=document.getElementById('ne-last').value.trim();
-  var first=document.getElementById('ne-first').value.trim();
-  var email=document.getElementById('ne-email').value.trim().toLowerCase();
-  var pass=document.getElementById('ne-pass').value;
-  var vdays=parseInt(document.getElementById('ne-vdays').value)||20;
-  var start=document.getElementById('ne-start').value;
-  var role=document.getElementById('ne-role').value;
-  if(!last||!first||!email||!pass){ido_showToast('Töltsd ki a kötelező mezőket!','warn');return;}
-  if(pass.length<6){ido_showToast('A jelszó legalább 6 karakter legyen!','warn');return;}
-  for(var i=0;i<employees.length;i++){if(employees[i].email===email&&!employees[i].deletedAt){ido_showToast('Ez az e-mail már foglalt!','warn');return;}}
-  employees.push({id:'emp'+Date.now(),email:email,pass:pass,role:role,firstName:first,lastName:last,vacationDays:vdays,startDate:start,overtimeMinutes:0,deletedAt:null});
-  closeModal('mNewEmp'); ido_showToast('Munkavállaló létrehozva','ok'); ido_showView('employees');
-}
-function openEditEmp(id){
-  editingId=id;
-  var e=employees.find(function(x){return x.id===id;});
-  document.getElementById('ee-last').value=e.lastName;
-  document.getElementById('ee-first').value=e.firstName;
-  document.getElementById('ee-email').value=e.email;
-  document.getElementById('ee-pass').value='';
-  document.getElementById('ee-vdays').value=e.vacationDays;
-  document.getElementById('ee-start').value=e.startDate||'';
-  document.getElementById('ee-role').value=e.role;
-  openModal('mEditEmp');
-}
-function saveEmp(){
-  var e=employees.find(function(x){return x.id===editingId;});
-  var np=document.getElementById('ee-pass').value;
-  e.lastName=document.getElementById('ee-last').value.trim();
-  e.firstName=document.getElementById('ee-first').value.trim();
-  e.email=document.getElementById('ee-email').value.trim().toLowerCase();
-  if(np&&np.length>=6) e.pass=np;
-  e.vacationDays=parseInt(document.getElementById('ee-vdays').value)||e.vacationDays;
-  e.startDate=document.getElementById('ee-start').value;
-  e.role=document.getElementById('ee-role').value;
-  closeModal('mEditEmp'); ido_showToast('Adatok frissítve','ok'); ido_showView('employees');
-}
-function confirmDelEmp(id){
-  var e=employees.find(function(x){return x.id===id;});
-  document.getElementById('delMsg').textContent='Törlöd "'+e.lastName+' '+e.firstName+'" munkavállalót?';
-  document.getElementById('delBtn').onclick=function(){delEmp(id);closeModal('mDelConfirm');};
-  openModal('mDelConfirm');
-}
-function delEmp(id){
-  if(id===currentUser.id){ido_showToast('Saját magad nem törölheted!','warn');return;}
-  var e=employees.find(function(x){return x.id===id;});
-  e.deletedAt=new Date().toISOString();
-  trash.push({trashId:'tr'+Date.now(),type:'employee',data:JSON.parse(JSON.stringify(e)),deletedAt:e.deletedAt,label:e.lastName+' '+e.firstName+' ('+e.email+')'});
-  closeModal('mEditEmp'); ido_showToast('Munkavállaló a kukába kerül','ok'); ido_updateTrashBadge(); ido_showView('employees');
-}
-
-// ── REPORTS ──
-function renderReports(){
-  if(currentUser.role!=='admin') return '<div style="color:#e05252">Nincs jogosultsága.</div>';
-  var yr=new Date().getFullYear();
-  var months=[1,2,3,4,5,6,7,8,9,10,11,12];
-  var activeEmps=employees.filter(function(e){return !e.deletedAt;});
-
-  // Summary stat cards
-  var totalOT=0, totalSlide=0, totalSick=0, totalVac=0;
-  activeEmps.forEach(function(e){
-    totalOT+=e.overtimeMinutes;
-    totalSlide+=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='slide'&&d.date.startsWith(String(yr));}).length;
-    totalSick+=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='sick'&&d.date.startsWith(String(yr));}).length;
-    totalVac+=usedVac(e.id,String(yr));
-  });
-  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-secondary" onclick="openExportModal()">Export XLS</button></div>';
-  html+='<div class="panel-title">'+yr+'. évi statisztika &ndash; összesítő</div>';
-  html+='<div class="stat-row" style="margin-bottom:24px;">';
-  html+='<div class="stat-card"><div class="stat-val" style="color:'+(totalOT>=0?'#27ae60':'#e05252')+'">'+(totalOT>0?'+':'')+fmtOT(totalOT)+'</div><div class="stat-label">Összes göngyölített túlóra</div></div>';
-  html+='<div class="stat-card"><div class="stat-val" style="color:#6b7a96">'+totalSlide+'</div><div class="stat-label">Csúsztatott napok ('+yr+')</div></div>';
-  html+='<div class="stat-card"><div class="stat-val" style="color:#e05252">'+totalSick+'</div><div class="stat-label">Betegszabadság napok ('+yr+')</div></div>';
-  html+='<div class="stat-card"><div class="stat-val" style="color:#27ae60">'+totalVac+'</div><div class="stat-label">Felhasznált szabadnapok ('+yr+')</div></div>';
-  html+='</div>';
-
-  // Per-employee monthly breakdown
-  html+='<div class="panel-title">Havi túlóra bontás &ndash; '+yr+'</div>';
-  html+='<div style="overflow-x:auto;"><table class="data-table" style="min-width:900px;"><thead><tr><th>Név</th>';
-  months.forEach(function(m){html+='<th style="text-align:center;font-size:9px;">'+HU_MONTHS[m-1].slice(0,3)+'</th>';});
-  html+='<th style="text-align:center;">Éves</th><th style="text-align:center;">CS</th><th style="text-align:center;">BS</th><th style="text-align:center;">SZ</th></tr></thead><tbody>';
-  activeEmps.forEach(function(e){
-    var mt=months.map(function(mo){
-      return timeLog.filter(function(t){return t.empId===e.id&&t.date.startsWith(yr+'-'+pad2(mo));}).reduce(function(s,t){return s+t.otDelta;},0);
-    });
-    var yt=mt.reduce(function(s,v){return s+v;},0);
-    var eSl=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='slide'&&d.date.startsWith(String(yr));}).length;
-    var eSk=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='sick'&&d.date.startsWith(String(yr));}).length;
-    var eVu=usedVac(e.id,String(yr));
-    html+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div></td>';
-    mt.forEach(function(ot){
-      var col=ot>0?'#27ae60':ot<0?'#e05252':'var(--text-dim)';
-      html+='<td style="text-align:center;font-family:var(--mono);font-size:11px;color:'+col+';">'+(ot!==0?(ot>0?'+':'')+fmtOT(ot):'&ndash;')+'</td>';
-    });
-    var ytCls=yt>0?'pos':yt<0?'neg':'zero';
-    html+='<td style="text-align:center;"><span class="ot-badge '+ytCls+'">'+(yt>0?'+':'')+fmtOT(yt)+'</span></td>';
-    html+='<td style="text-align:center;font-family:var(--mono);font-size:12px;color:#6b7a96;">'+eSl+'</td>';
-    html+='<td style="text-align:center;font-family:var(--mono);font-size:12px;color:#e05252;">'+eSk+'</td>';
-    html+='<td style="text-align:center;font-family:var(--mono);font-size:12px;color:#27ae60;">'+eVu+'/'+e.vacationDays+'</td></tr>';
-  });
-  html+='</tbody></table></div>';
-  return html;
-}
-
-// ── TRASH ──
-function ido_renderTrash(){
-  if(currentUser.role!=='admin') return '<div style="color:#e05252">Nincs jogosultsága.</div>';
-  autopurge();
-  if(trash.length===0) return '<div style="text-align:center;padding:50px 20px;color:var(--text-dim);"><div style="font-size:32px;margin-bottom:10px;">&#128465;</div><div style="font-family:var(--mono);font-size:13px;">A kuka üres</div></div>';
-  var now=Date.now();
-  var html='<div class="panel-title">Kuka ('+trash.length+' elem)</div>';
-  trash.forEach(function(item){
-    var elapsed=now-new Date(item.deletedAt).getTime();
-    var pct=Math.min(100,Math.round(elapsed/(5*864e5)*100));
-    var rem=Math.max(0,Math.ceil((5*864e5-elapsed)/36e5/24));
-    html+='<div class="trash-item"><div style="flex:1;"><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">'+item.label+'</div>';
-    html+='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">Törölve: '+ido_fmtDate(item.deletedAt.slice(0,10))+' &ndash; '+rem+' nap múlva végleg törlődik</div>';
-    html+='<div class="prog-bar" style="width:140px;margin-top:5px;"><div class="prog-fill" style="width:'+pct+'%"></div></div></div>';
-    html+='<button class="btn btn-success" onclick="restoreTrash(\''+item.trashId+'\')">&#8629; Visszaállítás</button>';
-    html+='<button class="btn btn-danger" onclick="permDel(\''+item.trashId+'\')">&#128465;</button></div>';
-  });
-  return html;
-}
-function restoreTrash(tid){
-  var item=trash.find(function(t){return t.trashId===tid;});
-  if(!item) return;
-  if(item.type==='employee'){var ex=employees.find(function(e){return e.id===item.data.id;});if(ex)ex.deletedAt=null;else employees.push(JSON.parse(JSON.stringify(item.data)));}
-  trash=trash.filter(function(t){return t.trashId!==tid;});
-  ido_showToast('Visszaállítva','ok'); ido_updateTrashBadge(); ido_showView('trash');
-}
-function permDel(tid){trash=trash.filter(function(t){return t.trashId!==tid;});ido_showToast('Véglegesen törölve','ok');ido_updateTrashBadge();ido_showView('trash');}
-function autopurge(){var cut=Date.now()-5*864e5;trash=trash.filter(function(t){return new Date(t.deletedAt).getTime()>cut;});}
-function ido_updateTrashBadge(){
-  autopurge();
-  var b=document.getElementById('trash-badge'); if(!b) return;
-  if(trash.length>0){b.style.display='';b.textContent=trash.length;}else b.style.display='none';
-}
-
-// ── EXPORT ──
-function ido_openExportModal(){openModal('mExport');}
-function doExport(type){
-  var yr=new Date().getFullYear();
-  var months=[1,2,3,4,5,6,7,8,9,10,11,12];
-  var activeEmps=employees.filter(function(e){return !e.deletedAt;});
-
-  // CSV export helper
-  function exportCSV(rows, filename){
-    var csv=rows.map(function(row){
-      return row.map(function(c){
-        var s=String(c!=null?c:'');
-        if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0) s='"'+s.replace(/"/g,'""')+'"';
-        return s;
-      }).join(',');
-    }).join('\n');
-    var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a'); a.href=url; a.download=filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){URL.revokeObjectURL(url);},2000);
-    ido_showToast('Exportálva: '+filename,'ok'); closeModal('mExport');
-  }
-
-  // XLS export helper
-  function exportXLS(rows, filename){
-    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-    rows.forEach(function(row,ri){
-      html+='<tr>';
-      row.forEach(function(c){
-        var isNum=ri>0&&typeof c==='number';
-        html+=isNum?'<td>'+c+'</td>':'<td>'+String(c!=null?c:'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</td>';
-      });
-      html+='</tr>';
-    });
-    html+='</table>
-  </div>
-</div>
-
-</body></html>';
+  html += '</table></body></html>';
 
   const blob = new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -5647,27 +4381,158 @@ setTimeout(()=>{
 }, 5000);
 
 
-// ═══════════════════════════════════════════════════════
-// IDŐNYILVÁNTARTÁS MODUL JS
-// ═══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// JOGOSULTSÁG-KEZELÉS + IDO BEÉPÍTÉS
+// ══════════════════════════════════════════════════════════
+let currentUserRole  = 'superadmin';
+let currentUserEmail = '';
+const ROLE_LABELS = {superadmin:'Superadmin',admin:'Admin',hr:'HR Manager',employee:'Munkavállaló',viewer:'Olvasó'};
+const ROLE_MODULE_ACCESS = {superadmin:['proj','rel','idonyilv'],admin:['proj','rel','idonyilv'],hr:['idonyilv'],employee:['idonyilv'],viewer:['proj','rel']};
+const ROLE_IDO_LEVEL = {superadmin:'admin',admin:'admin',hr:'admin',employee:'employee',viewer:'employee'};
+
+async function loadUserRole(email) {
+  try {
+    const snap = await getDoc(doc(db,'userRoles',email.toLowerCase()));
+    currentUserRole = snap.exists() ? (snap.data().role||'superadmin') : 'superadmin';
+  } catch(e) { currentUserRole = 'superadmin'; }
+  const badge = document.getElementById('userBadge');
+  if(badge) badge.textContent = '\u{1F464} '+email.split('@')[0]+'  ['+(ROLE_LABELS[currentUserRole]||currentUserRole)+']';
+  const btn = document.getElementById('roleAdminBtn');
+  if(btn) btn.style.display = currentUserRole==='superadmin' ? '' : 'none';
+}
+
+function applyTilePermissions() {
+  const allowed = ROLE_MODULE_ACCESS[currentUserRole]||[];
+  const map = [
+    ['proj',  "module-tile[onclick*=\"proj\"]"],
+    ['rel',   "module-tile[onclick*=\"rel\"]"],
+    ['idonyilv', '#tile-idonyilv']
+  ];
+  map.forEach(([mod, sel]) => {
+    const tile = document.querySelector(sel);
+    if(!tile || allowed.includes(mod)) return;
+    tile.style.opacity = '0.4';
+    tile.style.pointerEvents = 'none';
+    const tag = tile.querySelector('.tile-tag');
+    if(tag){ tag.className='tile-tag soon'; tag.textContent='Zárolt'; }
+  });
+}
+
+let _rmData = [];
+async function openRoleManager() {
+  if(currentUserRole!=='superadmin'){showToast('Nincs jogosultsága.','warn');return;}
+  _rmData = [];
+  try { const s=await getDocs(collection(db,'userRoles')); s.forEach(d=>_rmData.push({email:d.id,role:d.data().role||'viewer'})); } catch(e){}
+  renderRoleManager();
+  document.getElementById('roleManagerModal').classList.add('active');
+}
+function renderRoleManager() {
+  const tb = document.getElementById('roleManagerBody'); if(!tb) return;
+  const roles = ['superadmin','admin','hr','employee','viewer'];
+  if(_rmData.length===0){ tb.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:14px;font-size:12px;">Még nincs bejegyzés.</td></tr>'; return; }
+  tb.innerHTML = _rmData.map((u,i)=>
+    '<tr><td style="font-family:var(--mono);font-size:12px;padding:5px 8px;">'+u.email+'</td>'+
+    '<td style="padding:4px 8px;"><select class="form-input" style="padding:3px 6px;font-size:12px;" onchange="_rmData['+i+'].role=this.value">'+
+    roles.map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('')+
+    '</select></td><td style="padding:4px 8px;"><button onclick="_rmData.splice('+i+',1);renderRoleManager()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:2px 7px;border-radius:3px;cursor:pointer;font-size:11px;">✕</button></td></tr>'
+  ).join('');
+}
+function addRoleRow() {
+  const e = document.getElementById('rmNewEmail').value.trim().toLowerCase();
+  if(!e){showToast('Add meg az e-mailt!','warn');return;}
+  if(_rmData.find(u=>u.email===e)){showToast('Már szerepel!','warn');return;}
+  _rmData.push({email:e,role:'viewer'});
+  document.getElementById('rmNewEmail').value='';
+  renderRoleManager();
+}
+async function saveRoleManager() {
+  try {
+    for(const u of _rmData) await setDoc(doc(db,'userRoles',u.email),{role:u.role,updatedAt:new Date().toISOString()});
+    showToast('Jogosultságok mentve!','ok');
+    document.getElementById('roleManagerModal').classList.remove('active');
+  } catch(e){ showToast('Hiba: '+e.message,'warn'); }
+}
+
+// Auth override
+onAuthStateChanged(auth, async (user) => {
+  if(user) {
+    currentUserEmail = user.email||'';
+    await loadUserRole(currentUserEmail);
+    showAppShell();
+    loadFromFirestore();
+  } else {
+    currentUserRole='superadmin'; currentUserEmail='';
+    showLoginScreen();
+  }
+});
+
+// IDO open/close
 function openIdoModule() {
-  const panel = document.getElementById('idoModule');
-  if(!panel) return;
-  // SSO: átadjuk a role-t
-  const role = typeof ROLE_IDO_LEVEL !== 'undefined' ? (ROLE_IDO_LEVEL[currentUserRole]||'employee') : 'employee';
-  localStorage.setItem('mg_sso_email', currentUserEmail||'');
-  localStorage.setItem('mg_sso_role',  role);
-  localStorage.setItem('mg_sso_ts',    Date.now().toString());
-  panel.style.display = 'block';
-  // Init IDO if not yet initialized
-  if(!window._idoInited) { window._idoInited=true; ido_initModule(); }
+  document.getElementById('idoModule').style.display='block';
+  if(!window._idoInited){ window._idoInited=true; _idoSSO(); }
 }
 function closeIdoModule() {
-  const panel = document.getElementById('idoModule');
-  if(panel) panel.style.display = 'none';
-  // Return to launcher
-  showLauncher();
+  document.getElementById('idoModule').style.display='none';
+  activeModule=null;
+  document.getElementById('moduleLauncher').style.display='flex';
+  document.getElementById('mainLayout').style.display='none';
+  applyTilePermissions();
 }
+function _idoSSO() {
+  const role = ROLE_IDO_LEVEL[currentUserRole]||'employee';
+  const email = currentUserEmail.toLowerCase();
+  let emp = employees.find(e=>e.email.toLowerCase()===email&&!e.deletedAt)||null;
+  if(!emp && email) {
+    const name = email.split('@')[0].replace(/[._]/g,' ');
+    emp = {id:'sso_'+Date.now(),email,pass:'sso',role,firstName:name,lastName:'',
+           vacationDays:20,startDate:new Date().toISOString().slice(0,10),overtimeMinutes:0,deletedAt:null};
+    employees.push(emp);
+  }
+  if(emp) {
+    if(role==='admin') emp.role='admin';
+    currentUser = emp;
+    document.getElementById('ido-loginScreen').style.display='none';
+    document.getElementById('ido-app').style.display='flex';
+    document.getElementById('ido-userBadge').textContent=(emp.role==='admin'?'[ADMIN] ':'')+emp.firstName+' '+emp.lastName+' \u2022 MiniGo';
+    calEmpId = emp.id;
+    document.querySelectorAll('#idoModule .admin-only').forEach(el=>el.style.display=emp.role==='admin'?'':'none');
+    ido_showView('dashboard');
+  } else {
+    document.getElementById('ido-loginScreen').style.display='flex';
+  }
+}
+
+// enterModule override
+const _baseEnterModule = enterModule;
+function enterModule(mod) {
+  if(mod==='idonyilv'){
+    if(!(ROLE_MODULE_ACCESS[currentUserRole]||[]).includes('idonyilv')){
+      showToast('\uD83D\uDD12 Nincs hozzáférése.','warn'); return;
+    }
+    openIdoModule(); return;
+  }
+  _baseEnterModule(mod);
+}
+
+// showLauncher override with IDO tile stats
+const _baseShowLauncher = showLauncher;
+function showLauncher() {
+  _baseShowLauncher();
+  try {
+    const td = new Date().toISOString().slice(0,10);
+    const bent = (typeof timeLog!=='undefined'?timeLog:[]).filter(t=>t.date===td&&t.eh!=null).length;
+    const ot = (typeof employees!=='undefined'?employees:[]).filter(e=>!e.deletedAt).reduce((s,e)=>s+(e.overtimeMinutes||0),0);
+    const sign = ot>0?'+':ot<0?'\u2212':'';
+    const abs = Math.abs(ot);
+    const elb = document.getElementById('tstat-ido-bent');
+    const elo = document.getElementById('tstat-ido-ot');
+    if(elb) elb.textContent = bent||'\u2013';
+    if(elo) elo.textContent = ot===0&&bent===0?'\u2013':sign+String(Math.floor(abs/60)).padStart(2,'0')+':'+String(abs%60).padStart(2,'0');
+  } catch(e){}
+  applyTilePermissions();
+}
+
+Object.assign(window,{enterModule,showLauncher,openIdoModule,closeIdoModule,openRoleManager,renderRoleManager,addRoleRow,saveRoleManager,applyTilePermissions});
 
 
 
@@ -5937,8 +4802,8 @@ function ido_renderDashboard(){
   if(openLog){
     setTimeout(function(){
       setInterval(function(){
-        var lc=document.getElementById('ido-liveClock');
-        var lw=document.getElementById('ido-liveWorked');
+        var lc=document.getElementById('liveClock');
+        var lw=document.getElementById('liveWorked');
         if(!lc) return;
         var n=new Date();
         lc.textContent='⏱ '+pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());
@@ -5948,8 +4813,8 @@ function ido_renderDashboard(){
   }
 
   html+='<div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">';
-  html+='<button class="btn btn-primary" onclick="showView(\'checkin\')">&#9654; Munkakezdés</button>';
-  html+='<button class="btn btn-secondary" onclick="showView(\'calendar\')">&#128197; Naptár</button>';
+  html+='<button class="btn btn-primary" onclick="ido_showView(\'checkin\')">&#9654; Munkakezdés</button>';
+  html+='<button class="btn btn-secondary" onclick="ido_showView(\'calendar\')">&#128197; Naptár</button>';
   html+='</div>';
   return html;
 }
@@ -6139,16 +5004,17 @@ function markDay(dateStr,empId,type){
     if(usedVac(empId,y)>=emp.vacationDays){ido_showToast('Nincs több felhasználható szabadnap!','warn');return;}
   }
   if(type==='slide'){
-    // Csúsztatás mehet mínuszba - nincs ellenőrzés, levonjuk DAILY_MIN-t
+    // Csúsztatás: 1 nap = 480 perc (8 óra) levonás a göngyölített egyenlegből
+    // Mehet mínuszba is, nincs alsó korlát
     var emp=employees.find(function(e){return e.id===empId;});
-    if(emp) emp.overtimeMinutes-=DAILY_MIN;
+    if(emp) emp.overtimeMinutes-=480;
   }
   dayMarks.push({id:'dm'+Date.now(),empId:empId,date:dateStr,type:type});
   ido_showToast('Jelölés elmentve','ok');
 }
 function removeMark(dateStr,empId){
   var mark=dayMarks.find(function(d){return d.empId===empId&&d.date===dateStr;});
-  if(mark&&mark.type==='slide'){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes+=DAILY_MIN;}
+  if(mark&&mark.type==='slide'){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes+=480;}
   dayMarks=dayMarks.filter(function(d){return !(d.empId===empId&&d.date===dateStr);});
   ido_showToast('Jelölés törölve','ok');
 }
@@ -6170,13 +5036,13 @@ function renderCheckin(){
     '<div class="time-big" id="ciClock">'+pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds())+'</div>'+
     '<div class="date-big">'+n.getFullYear()+'. '+pad2(n.getMonth()+1)+'. '+pad2(n.getDate())+'.</div>'+
     '<button class="btn btn-primary" style="width:100%;justify-content:center;font-size:14px;padding:14px;margin-bottom:12px;" onclick="openCheckinModal()">&#9654; Munkakezdés rögzítése</button>'+
-    '<button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="showView(\'calendar\')">&#128197; Naptár megtekintése</button>'+
+    '<button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick="ido_showView(\'calendar\')">&#128197; Naptár megtekintése</button>'+
     '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">'+
     '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Göngyölített egyenlegem</div>'+
     '<div style="font-family:var(--mono);font-size:22px;font-weight:600;color:'+otColor+'">'+(currentUser.overtimeMinutes>0?'+':'')+fmtOT(currentUser.overtimeMinutes)+'</div>'+
     '</div></div></div>';
 }
-setInterval(function(){var e=document.getElementById('ido-ciClock');if(e){var n=new Date();e.textContent=pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());}},1000);
+setInterval(function(){var e=document.getElementById('ciClock');if(e){var n=new Date();e.textContent=pad2(n.getHours())+':'+pad2(n.getMinutes())+':'+pad2(n.getSeconds());}},1000);
 
 function openCheckinModal(){
   var n=new Date();
@@ -6250,7 +5116,7 @@ function renderEmployees(){
   });
   return '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">'+
     '<button class="btn btn-primary" onclick="openNewEmpModal()">+ Új munkavállaló</button>'+
-    '<button class="btn btn-secondary" onclick="openExportModal()">Export</button>'+
+    '<button class="btn btn-secondary" onclick="ido_openExportModal()">Export</button>'+
     '</div><div class="panel-title">Munkavállalók ('+list.length+')</div>'+
     '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Név / E-mail</th><th>Szerepkör</th><th>Szabadnap</th><th>Göngyölített</th><th>Belépés</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
@@ -6328,7 +5194,7 @@ function renderReports(){
     totalSick+=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='sick'&&d.date.startsWith(String(yr));}).length;
     totalVac+=usedVac(e.id,String(yr));
   });
-  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-secondary" onclick="openExportModal()">Export XLS</button></div>';
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-secondary" onclick="ido_openExportModal()">Export XLS</button></div>';
   html+='<div class="panel-title">'+yr+'. évi statisztika &ndash; összesítő</div>';
   html+='<div class="stat-row" style="margin-bottom:24px;">';
   html+='<div class="stat-card"><div class="stat-val" style="color:'+(totalOT>=0?'#27ae60':'#e05252')+'">'+(totalOT>0?'+':'')+fmtOT(totalOT)+'</div><div class="stat-label">Összes göngyölített túlóra</div></div>';
@@ -6551,41 +5417,266 @@ if(cdNote) cdNote.addEventListener('input',function(){
 });
 
 
-
-// IDO init: trigger SSO auto-login
-function ido_initModule() {
-  // Trigger the SSO receiver logic that's inside the IDO script
-  // (the IIFE at the bottom of the IDO JS handles it)
-  setTimeout(function() {
-    const ssoTs  = localStorage.getItem('mg_sso_ts');
-    const ssoEmail = localStorage.getItem('mg_sso_email');
-    const ssoRole  = localStorage.getItem('mg_sso_role');
-    if(ssoTs && ssoEmail && (Date.now()-parseInt(ssoTs))<5*60*1000) {
-      localStorage.removeItem('mg_sso_ts');
-      var emp=null;
-      for(var i=0;i<employees.length;i++){
-        if(employees[i].email.toLowerCase()===ssoEmail.toLowerCase()&&!employees[i].deletedAt){
-          emp=employees[i]; break;
-        }
-      }
-      if(emp){
-        if(ssoRole==='admin'&&emp.role!=='admin') emp.role='admin';
-        currentUser=emp;
-        document.getElementById('ido-loginScreen').style.display='none';
-        document.getElementById('ido-app').style.display='flex';
-        document.getElementById('ido-userBadge').textContent=(emp.role==='admin'?'[ADMIN] ':'')+emp.firstName+' '+emp.lastName+' \u2022 MiniGo SSO';
-        calEmpId=emp.id;
-        var adminEls=document.querySelectorAll('#idoModule .admin-only');
-        for(var i=0;i<adminEls.length;i++) adminEls[i].style.display=emp.role==='admin'?'':'none';
-        ido_showView('dashboard');
-      } else {
-        // Nincs helyi felhasználó - mutassuk a login képernyőt
-        document.getElementById('ido-loginScreen').style.display='flex';
-      }
-    }
-  }, 50);
-}
-
 </script>
+<!-- IDO OVERLAY -->
+<div id="idoModule" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:900;background:var(--bg);overflow:hidden;">
+  <div style="position:fixed;top:0;left:0;right:0;height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;z-index:901;">
+    <button onclick="closeIdoModule()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 12px;color:var(--accent);font-family:var(--mono);font-size:11px;cursor:pointer;" onmouseover="this.style.background='rgba(232,160,32,.1)'" onmouseout="this.style.background='transparent'">&#8592; VISSZA A F&#336;MEN&#220;BE</button>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;">ID&#336;NYILV&#193;NTART&#193;S</span>
+  </div>
+  <div style="padding-top:44px;height:100%;overflow:auto;">
+
+
+<!-- LOGIN -->
+<div id="ido-loginScreen" style="display:flex;position:fixed;inset:0;background:#0f1117;z-index:10000;align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:380px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent);letter-spacing:3px;">MINI<span style="color:var(--text-dim)">GO</span></div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:6px;">ID&#336;NYILV&#193;NTAT&#193;S</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:32px 28px;">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:18px;">BEJELENTKEZ&#201;S</div>
+      <div class="form-row"><label class="form-label">E-mail c&#237;m</label><input class="form-input" id="ido-li-email" type="email" placeholder="pelda@ceg.hu" autocomplete="email"></div>
+      <div class="form-row"><label class="form-label">Jelszó</label><input class="form-input" id="ido-li-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="ido-li-remember" style="accent-color:var(--accent)"><label for="li-remember" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer">Bejelentkezés megjegyzése</label></div>
+      <div id="ido-li-err" style="font-family:var(--mono);font-size:11px;color:var(--danger);margin-bottom:12px;min-height:16px;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;padding:11px;" onclick="doLogin()">&#8594; Belépés</button>
+    </div>
+    <div style="text-align:center;margin-top:14px;font-family:var(--mono);font-size:10px;color:#2a3347;">Demo: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c6a7a2abafa886abafa8afa1a9e8aeb3">[email&#160;protected]</a> / admin123</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="ido-app" style="display:none;flex-direction:column;height:100vh;height:100dvh;">
+<div class="topbar">
+  <button class="hamburger" onclick="toggleSidebar()" aria-label="Menü">&#9776;</button>
+  <div class="logo">MINI<span>GO</span></div>
+  <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
+  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; ID&#336;NYILV&#193;NTAT&#193;S</span>
+  <div class="topbar-right">
+    <span id="ido-clockEl" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);"></span>
+    <div class="user-badge" id="ido-userBadge">&#128100; &ndash;</div>
+    <button onclick="doLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">&#9099; Ki</button>
+  </div>
+</div>
+<div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="layout">
+  <div class="sidebar">
+    <div style="padding:14px 0 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigáció</div>
+      <div class="nav-item active" id="ido-nav-dashboard" onclick="showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
+      <div class="nav-item" id="ido-nav-calendar" onclick="showView('calendar')"><span>&#128197;</span> Naptár</div>
+      <div class="nav-item" id="ido-nav-checkin" onclick="showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
+      <div class="nav-item admin-only" id="ido-nav-employees" onclick="showView('employees')"><span>&#128101;</span> Munkavállalók</div>
+      <div class="nav-item admin-only" id="ido-nav-reports" onclick="showView('reports')"><span>&#128200;</span> Kimutatások</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Gyors műveletek</div>
+      <div class="nav-item admin-only" onclick="openNewEmpModal()"><span>&#10133;</span> Új munkavállaló</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Exportálás</div>
+      <div class="nav-item" onclick="openExportModal()"><span>&#128202;</span> Export XLS</div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section" style="padding-bottom:10px;">
+      <div class="nav-item admin-only" id="ido-nav-trash" onclick="showView('trash')" style="color:var(--danger);opacity:.7;"><span>&#128465;</span> Kuka<span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="breadcrumb" id="ido-bc"><span style="color:var(--text)">Áttekintés</span></div>
+    <div class="content" id="ido-mc"></div>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: NEW EMP -->
+<div class="modal-overlay" id="ido-mNewEmp">
+  <div class="modal">
+    <div class="modal-title">&#10133; Új Munkavállaló Felvétele</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="ido-ne-last" placeholder="Kovács"></div>
+      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="ido-ne-first" placeholder="János"></div>
+    </div>
+    <div class="form-row"><label class="form-label">E-mail cím * (bejelentkezési név)</label><input class="form-input" id="ido-ne-email" type="email" placeholder="kovacs.janos@ceg.hu"></div>
+    <div class="form-row"><label class="form-label">Jelszó * (min. 6 karakter)</label><input class="form-input" id="ido-ne-pass" type="password"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Éves szabadnapok száma *</label><input class="form-input" id="ido-ne-vdays" type="number" min="0" max="50" value="20"></div>
+      <div><label class="form-label">Belépés dátuma</label><input class="form-input" id="ido-ne-start" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ido-ne-role"><option value="employee">Munkavállaló</option><option value="admin">Admin</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mNewEmp')">Mégse</button>
+      <button class="btn btn-primary" onclick="createEmp()">&#10003; Létrehozás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDIT EMP -->
+<div class="modal-overlay" id="ido-mEditEmp">
+  <div class="modal">
+    <div class="modal-title">&#9999; Munkavállaló Szerkesztése</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Vezetéknév *</label><input class="form-input" id="ido-ee-last"></div>
+      <div><label class="form-label">Keresztnév *</label><input class="form-input" id="ido-ee-first"></div>
+    </div>
+    <div class="form-row"><label class="form-label">E-mail cím</label><input class="form-input" id="ido-ee-email" type="email"></div>
+    <div class="form-row"><label class="form-label">Új jelszó (üresen hagyva nem változik)</label><input class="form-input" id="ido-ee-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Éves szabadnapok</label><input class="form-input" id="ido-ee-vdays" type="number" min="0" max="50"></div>
+      <div><label class="form-label">Belépés dátuma</label><input class="form-input" id="ido-ee-start" type="date"></div>
+    </div>
+    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ido-ee-role"><option value="employee">Munkavállaló</option><option value="admin">Admin</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mEditEmp')">Mégse</button>
+      <button class="btn btn-danger" onclick="confirmDelEmp(editingId)">&#128465; Törlés</button>
+      <button class="btn btn-primary" onclick="saveEmp()">&#10003; Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CHECKIN -->
+<div class="modal-overlay" id="ido-mCheckin">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <div class="modal-title" style="text-align:left;">&#128336; Munkakezdés Rögzítése</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Nap:</div>
+    <input class="form-input" id="ido-ci-date" type="date" style="margin-bottom:16px;">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Munkakezdés időpontja:</div>
+    <div class="time-inp-row">
+      <input class="time-inp" id="ido-ci-sh" type="number" min="0" max="23" placeholder="08">
+      <span class="time-sep">:</span>
+      <input class="time-inp" id="ido-ci-sm" type="number" min="0" max="59" placeholder="00">
+    </div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin:14px 0 8px;">Munkavégzés vége (opcionális):</div>
+    <div class="time-inp-row" style="margin-bottom:6px;">
+      <input class="time-inp" id="ido-ci-eh" type="number" min="0" max="23" placeholder="&ndash;">
+      <span class="time-sep">:</span>
+      <input class="time-inp" id="ido-ci-em" type="number" min="0" max="59" placeholder="&ndash;">
+    </div>
+    <div id="ido-ci-preview" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px;min-height:18px;"></div>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-secondary" onclick="closeModal('mCheckin')">Mégse</button>
+      <button class="btn btn-primary" style="padding:10px 28px;" onclick="confirmCheckin()">&#10003; Megerősítés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DAY -->
+<div class="modal-overlay" id="ido-mDay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" id="ido-mDayTitle">Nap kezelése</div>
+    <div id="ido-mDayBody"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('mDay')">Bezárás</button></div>
+  </div>
+</div>
+
+<!-- MODAL: EXPORT -->
+<div class="modal-overlay" id="ido-mExport">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">&#128202; Riport &amp; Export</div>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">Válaszd ki a riportot. Az XLS fájlok Excelben nyithatók, a CSV bármely táblázatkezelőben.</p>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:14px 0 6px;">&#128336; Munkaidő</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+      <div onclick="doExport('timelog')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Munkaidő napló <span class="exp-fmt">XLS</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Minden bejegyzés, kezdés, befejezés, ledolgozott, delta, megjegyzés</div>
+      </div>
+      <div onclick="doExport('overtime')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Göngyölített túlóra – havi bontás <span class="exp-fmt">XLS</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Munkavállalónként, havi és éves összesítővel, + és – értékek</div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;">&#127796; Szabadság &amp; Hiányzások</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+      <div onclick="doExport('vacation')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Szabadság összesítő <span class="exp-fmt">XLS</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Éves keret, felhasznált, maradék – munkavállalónként</div>
+      </div>
+      <div onclick="doExport('absences')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Hiányzások &amp; Betegségek <span class="exp-fmt">XLS</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Betegszabadság, csúsztatás, szabadnap napok listája dátummal</div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:10px 0 6px;">&#128200; Havi statisztika</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+      <div onclick="doExport('monthly_stats')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Havi összesítő statisztika <span class="exp-fmt">XLS</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Havi bontás: csúsztatás (±), túlóra, beteg, szabadnap – mindenki</div>
+      </div>
+      <div onclick="doExport('notes')" class="exp-row">
+        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);">Napi munkavégzés naplója <span class="exp-fmt">CSV</span></div>
+        <div style="font-size:11px;color:var(--text-dim);">Minden nap lezáráskor írt megjegyzés, munkavállalónként</div>
+      </div>
+    </div>
+
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal('mExport')">&#10005; Bezárás</button></div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRM DELETE -->
+<div class="modal-overlay" id="ido-mDelConfirm">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title">&#128465; Törlés megerősítése</div>
+    <div class="danger-bar"><span>&#9888;</span><span id="ido-delMsg">Biztosan törölni szeretnéd?</span></div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">A törölt elem 5 napig visszaállítható a Kukából.</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mDelConfirm')">Mégse</button>
+      <button class="btn btn-danger" id="ido-delBtn">&#128465; Törlés</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL: CLOSE DAY -->
+<div class="modal-overlay" id="ido-mCloseDay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">&#9209; Munkanap lezárása</div>
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;" id="ido-closeDay-date"></div>
+    <div class="form-row">
+      <label class="form-label">Munkavégzés befejezése</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input class="time-inp" id="ido-cd-eh" type="number" min="0" max="23" placeholder="17">
+        <span class="time-sep">:</span>
+        <input class="time-inp" id="ido-cd-em" type="number" min="0" max="59" placeholder="00">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px;">
+      <label class="form-label">Mit csin&#225;ltam ma? <span style="color:var(--text-dim);font-size:9px;" id="ido-cd-chars">0 / 1000</span></label>
+      <textarea id="ido-cd-note" class="form-input" rows="5" maxlength="1000" placeholder="R&#246;vid le&#237;r&#225;s a mai munkav&#233;gz&#233;sr&#337;l..." style="resize:vertical;font-family:var(--sans);font-size:13px;line-height:1.5;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mCloseDay')">M&#233;gse</button>
+      <button class="btn btn-primary" onclick="confirmCloseDay()">&#10003; Munkanap lez&#225;r&#225;sa</button>
+    </div>
+  </div>
+</div>
+
+<div id="ido-toast"></div>
+
+
+  </div>
+</div>
+
+<!-- ROLE MANAGER MODAL -->
+<div class="modal-overlay" id="roleManagerModal" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">&#9881; Jogosults&#225;gok kezel&#233;se</div>
+    <div style="overflow-x:auto;margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="border-bottom:1px solid var(--border);"><th style="text-align:left;padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">E-MAIL</th><th style="text-align:left;padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">SZEREPK&#214;R</th><th style="width:36px;"></th></tr></thead>
+      <tbody id="roleManagerBody"></tbody>
+    </table></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;"><input id="rmNewEmail" class="form-input" type="email" placeholder="felhasznalo@ceg.hu" style="flex:1;font-size:12px;padding:7px 10px;"><button onclick="addRoleRow()" class="btn btn-secondary" style="padding:7px 14px;">+ Hozz&#225;ad</button></div>
+    <div style="font-size:11px;color:var(--text-dim);border:1px solid rgba(232,160,32,.2);border-radius:4px;padding:9px 12px;margin-bottom:14px;"><b style="color:#e8a020;">Szerepk&#246;r&#246;k:</b> Superadmin=minden | Admin=minden modul | HR=csak Id&#337;nyilv. | Munkav&#225;llal&#243;=saj&#225;t id&#337; | Olvas&#243;=projektek</div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="document.getElementById('roleManagerModal').classList.remove('active')">M&#233;gse</button><button class="btn btn-primary" onclick="saveRoleManager()">&#10003; Ment&#233;s</button></div>
+  </div>
+</div>
+
 </div><!-- /appShell -->
-</
+</body></html>
