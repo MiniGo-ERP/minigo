@@ -766,6 +766,7 @@
           <span class="tile-tag soon">Hamarosan</span>
         </div>
         <div class="tile-desc">Árajánlatok összeállítása, kalkuláció, sablonok és ügyfél-specifikus anyagok generálása.</div>
+      </div>
 
       <!-- IDŐNYILVÁNTARTÁS -->
       <div class="module-tile" id="tile-idonyilv" onclick="enterModule('idonyilv')">
@@ -5449,7 +5450,12 @@ Object.assign(window, {
 </script>
 <!-- IDO OVERLAY -->
 <div id="idoModule" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:900;background:var(--bg);overflow:hidden;">
-  <div style="height:100%;overflow:auto;">
+  <div style="position:fixed;top:0;left:0;right:0;height:44px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:14px;z-index:1001;">
+    <div onclick="closeIdoModule()" style="font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;color:var(--text);">MINI<span style="color:var(--accent)">GO</span></div>
+    <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
+    <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;">ID&#336;NYILV&#193;NTART&#193;S</span>
+  </div>
+  <div style="padding-top:44px;height:100%;overflow:auto;">
 
 
 <!-- LOGIN -->
@@ -5465,7 +5471,7 @@ Object.assign(window, {
       <div class="form-row"><label class="form-label">Jelszó</label><input class="form-input" id="ido-li-pass" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="ido-li-remember" style="accent-color:var(--accent)"><label for="li-remember" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer">Bejelentkezés megjegyzése</label></div>
       <div id="ido-li-err" style="font-family:var(--mono);font-size:11px;color:var(--danger);margin-bottom:12px;min-height:16px;"></div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;padding:11px;" onclick="doLogin()">&#8594; Belépés</button>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:13px;padding:11px;" onclick="ido_doLogin()">&#8594; Belépés</button>
     </div>
     <div style="text-align:center;margin-top:14px;font-family:var(--mono);font-size:10px;color:#2a3347;">Demo: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c6a7a2abafa886abafa8afa1a9e8aeb3">[email&#160;protected]</a> / admin123</div>
   </div>
@@ -5474,27 +5480,27 @@ Object.assign(window, {
 <!-- APP -->
 <div id="ido-app" style="display:none;flex-direction:column;height:100vh;height:100dvh;">
 <div class="topbar">
-  <button class="hamburger" onclick="toggleSidebar()" aria-label="Menü">&#9776;</button>
+  <button class="hamburger" onclick="ido_toggleSidebar()" aria-label="Menü">&#9776;</button>
   <div class="logo">MINI<span>GO</span></div>
   <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
   <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; ID&#336;NYILV&#193;NTAT&#193;S</span>
   <div class="topbar-right">
     <span id="ido-clockEl" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);"></span>
     <div class="user-badge" id="ido-userBadge">&#128100; &ndash;</div>
-    <button onclick="doLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">&#9099; Ki</button>
+    <button onclick="ido_doLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">&#9099; Ki</button>
   </div>
 </div>
-<div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="ido_closeSidebar()"></div>
 <div class="layout">
   <div class="sidebar">
     <div style="padding:14px 0 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
     <div class="sidebar-section">
       <div class="sidebar-label">Navigáció</div>
-      <div class="nav-item active" id="ido-nav-dashboard" onclick="showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
-      <div class="nav-item" id="ido-nav-calendar" onclick="showView('calendar')"><span>&#128197;</span> Naptár</div>
-      <div class="nav-item" id="ido-nav-checkin" onclick="showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
-      <div class="nav-item admin-only" id="ido-nav-employees" onclick="showView('employees')"><span>&#128101;</span> Munkavállalók</div>
-      <div class="nav-item admin-only" id="ido-nav-reports" onclick="showView('reports')"><span>&#128200;</span> Kimutatások</div>
+      <div class="nav-item active" id="ido-nav-dashboard" onclick="ido_showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
+      <div class="nav-item" id="ido-nav-calendar" onclick="ido_showView('calendar')"><span>&#128197;</span> Naptár</div>
+      <div class="nav-item" id="ido-nav-checkin" onclick="ido_showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
+      <div class="nav-item admin-only" id="ido-nav-employees" onclick="ido_showView('employees')"><span>&#128101;</span> Munkavállalók</div>
+      <div class="nav-item admin-only" id="ido-nav-reports" onclick="ido_showView('reports')"><span>&#128200;</span> Kimutatások</div>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
@@ -5504,12 +5510,12 @@ Object.assign(window, {
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
       <div class="sidebar-label">Exportálás</div>
-      <div class="nav-item" onclick="openExportModal()"><span>&#128202;</span> Export XLS</div>
+      <div class="nav-item" onclick="ido_openExportModal()"><span>&#128202;</span> Export XLS</div>
     </div>
     <div style="flex:1"></div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section" style="padding-bottom:10px;">
-      <div class="nav-item admin-only" id="ido-nav-trash" onclick="showView('trash')" style="color:var(--danger);opacity:.7;"><span>&#128465;</span> Kuka<span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
+      <div class="nav-item admin-only" id="ido-nav-trash" onclick="ido_showView('trash')" style="color:var(--danger);opacity:.7;">Kuka <span>&#128465;</span><span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
     </div>
   </div>
   <div class="main">
