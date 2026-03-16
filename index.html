@@ -2658,7 +2658,7 @@ function createProject(){
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   const desc=document.getElementById('np-desc').value.trim();
   const projDate=document.getElementById('np-date').value || new Date().toISOString().split('T')[0];
-  if(!cid||!typ||!loc||!ph){ alert('Kérlek töltsd ki az összes kötelező mezőt!'); return; }
+  if(!cid||!typ||!loc||!ph){ showToast('⚠️ Kérlek töltsd ki az összes kötelező mezőt!','warn'); return; }
   const nextNum = projects.length + 1;
   const pid=`${loc}_${ph}_${nextNum}`;
   const now=new Date().toISOString().split('T')[0];
@@ -2672,7 +2672,7 @@ function createProject(){
 }
 function createClient(){
   const name=document.getElementById('ncl-name').value.trim();
-  if(!name){ alert('Add meg a cég nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a cég nevét!','warn'); return; }
   const id=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_'+Date.now();
   const newC={id,name,contact:document.getElementById('ncl-contact').value.trim(),email:document.getElementById('ncl-email').value.trim(),counter:0};
   clients.push(newC);
@@ -2698,7 +2698,7 @@ function createClient(){
 }
 function createSupplier(){
   const name=document.getElementById('ns-name').value.trim();
-  if(!name){ alert('Add meg a szállító nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   const id=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_'+Date.now();
   const newS={id,name,contact:document.getElementById('ns-contact').value.trim(),type:document.getElementById('ns-type').value.trim()};
   suppliers.push(newS);
@@ -3193,7 +3193,7 @@ function openIncomeInvoiceModal(pid){
 function confirmIncomeInvoice(){
   const ref=document.getElementById('ii-ref').value.trim();
   const amount=Number(document.getElementById('ii-amount').value);
-  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   (p.incomeInvoices=p.incomeInvoices||[]).push({ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
   p.log.push({time:nowStr(),msg:`Kimenő számla rögzítve: ${ref} – ${fmt(amount)}`,type:'invoice'});
@@ -3220,17 +3220,17 @@ function openCostInvoiceModal(pid){
 }
 function confirmCostInvoice(){
   const sid=document.getElementById('ci-supplier').value;
-  if(!sid){ alert('Válassz szállítót!'); return; }
+  if(!sid){ showToast('⚠️ Válassz szállítót!','warn'); return; }
   let supplierName='';
   if(sid==='__manual__'){
     supplierName=document.getElementById('ci-manual-name').value.trim();
-    if(!supplierName){ alert('Add meg a szállító nevét!'); return; }
+    if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   } else {
     supplierName=(suppliers.find(x=>x.id===sid)||{name:sid}).name;
   }
   const ref=document.getElementById('ci-ref').value.trim();
   const amount=Number(document.getElementById('ci-amount').value);
-  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   (p.costInvoices=p.costInvoices||[]).push({
     supplierId:sid==='__manual__'?'manual':sid, supplierName, ref, amount,
@@ -3270,7 +3270,7 @@ function openEditClient(id){
 }
 function saveClient(){
   const name = document.getElementById('ecl-name').value.trim();
-  if(!name){ alert('Add meg a cég nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a cég nevét!','warn'); return; }
   const c = clients.find(x=>x.id===editingClientId);
   const oldName = c.name;
   c.name    = name;
@@ -3292,9 +3292,11 @@ function saveClient(){
 }
 function deleteClient(id){
   const c = clients.find(x=>x.id===id);
-  const hasProjects = projects.some(p=>p.clientId===id);
-  if(hasProjects){
-    alert('Nem törölhető: a megrendelőhöz aktív projektek tartoznak. Előbb töröld a projekteket.');
+  const linkedProjects = projects.filter(p=>p.clientId===id);
+  if(linkedProjects.length > 0){
+    const names = linkedProjects.slice(0,3).map(p=>p.id).join(', ');
+    const more  = linkedProjects.length > 3 ? ` és még ${linkedProjects.length-3} db` : '';
+    showToast(`⚠️ Nem törölhető: ${linkedProjects.length} projekt tartozik hozzá (${names}${more}). Előbb töröld vagy archivald a projekteket.`,'warn');
     return;
   }
   openDeleteConfirm(`Kukába kerül: "${c.name}" megrendelő. 5 nap után automatikusan törlődik.`, ()=>{
@@ -3316,7 +3318,7 @@ function openEditSupplier(id){
 }
 function saveSupplier(){
   const name = document.getElementById('es-name').value.trim();
-  if(!name){ alert('Add meg a szállító nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   const s = suppliers.find(x=>x.id===editingSupplierId);
   const oldName = s.name;
   s.name    = name;
@@ -3338,6 +3340,15 @@ function saveSupplier(){
 }
 function deleteSupplier(id){
   const s = suppliers.find(x=>x.id===id);
+  // Check for referenced cost invoices in projects
+  const linkedProjects = projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===id));
+  if(linkedProjects.length > 0){
+    const invCount = linkedProjects.reduce((sum,p)=>sum+(p.costInvoices||[]).filter(i=>i.supplierId===id).length,0);
+    const projNames = linkedProjects.slice(0,3).map(p=>p.id).join(', ');
+    const more = linkedProjects.length > 3 ? ` és még ${linkedProjects.length-3} projektben` : '';
+    showToast(`⚠️ Nem törölhető: ${invCount} szállítói számla hivatkozik erre a szállítóra (${projNames}${more}). Előbb töröld a számlákat, vagy módosítsd a hivatkozásokat.`,'warn');
+    return;
+  }
   openDeleteConfirm(`Kukába kerül: "${s.name}" szállító. 5 nap után automatikusan törlődik.`, ()=>{
     moveToTrash('supplier', id, s, s.name);
     suppliers = suppliers.filter(x=>x.id!==id);
@@ -3433,19 +3444,19 @@ function restoreFromTrash(trashId){
   if(!item) return;
   if(item.type === 'project'){
     if(projects.find(p=>p.id===item.originalId)){
-      alert(`Nem lehet visszaállítani: "${item.originalId}" azonosítójú projekt már létezik.`); return;
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.originalId}" azonosítójú projekt már létezik.`); return;
     }
     projects.push(item.data);
     if(window.fbSaveProject) window.fbSaveProject(item.data).catch(e=>console.error(e));
   } else if(item.type === 'client'){
     if(clients.find(c=>c.id===item.originalId)){
-      alert(`Nem lehet visszaállítani: "${item.label}" megrendelő már létezik.`); return;
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" megrendelő már létezik.`); return;
     }
     clients.push(item.data);
     if(window.fbSaveClient) window.fbSaveClient(item.data).catch(e=>console.error(e));
   } else if(item.type === 'supplier'){
     if(suppliers.find(s=>s.id===item.originalId)){
-      alert(`Nem lehet visszaállítani: "${item.label}" szállító már létezik.`); return;
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" szállító már létezik.`); return;
     }
     suppliers.push(item.data);
     if(window.fbSaveSupplier) window.fbSaveSupplier(item.data).catch(e=>console.error(e));
@@ -3536,7 +3547,7 @@ function openEditIncomeInvoice(pid, idx){
 function saveIncomeInvoice(){
   const ref    = document.getElementById('eii-ref').value.trim();
   const amount = Number(document.getElementById('eii-amount').value);
-  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p   = projects.find(x=>x.id===pendingInvoiceId);
   const inv = p.incomeInvoices[editingInvoiceIdx];
   inv.ref    = ref;
@@ -3585,17 +3596,17 @@ function openEditCostInvoice(pid, idx){
 }
 function saveCostInvoice(){
   const sid = document.getElementById('eci-supplier').value;
-  if(!sid){ alert('Válassz szállítót!'); return; }
+  if(!sid){ showToast('⚠️ Válassz szállítót!','warn'); return; }
   let supplierName='';
   if(sid==='__manual__'){
     supplierName = document.getElementById('eci-manual-name').value.trim();
-    if(!supplierName){ alert('Add meg a szállító nevét!'); return; }
+    if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   } else {
     supplierName = (suppliers.find(x=>x.id===sid)||{name:sid}).name;
   }
   const ref    = document.getElementById('eci-ref').value.trim();
   const amount = Number(document.getElementById('eci-amount').value);
-  if(!ref||!amount){ alert('Számlaszám és összeg kötelező!'); return; }
+  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p   = projects.find(x=>x.id===pendingInvoiceId);
   const inv = p.costInvoices[editingInvoiceIdx];
   inv.supplierId   = sid==='__manual__'?'manual':sid;
@@ -3634,7 +3645,7 @@ function openEditDoc(pid, folder, idx){
 }
 function saveDoc(){
   const name = document.getElementById('edoc-name').value.trim();
-  if(!name){ alert('Add meg a fájl nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a fájl nevét!','warn'); return; }
   const p = projects.find(x=>x.id===currentProjectId);
   p.docs[editingDocFolder][editingDocIdx].name = name;
   p.docs[editingDocFolder][editingDocIdx].date = document.getElementById('edoc-date').value;
@@ -4042,6 +4053,7 @@ function saveEquipment(){
   const name=document.getElementById('eeq-name').value.trim();
   if(!name){ showToast('⚠️ Add meg a berendezés nevét!','warn'); return; }
   const e=equipment.find(x=>x.id===editingEqId);
+  const oldName = e.name;
   e.name=name;
   e.type=document.getElementById('eeq-type').value.trim();
   e.manufacturer=document.getElementById('eeq-manufacturer').value.trim();
@@ -4050,15 +4062,18 @@ function saveEquipment(){
   e.location=document.getElementById('eeq-location').value.trim();
   e.installedAt=document.getElementById('eeq-installedAt').value;
   e.notes=document.getElementById('eeq-notes').value.trim();
-  // Auto-add to catalog
   _autoCatalogAdd('eqNames', name);
   _autoCatalogAdd('eqTypes', e.type);
   _autoCatalogAdd('eqManufacturers', e.manufacturer);
-  // Update denormalized name in tickets
-  rTickets.filter(t=>t.equipmentId===e.id).forEach(t=>{ t.equipmentName=e.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
+  const linkedTickets = rTickets.filter(t=>t.equipmentId===e.id);
+  linkedTickets.forEach(t=>{ t.equipmentName=e.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
   if(window.fbSaveEquipment) window.fbSaveEquipment(e).catch(err=>console.error(err));
   closeModal('editEquipmentModal');
-  showToast(`✅ Berendezés mentve: ${name}`, 'ok');
+  if(oldName !== name && linkedTickets.length > 0){
+    showToast(`✅ Berendezés átnevezve. ${linkedTickets.length} hibajegyben frissítve: "${oldName}" → "${name}"`,'ok');
+  } else {
+    showToast(`✅ Berendezés mentve: ${name}`, 'ok');
+  }
   showView('r-equipment');
 }
 
@@ -4222,7 +4237,7 @@ function openNewRespModal(){
 }
 function createResponsible(){
   const l=document.getElementById('nresp-last').value.trim(), f=document.getElementById('nresp-first').value.trim();
-  if(!l||!f){ alert('Adja meg a nevet!'); return; }
+  if(!l||!f){ showToast('⚠️ Add meg a nevet!','warn'); return; }
   const r={id:rUUID(),lastName:l,firstName:f,
     email:document.getElementById('nresp-email').value.trim(),
     role:document.getElementById('nresp-role').value.trim(),createdAt:rToday()};
@@ -4241,24 +4256,57 @@ function openEditResponsible(id){
 }
 function saveResponsible(){
   const l=document.getElementById('eresp-last').value.trim(), f=document.getElementById('eresp-first').value.trim();
-  if(!l||!f){ alert('Adja meg a nevet!'); return; }
+  if(!l||!f){ showToast('⚠️ Add meg a nevet!','warn'); return; }
   const r=responsibles.find(x=>x.id===editingRespId);
+  const oldName = r.lastName + ' ' + r.firstName;
   r.lastName=l; r.firstName=f;
   r.email=document.getElementById('eresp-email').value.trim();
   r.role=document.getElementById('eresp-role').value.trim();
   const fullName=l+' '+f;
-  correctiveActs.filter(c=>c.responsibleId===r.id).forEach(c=>{ c.responsibleName=fullName; if(window.fbSaveCA) window.fbSaveCA(c).catch(err=>console.error(err)); });
+  const linkedCAs = correctiveActs.filter(c=>c.responsibleId===r.id);
+  linkedCAs.forEach(c=>{ c.responsibleName=fullName; if(window.fbSaveCA) window.fbSaveCA(c).catch(err=>console.error(err)); });
   if(window.fbSaveResponsible) window.fbSaveResponsible(r).catch(err=>console.error(err));
+  if(oldName !== fullName && linkedCAs.length > 0){
+    showToast(`✅ Felelős átnevezve. ${linkedCAs.length} korrektív akcióban frissítve: "${oldName}" → "${fullName}"`,'ok');
+  } else {
+    showToast(`✅ Felelős mentve: ${fullName}`,'ok');
+  }
   closeModal('editRespModal'); showView('r-resp');
 }
 function deleteResponsible(id){
-  const r=responsibles.find(x=>x.id===id);
-  if(correctiveActs.some(c=>c.responsibleId===id&&caStatus(c)!=='closed')){ alert('Nem törölhető: aktív korrektív akciók vannak hozzárendelve.'); return; }
-  openDeleteConfirm(`Törlöd a "${r.lastName} ${r.firstName}" felelőst?`, ()=>{
-    responsibles=responsibles.filter(x=>x.id!==id);
-    if(window.fbDelResponsible) window.fbDelResponsible(id).catch(err=>console.error(err));
-    showView('r-resp');
-  });
+  const r = responsibles.find(x=>x.id===id);
+  const fullName = r.lastName + ' ' + r.firstName;
+  const activeCAs  = correctiveActs.filter(c=>c.responsibleId===id && caStatus(c)!=='closed');
+  const closedCAs  = correctiveActs.filter(c=>c.responsibleId===id && caStatus(c)==='closed');
+
+  if(activeCAs.length > 0){
+    const caIds = activeCAs.slice(0,3).map(c=>c.caNumber).join(', ');
+    const more  = activeCAs.length > 3 ? ` és még ${activeCAs.length-3} db` : '';
+    showToast(`⚠️ Nem törölhető: ${activeCAs.length} aktív korrektív akcióhoz van rendelve (${caIds}${more}). Előbb zárd le vagy rendeld át ezeket.`,'warn');
+    return;
+  }
+
+  // Has closed CAs - warn that they'll get ANONYMUS
+  const anonymusWarning = closedCAs.length > 0
+    ? `\n\n⚠️ ${closedCAs.length} lezárt CA-ban a felelős neve "[TÖROLT]"-ra változik.`
+    : '';
+
+  openDeleteConfirm(
+    `Törlöd a "${fullName}" felelőst?${anonymusWarning}`,
+    ()=>{
+      // Set ANONYMUS on closed CAs
+      if(closedCAs.length > 0){
+        closedCAs.forEach(ca=>{
+          ca.responsibleName = `[TÖROLT] (${fullName})`;
+          if(window.fbSaveCA) window.fbSaveCA(ca).catch(e=>console.error(e));
+        });
+        showToast(`ℹ️ ${closedCAs.length} lezárt CA-ban a felelős neve "[TÖROLT]"-ra módosult.`,'info');
+      }
+      responsibles = responsibles.filter(x=>x.id!==id);
+      if(window.fbDelResponsible) window.fbDelResponsible(id).catch(err=>console.error(err));
+      showView('r-resp');
+    }
+  );
 }
 
 // ── HIBATÍPUSOK ───────────────────────────────────────────────────────────────
@@ -4635,14 +4683,18 @@ function saveFailureType(){
   ft.code = code; ft.name = name; ft.category = category;
   ft.description = document.getElementById('eft-desc').value.trim();
   _autoAddFTCategory(category);  // sync to catalog
-  // Update denormalized name in tickets
-  rTickets.filter(t=>t.failureTypeId===ft.id).forEach(t=>{
+  const linkedTickets = rTickets.filter(t=>t.failureTypeId===ft.id);
+  linkedTickets.forEach(t=>{
     t.failureTypeName=ft.name; t.failureTypeCode=ft.code;
     if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
   });
   if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
   closeModal('editFTypeModal');
-  showToast(`✅ Hibatípus mentve: [${code}] ${name}`, 'ok');
+  if(linkedTickets.length > 0){
+    showToast(`✅ Hibatípus mentve: [${code}] ${name} – ${linkedTickets.length} hibajegyben frissítve.`, 'ok');
+  } else {
+    showToast(`✅ Hibatípus mentve: [${code}] ${name}`, 'ok');
+  }
   showView('r-ftypes');
 }
 
@@ -5221,7 +5273,7 @@ function renderTicketDetail(tid){
       ${ticketStatusBadge(t.status)}
       ${severityBadge(t.severity)}
       ${t.status!=='closed'?`<button class="btn btn-advance" onclick="advanceTicketDirect('${t.id}')">→ ${stMap[nextSt[t.status]]||'Lezárás'}</button>`:''}
-      <button class="btn btn-secondary" onclick="openDeleteConfirm('Törlöd a hibajegyet?',()=>{ rTickets=rTickets.filter(x=>x.id!==\'${t.id}\'); if(window.fbDelTicket) window.fbDelTicket(\'${t.id}\'); showView(\'r-tickets\'); })">🗑️</button>
+      <button class="btn btn-secondary" onclick="deleteTicketWithCheck('${t.id}')">🗑️</button>
     </div>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
@@ -5282,7 +5334,7 @@ function advanceTicketDirect(tid){
 function saveTicketDowntimeEnd(tid){
   const t=rTickets.find(x=>x.id===tid);
   const val=document.getElementById('tk-dtEnd-'+tid)?.value;
-  if(!val){ alert('Add meg a leállás végét!'); return; }
+  if(!val){ showToast('⚠️ Add meg a leállás végét!','warn'); return; }
   t.downtimeEnd=val;
   t.downtimeMinutes=calcDowntime(t.downtimeStart,val);
   t.updatedAt=rToday();
@@ -5355,7 +5407,7 @@ function createCA(){
   const title=document.getElementById('nca-title').value.trim();
   const respId=document.getElementById('nca-resp').value;
   const due=document.getElementById('nca-due').value;
-  if(!title||!respId||!due){ alert('Cím, felelős és határidő kötelező!'); return; }
+  if(!title||!respId||!due){ showToast('⚠️ Cím, felelős és határidő kötelező!','warn'); return; }
   const resp=responsibles.find(x=>x.id===respId);
   const ticketId=document.getElementById('nca-ticket').value;
   const ca={
@@ -5380,8 +5432,17 @@ function openEditCA(id){
   document.getElementById('eca-due').value=ca.dueDate;
   document.getElementById('eca-notes').value=ca.notes||'';
   const rSel=document.getElementById('eca-resp');
-  rSel.innerHTML=responsibles.map(r=>`<option value="${r.id}">${r.lastName} ${r.firstName}</option>`).join('');
-  rSel.value=ca.responsibleId;
+  rSel.innerHTML='<option value="">-- válassz felelőst --</option>'+
+    responsibles.map(r=>`<option value="${r.id}">${r.lastName} ${r.firstName}</option>`).join('');
+  rSel.value=ca.responsibleId||'';
+  // If responsible was deleted, show warning
+  if(ca.responsibleId && !responsibles.find(r=>r.id===ca.responsibleId)){
+    const warn = document.createElement('div');
+    warn.style.cssText='font-size:11px;color:var(--danger);margin-top:4px;';
+    warn.textContent=`⚠️ Az eredeti felelős (${ca.responsibleName||'ismeretlen'}) törölve lett. Válassz új felelőst.`;
+    rSel.parentNode.appendChild(warn);
+    setTimeout(()=>warn.remove(), 6000);
+  }
   document.getElementById('eca-closeBtn').style.display=ca.status==='closed'?'none':'';
   openModal('editCAModal');
 }
@@ -5404,9 +5465,32 @@ function closeCA(){
   if(window.fbSaveCA) window.fbSaveCA(ca).catch(err=>console.error(err));
   closeModal('editCAModal'); showView('r-ca');
 }
+function deleteTicketWithCheck(tid){
+  const t = rTickets.find(x=>x.id===tid);
+  if(!t) return;
+  const linkedCAs = correctiveActs.filter(c=>c.ticketId===tid);
+  const caInfo = linkedCAs.length > 0
+    ? `\n\nℹ️ ${linkedCAs.length} korrektív akció van ehhez rendelve (${linkedCAs.map(c=>c.caNumber).join(', ')}) – ezek megmaradnak, de elveszítik a hibajegy-hivatkozást.`
+    : '';
+  openDeleteConfirm(`Törlöd a "${t.ticketNumber}" hibajegyet?${caInfo}`, ()=>{
+    // Orphan any linked CAs (clear ticketId)
+    linkedCAs.forEach(ca=>{
+      ca.ticketId='';
+      if(window.fbSaveCA) window.fbSaveCA(ca).catch(e=>console.error(e));
+    });
+    rTickets=rTickets.filter(x=>x.id!==tid);
+    if(window.fbDelTicket) window.fbDelTicket(tid).catch(e=>console.error(e));
+    showView('r-tickets');
+  });
+}
+
 function deleteCA(id){
   const ca=correctiveActs.find(x=>x.id===id);
-  openDeleteConfirm(`Törlöd a "${ca.caNumber}" korrektív akciót?`, ()=>{
+  const linkedTicket = ca.ticketId ? rTickets.find(t=>t.id===ca.ticketId) : null;
+  const ticketInfo = linkedTicket
+    ? `\n\nℹ️ Ez a CA a ${linkedTicket.ticketNumber} hibajegyhez volt rendelve – a hibajegy megmarad.`
+    : '';
+  openDeleteConfirm(`Törlöd a "${ca.caNumber}" korrektív akciót?${ticketInfo}`, ()=>{
     correctiveActs=correctiveActs.filter(x=>x.id!==id);
     if(window.fbDelCA) window.fbDelCA(id).catch(err=>console.error(err));
     showView('r-ca');
@@ -5899,7 +5983,7 @@ Object.assign(window,{
   openNewRespModal,createResponsible,openEditResponsible,saveResponsible,deleteResponsible,
   openNewFTypeModal,createFailureType,openEditFType,saveFailureType,deleteFType,
   advanceTicketDirect, saveTicketDowntimeEnd, saveTicketRoot,
-  openNewCAModal,openNewCAModalForTicket,createCA,openEditCA,saveCA,closeCA,deleteCA,
+  openNewCAModal,openNewCAModalForTicket,createCA,openEditCA,saveCA,closeCA,deleteCA,deleteTicketWithCheck,
   redrawPareto, renderFailureTypes, seedAndRefreshFTypes,
 });
 
