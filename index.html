@@ -228,6 +228,54 @@
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 
+  /* SEVERITY BUTTONS */
+  .sev-btn { background:var(--surface2); }
+  .sev-btn:hover { border-color:var(--text-dim) !important; }
+  .sev-btn.active-low      { background:rgba(39,174,96,0.15);  border-color:#27ae60 !important; color:#27ae60; }
+  .sev-btn.active-medium   { background:rgba(232,160,32,0.15); border-color:#e8a020 !important; color:#e8a020; }
+  .sev-btn.active-high     { background:rgba(232,138,32,0.15); border-color:#e88a20 !important; color:#e88a20; }
+  .sev-btn.active-critical { background:rgba(224,82,82,0.15);  border-color:#e05252 !important; color:#e05252; }
+
+  /* DATETIME PICKER WIDGET */
+  .dtp-widget { background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:0; overflow:hidden; }
+  .dtp-display { display:flex; align-items:center; gap:10px; padding:8px 12px; cursor:pointer; transition:border-color 0.15s; }
+  .dtp-display:hover { background:var(--surface2); }
+  .dtp-display-val { font-family:var(--mono); font-size:12px; color:var(--text); flex:1; }
+  .dtp-display-val.empty { color:var(--text-dim); }
+  .dtp-display-icon { font-size:14px; }
+  .dtp-clear { font-size:10px; color:var(--text-dim); cursor:pointer; padding:2px 6px; border-radius:3px; transition:all 0.12s; }
+  .dtp-clear:hover { background:rgba(224,82,82,0.15); color:var(--danger); }
+
+  /* CALENDAR POPUP */
+  .dtp-cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .dtp-cal-nav { background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--text); cursor:pointer; width:26px; height:26px; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all 0.12s; }
+  .dtp-cal-nav:hover { border-color:var(--accent); color:var(--accent); }
+  .dtp-cal-month { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text-bright); }
+  .dtp-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+  .dtp-dow { font-family:var(--mono); font-size:9px; color:var(--text-dim); text-align:center; padding:2px 0 4px; }
+  .dtp-day { font-family:var(--mono); font-size:11px; text-align:center; padding:5px 2px; border-radius:4px; cursor:pointer; border:1px solid transparent; transition:all 0.1s; color:var(--text); }
+  .dtp-day:hover { background:var(--surface2); border-color:var(--border); }
+  .dtp-day.today { border-color:var(--accent2); color:var(--accent2); }
+  .dtp-day.selected { background:var(--accent); color:#0f1117; font-weight:600; border-color:var(--accent); }
+  .dtp-day.other-month { color:var(--text-dim); opacity:0.4; }
+  .dtp-day.empty { cursor:default; }
+
+  /* TIME PICKER */
+  .dtp-time-row { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border); }
+  .dtp-time-label { font-family:var(--mono); font-size:9px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; flex-shrink:0; }
+  .dtp-time-part { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .dtp-time-spin { background:transparent; border:none; color:var(--accent); font-size:12px; cursor:pointer; padding:0; line-height:1; transition:color 0.1s; }
+  .dtp-time-spin:hover { color:var(--text-bright); }
+  .dtp-time-input { width:38px; background:var(--bg); border:1px solid var(--border); border-radius:4px; text-align:center; font-family:var(--mono); font-size:15px; font-weight:600; color:var(--text-bright); padding:4px 2px; outline:none; transition:border 0.12s; }
+  .dtp-time-input:focus { border-color:var(--accent); }
+  .dtp-time-sep { font-family:var(--mono); font-size:18px; font-weight:600; color:var(--text-dim); margin-bottom:4px; }
+  .dtp-ok-btn { margin-left:auto; background:var(--accent); border:none; border-radius:4px; color:#0f1117; font-family:var(--mono); font-size:11px; font-weight:600; padding:6px 14px; cursor:pointer; transition:background 0.12s; }
+  .dtp-ok-btn:hover { background:#f0b030; }
+
+  /* RELIABILITY EXPORT OPTIONS */
+  .rel-exp-opt { cursor:pointer; padding:11px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; transition:all 0.15s; display:flex; gap:12px; align-items:flex-start; }
+  .rel-exp-opt:hover { border-color:var(--accent); background:rgba(232,160,32,0.06); }
+
   /* EDIT / DELETE */
   .row-actions { display:flex; gap:5px; margin-left:auto; opacity:0; transition:opacity 0.15s; flex-shrink:0; }
   .project-card:hover .row-actions,
@@ -690,6 +738,7 @@
         <div class="sidebar-item" onclick="openNewTicketModal()"><span>🔴</span> Új hibajegy</div>
         <div class="sidebar-item" onclick="openNewCAModal()"><span>✅</span> Új CA</div>
         <div class="sidebar-item" onclick="openNewEquipmentModal()"><span>🏭</span> Új berendezés</div>
+        <div class="sidebar-item" onclick="openRelExportModal()"><span>📊</span> Export / Riport</div>
       </div>
     </div>
   </div>
@@ -1183,14 +1232,37 @@
 
 <!-- MODAL: ÚJ HIBATÍPUS -->
 <div class="modal-overlay" id="newFTypeModal">
-  <div class="modal">
+  <div class="modal" style="width:500px;">
     <div class="modal-title">📋 Új Hibatípus</div>
-    <div class="form-row-2">
-      <div><label class="form-label">Hibakód *</label><input class="form-input" id="nft-code" placeholder="pl. FT-001"></div>
-      <div><label class="form-label">Kategória</label><input class="form-input" id="nft-category" placeholder="pl. Elektromos"></div>
+    <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--text-dim);line-height:1.6;">
+      💡 Standard hibatípusok mellett saját egyedi hibatípus is létrehozható. Az egyedi típusok <b style="color:var(--text)">nem STD</b> jelöléssel jelennek meg, de ugyanúgy elérhetők az Új hibajegy legördülőben.
     </div>
-    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="nft-name" placeholder="pl. Kommunikációs hiba"></div>
-    <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="nft-desc" placeholder="opcionális"></div>
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Hibakód * <span style="color:var(--text-dim);font-weight:400;">(pl. EV-001, CUST-01)</span></label>
+        <input class="form-input" id="nft-code" placeholder="pl. CUST-001" oninput="nftCodeCheck(this.value)">
+        <div id="nft-code-warn" style="font-size:10px;color:var(--danger);margin-top:3px;display:none;">⚠️ Ez a hibakód már létezik!</div>
+      </div>
+      <div>
+        <label class="form-label">Kategória *</label>
+        <select class="form-input" id="nft-category-sel" onchange="nftCatSelChange()">
+          <option value="">-- válassz vagy írj be újat --</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="nft-custom-cat-row" style="display:none;">
+      <label class="form-label">Új kategória neve *</label>
+      <input class="form-input" id="nft-category" placeholder="pl. Egyedi, Helyszíni, Szezonális...">
+    </div>
+    <input type="hidden" id="nft-category-hidden">
+    <div class="form-row">
+      <label class="form-label">Megnevezés *</label>
+      <input class="form-input" id="nft-name" placeholder="pl. Töltőkábel mechanikai kopás">
+    </div>
+    <div class="form-row">
+      <label class="form-label">Részletes leírás <span style="color:var(--text-dim);font-weight:400;">(opcionális)</span></label>
+      <input class="form-input" id="nft-desc" placeholder="pl. Rendszeres vizuális ellenőrzés szükséges">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('newFTypeModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createFailureType()">✓ Hozzáadás</button>
@@ -1200,11 +1272,27 @@
 
 <!-- MODAL: HIBATÍPUS SZERKESZTÉS -->
 <div class="modal-overlay" id="editFTypeModal">
-  <div class="modal">
+  <div class="modal" style="width:500px;">
     <div class="modal-title">✏️ Hibatípus szerkesztése</div>
     <div class="form-row-2">
-      <div><label class="form-label">Hibakód *</label><input class="form-input" id="eft-code"></div>
-      <div><label class="form-label">Kategória</label><input class="form-input" id="eft-category"></div>
+      <div>
+        <label class="form-label">Hibakód *</label>
+        <input class="form-input" id="eft-code">
+      </div>
+      <div>
+        <label class="form-label">Kategória *</label>
+        <select class="form-input" id="eft-category-sel" onchange="eftCatSelChange()">
+          <option value="">-- válassz --</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="eft-custom-cat-row" style="display:none;">
+      <label class="form-label">Új kategória neve *</label>
+      <input class="form-input" id="eft-category" placeholder="pl. Egyedi...">
+    </div>
+    <input type="hidden" id="eft-category-hidden">
+    <div id="eft-std-warn" style="display:none;background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.3);border-radius:4px;padding:8px 12px;font-size:11px;color:var(--accent);margin-bottom:12px;">
+      ⚠️ Ez egy <b>standard</b> hibatípus. Módosítható, de a standard betöltés nem írja vissza.
     </div>
     <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="eft-name"></div>
     <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="eft-desc"></div>
@@ -1217,37 +1305,64 @@
 
 <!-- MODAL: ÚJ HIBAJEGY -->
 <div class="modal-overlay" id="newTicketModal">
-  <div class="modal" style="width:560px">
+  <div class="modal" style="width:600px;max-height:92vh;overflow-y:auto;">
     <div class="modal-title">🔴 Új Hibajegy</div>
     <div class="form-row">
       <label class="form-label">Berendezés *</label>
       <select class="form-input" id="ntk-equipment"><option value="">-- válassz berendezést --</option></select>
     </div>
+
+    <!-- Hibatípus kategória szűrő + legördülő -->
     <div class="form-row">
-      <label class="form-label">Hibatípus *</label>
-      <select class="form-input" id="ntk-ftype" onchange="rTicketFTypeChange()"><option value="">-- válassz hibatípust --</option></select>
+      <label class="form-label">Hibatípus kategória</label>
+      <select class="form-input" id="ntk-ftcat" onchange="filterFTypesByCategory()" style="margin-bottom:6px;">
+        <option value="">── Összes kategória ──</option>
+      </select>
+      <label class="form-label" style="margin-top:6px;">Hibatípus *</label>
+      <select class="form-input" id="ntk-ftype" onchange="rTicketFTypeChange()">
+        <option value="">-- válassz hibatípust --</option>
+      </select>
+      <div id="ntk-ftype-desc" style="font-size:11px;color:var(--text-dim);margin-top:5px;padding:5px 8px;background:var(--bg);border-radius:3px;display:none;"></div>
     </div>
-    <div class="form-row"><label class="form-label">Rövid leírás</label><input class="form-input" id="ntk-shortDesc" placeholder="auto kitöltve hibatípusból"></div>
-    <div class="form-row"><label class="form-label">Részletes leírás</label><input class="form-input" id="ntk-fullDesc" placeholder="szabad szöveges leírás"></div>
+
+    <div class="form-row"><label class="form-label">Rövid leírás <span style="color:var(--text-dim);font-weight:400">(auto kitöltve, szerkeszthető)</span></label><input class="form-input" id="ntk-shortDesc" placeholder="auto kitöltve hibatípusból"></div>
+    <div class="form-row"><label class="form-label">Részletes leírás</label><textarea class="form-input" id="ntk-fullDesc" rows="2" placeholder="szabad szöveges leírás, opcionális" style="resize:vertical;"></textarea></div>
+
+    <!-- Súlyosság vizuális választó -->
     <div class="form-row">
       <label class="form-label">Súlyosság *</label>
-      <select class="form-input" id="ntk-severity">
-        <option value="critical">🔴 Kritikus</option>
-        <option value="high">🟠 Magas</option>
-        <option value="medium" selected>🟡 Közepes</option>
-        <option value="low">🟢 Alacsony</option>
-      </select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="ntk-severity-btns">
+        <div onclick="selectSeverity('low')"    id="sev-low"      class="sev-btn" data-val="low"      style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟢<br>Alacsony</div>
+        <div onclick="selectSeverity('medium')" id="sev-medium"   class="sev-btn" data-val="medium"   style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟡<br>Közepes</div>
+        <div onclick="selectSeverity('high')"   id="sev-high"     class="sev-btn" data-val="high"     style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟠<br>Magas</div>
+        <div onclick="selectSeverity('critical')" id="sev-critical" class="sev-btn" data-val="critical" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🔴<br>Kritikus</div>
+      </div>
+      <input type="hidden" id="ntk-severity" value="medium">
     </div>
-    <div class="form-row-2">
-      <div><label class="form-label">Leállás kezdete</label><input class="form-input" type="datetime-local" id="ntk-downtimeStart"></div>
-      <div><label class="form-label">Leállás vége</label><input class="form-input" type="datetime-local" id="ntk-downtimeEnd"></div>
+
+    <!-- Dátum/idő picker - Start -->
+    <div class="form-row">
+      <label class="form-label">Leállás kezdete</label>
+      <div id="dtpicker-start" class="dtp-widget"></div>
     </div>
+
+    <!-- Dátum/idő picker - End -->
+    <div class="form-row">
+      <label class="form-label">Leállás vége <span style="color:var(--text-dim);font-weight:400">(opcionális, ha még folyamatban)</span></label>
+      <div id="dtpicker-end" class="dtp-widget"></div>
+    </div>
+
+    <div id="ntk-downtime-preview" style="font-family:var(--mono);font-size:12px;color:var(--accent);min-height:18px;margin-bottom:4px;"></div>
+
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('newTicketModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createTicket()">✓ Hibajegy megnyitása</button>
     </div>
   </div>
 </div>
+
+<!-- MODAL: DATETIME PICKER (shared popup) -->
+<div id="dtpicker-popup" style="display:none;position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.5);padding:16px;min-width:300px;"></div>
 
 <!-- MODAL: TICKET STÁTUSZ / GYÖKÉROK -->
 <div class="modal-overlay" id="ticketDetailModal">
@@ -1304,6 +1419,95 @@
   </div>
 </div>
 
+<!-- MODAL: RELIABILITY EXPORT -->
+<div class="modal-overlay" id="relExportModal">
+  <div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-title">📊 Reliability – Export / Riport</div>
+
+    <!-- Date range filter -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px 14px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">🗓️ Időszak szűrő (opcionális)</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);">
+          <span>Tól:</span><input type="date" id="rel-exp-from" class="form-input" style="padding:5px 8px;font-size:11px;width:140px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);">
+          <span>Ig:</span><input type="date" id="rel-exp-to" class="form-input" style="padding:5px 8px;font-size:11px;width:140px;">
+        </div>
+        <button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="document.getElementById('rel-exp-from').value='';document.getElementById('rel-exp-to').value='';">✕ Törlés</button>
+      </div>
+    </div>
+
+    <!-- Export options -->
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">📋 Hibajegyek & elemzés</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+      <div onclick="relExportXLS('tickets')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">🔴</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Hibajegyek teljes lista</div>
+        <div style="font-size:11px;color:var(--text-dim);">Jegyszám, berendezés, hibatípus, súlyosság, állásidő, státusz, dátumok</div></div>
+      </div>
+      <div onclick="relExportXLS('downtime')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">⏱️</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Állásidő összesítő</div>
+        <div style="font-size:11px;color:var(--text-dim);">Berendezésenkénti állásidő, hibaszám, MTBF/MTTR mutatók</div></div>
+      </div>
+      <div onclick="relExportXLS('pareto')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">📊</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Pareto adatok (hibatípus + állásidő)</div>
+        <div style="font-size:11px;color:var(--text-dim);">Hibatípusonkénti darabszám, állásidő, kumulatív %, 80/20 elemzés</div></div>
+      </div>
+      <div onclick="relExportXLS('monthly')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">📅</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Havi összesítő (trendek)</div>
+        <div style="font-size:11px;color:var(--text-dim);">Hónaponkénti hibaszám és állásidő – trendelemzéshez</div></div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">✅ Korrektív akciók</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+      <div onclick="relExportXLS('ca')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">✅</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Korrektív akciók teljes lista</div>
+        <div style="font-size:11px;color:var(--text-dim);">CA szám, cím, felelős, határidő, státusz, kapcsolódó hibajegy</div></div>
+      </div>
+      <div onclick="relExportXLS('ca-overdue')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">⚠️</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Lejárt / határidős CA-k</div>
+        <div style="font-size:11px;color:var(--text-dim);">Csak a lejárt és közelgő határidejű akciók listája</div></div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">🏭 Törzsadatok</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+      <div onclick="relExportXLS('equipment')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">🏭</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Berendezések listája</div>
+        <div style="font-size:11px;color:var(--text-dim);">Eszköz adatok + hibaszám + összes állásidő</div></div>
+      </div>
+      <div onclick="relExportXLS('ftypes')" class="rel-exp-opt">
+        <span style="font-size:18px;flex-shrink:0">📋</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Hibatípusok katalógus</div>
+        <div style="font-size:11px;color:var(--text-dim);">Hibakód, kategória, megnevezés, leírás, hibaszám</div></div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">📦 Teljes riport csomag</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px;">
+      <div onclick="relExportFullReport()" class="rel-exp-opt" style="border-color:var(--accent) !important;background:rgba(232,160,32,0.06) !important;">
+        <span style="font-size:18px;flex-shrink:0">⬇️</span>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);margin-bottom:2px;">Teljes Reliability Riport (ZIP)</div>
+        <div style="font-size:11px;color:var(--text-dim);">Minden fenti táblázat + HTML összefoglaló egyetlen ZIP fájlban</div></div>
+      </div>
+    </div>
+
+    <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:4px;padding:8px 12px;font-size:11px;color:var(--text-dim);">
+      💡 Az XLS fájlok Excel és LibreOffice Calc kompatibilisek. A ZIP riport önálló HTML kísérőlapot is tartalmaz.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('relExportModal')">✕ Bezárás</button>
+    </div>
+  </div>
+</div>
 <!-- Firebase SDK -->
 <script type="module">
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
@@ -1474,6 +1678,8 @@ async function loadFromFirestore() {
       if(!tkSnap.empty)    rTickets       = tkSnap.docs.map(d=>d.data());
       if(!caSnap.empty)    correctiveActs = caSnap.docs.map(d=>d.data());
       if(!trashSnap.empty) trashBin       = trashSnap.docs.map(d=>d.data());
+      // Seed standard failure types if none exist
+      if(ftSnap.empty && window.seedStandardFailureTypes) window.seedStandardFailureTypes();
       // Auto-purge items older than 5 days
       purgeOldTrash();
     } catch(re){ console.warn('Reliability betöltési hiba (nem kritikus):', re); }
@@ -3684,73 +3890,218 @@ function deleteResponsible(id){
 // ── HIBATÍPUSOK ───────────────────────────────────────────────────────────────
 function renderFailureTypes(){
   const sorted=[...failureTypes].sort((a,b)=>a.code.localeCompare(b.code));
+  const categories=[...new Set(sorted.map(ft=>ft.category||'Egyéb'))].sort();
+
+  const catSections = categories.map(cat => {
+    const items = sorted.filter(ft=>(ft.category||'Egyéb')===cat);
+    return `
+    <div style="margin-bottom:18px;">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;padding:4px 8px;background:var(--surface2);border-radius:3px;margin-bottom:6px;display:inline-block;">${cat} (${items.length})</div>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        ${items.map(ft=>{
+          const cnt=rTickets.filter(t=>t.failureTypeId===ft.id).length;
+          return `<div class="project-card" style="cursor:default;gap:10px;">
+            <div style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);min-width:75px;">${ft.code}</div>
+            <div class="project-info">
+              <div class="project-name" style="font-size:12px;">${ft.name}</div>
+              ${ft.description?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${ft.description}</div>`:''}
+            </div>
+            ${ft.isStandard?`<span style="font-family:var(--mono);font-size:9px;color:var(--accent2);background:rgba(45,125,210,0.1);border:1px solid rgba(45,125,210,0.3);padding:2px 6px;border-radius:3px;white-space:nowrap;">STD</span>`:''}
+            <span style="font-family:var(--mono);font-size:11px;color:${cnt>0?'var(--cost)':'var(--text-dim)'};white-space:nowrap;">${cnt} jegy</span>
+            <div class="row-actions" onclick="event.stopPropagation()">
+              <button class="icon-btn edit" onclick="openEditFType('${ft.id}')">✏️</button>
+              <button class="icon-btn del"  onclick="deleteFType('${ft.id}')">🗑️</button>
+            </div>
+          </div>`;}).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
   return `
-  <div class="panel-title">Hibatípusok (${sorted.length})</div>
-  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
-    ${sorted.map(ft=>{
-      const cnt=rTickets.filter(t=>t.failureTypeId===ft.id).length;
-      return `<div class="project-card">
-        <div class="project-id" style="min-width:90px;">${ft.code}</div>
-        <div class="project-info">
-          <div class="project-company">${ft.category||'–'}</div>
-          <div class="project-name">${ft.name}</div>
-          ${ft.description?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px">${ft.description}</div>`:''}
-        </div>
-        <span style="font-family:var(--mono);font-size:11px;color:${cnt>0?'var(--cost)':'var(--text-dim)'}">${cnt} hibajegy</span>
-        <div class="row-actions" onclick="event.stopPropagation()">
-          <button class="icon-btn edit" onclick="openEditFType('${ft.id}')">✏️</button>
-          <button class="icon-btn del"  onclick="deleteFType('${ft.id}')">🗑️</button>
-        </div>
-      </div>`;}).join('')}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <div>
+      <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">Hibatípusok kezelése</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${sorted.length} típus · ${categories.length} kategória</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="seedAndRefreshFTypes()" title="Standard hibatípusok betöltése ha hiányoznak">🔄 Standard betöltés</button>
+      <button class="btn btn-primary" onclick="openNewFTypeModal()">➕ Új hibatípus</button>
+    </div>
   </div>
-  <button class="btn btn-primary" onclick="openNewFTypeModal()">➕ Új hibatípus</button>`;
+  <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);line-height:1.7;">
+    💡 <b style="color:var(--text)">Admin tipp:</b> A <span style="font-family:var(--mono);color:var(--accent2)">STD</span> jelölt típusok az előre beépített standard hibakódok. Szerkeszthetők és törölhetők, de az Új hibajegy modalnál mindig ezekből lehet választani. Kategóriák szabadon bővíthetők.
+  </div>
+  ${sorted.length===0
+    ? `<div class="empty-state"><div class="em-icon">📋</div><div class="em-title">Még nincs hibatípus</div><div style="font-size:12px;margin-top:6px;color:var(--text-dim)">Kattints a "Standard betöltés" gombra az előre definiált hibatípusok feltöltéséhez</div></div>`
+    : catSections}`;
+}
+
+function seedAndRefreshFTypes(){
+  const before = failureTypes.length;
+  // Force seed even if already has some
+  STANDARD_FAILURE_TYPES.forEach(ft => {
+    const exists = failureTypes.some(x=>x.code===ft.code);
+    if(!exists){
+      const newFt = {id:rUUID(), ...ft, createdAt:rToday(), isStandard:true};
+      failureTypes.push(newFt);
+      if(window.fbSaveFailureType) window.fbSaveFailureType(newFt).catch(e=>console.error(e));
+    }
+  });
+  const added = failureTypes.length - before;
+  showToast(added>0 ? `✅ ${added} standard hibatípus hozzáadva!` : '✓ Minden standard típus már megvan.', 'ok');
+  showView('r-ftypes');
+}
+Object.assign(window, {seedAndRefreshFTypes});
+
+function _ftCategoryOptions(selectedVal){
+  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort();
+  // Ensure standard categories always present
+  const stdCats = ['Elektromos','Mechanikai','Szoftver','Hálózat','Teljesítmény','Karbantartás','Egyéb'];
+  stdCats.forEach(c=>{ if(!cats.includes(c)) cats.push(c); });
+  cats.sort();
+  return cats.map(c=>`<option value="${c}" ${c===selectedVal?'selected':''}>${c}</option>`).join('') +
+    `<option value="__new__" ${'__new__'===selectedVal?'selected':''}>➕ Új kategória megadása...</option>`;
+}
+
+function nftCatSelChange(){
+  const v = document.getElementById('nft-category-sel').value;
+  const row = document.getElementById('nft-custom-cat-row');
+  if(v==='__new__'){
+    row.style.display='block';
+    document.getElementById('nft-category').value='';
+    document.getElementById('nft-category-hidden').value='';
+  } else {
+    row.style.display='none';
+    document.getElementById('nft-category-hidden').value=v;
+  }
+}
+
+function eftCatSelChange(){
+  const v = document.getElementById('eft-category-sel').value;
+  const row = document.getElementById('eft-custom-cat-row');
+  if(v==='__new__'){
+    row.style.display='block';
+    document.getElementById('eft-category').value='';
+    document.getElementById('eft-category-hidden').value='';
+  } else {
+    row.style.display='none';
+    document.getElementById('eft-category-hidden').value=v;
+  }
+}
+
+function nftCodeCheck(val){
+  const warn = document.getElementById('nft-code-warn');
+  if(!warn) return;
+  const exists = failureTypes.some(f=>f.code.toLowerCase()===val.toLowerCase().trim());
+  warn.style.display = exists ? 'block' : 'none';
 }
 
 function openNewFTypeModal(){
-  ['nft-code','nft-name','nft-category','nft-desc'].forEach(id=>document.getElementById(id).value='');
+  // Reset fields
+  ['nft-code','nft-name','nft-desc','nft-category'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('nft-code-warn').style.display='none';
+  document.getElementById('nft-custom-cat-row').style.display='none';
+  document.getElementById('nft-category-hidden').value='';
+  // Populate category dropdown
+  const sel = document.getElementById('nft-category-sel');
+  sel.innerHTML = '<option value="">-- válassz kategóriát --</option>' + _ftCategoryOptions('');
   openModal('newFTypeModal');
 }
+
 function createFailureType(){
-  const code=document.getElementById('nft-code').value.trim();
-  const name=document.getElementById('nft-name').value.trim();
-  if(!code||!name){ alert('Hibakód és megnevezés kötelező!'); return; }
-  const ft={id:rUUID(),code,name,
-    category:document.getElementById('nft-category').value.trim(),
-    description:document.getElementById('nft-desc').value.trim(),createdAt:rToday()};
+  const code = document.getElementById('nft-code').value.trim();
+  const name = document.getElementById('nft-name').value.trim();
+  if(!code||!name){ showToast('⚠️ Hibakód és megnevezés kötelező!','warn'); return; }
+  if(failureTypes.some(f=>f.code.toLowerCase()===code.toLowerCase())){
+    showToast('⚠️ Ez a hibakód már létezik: '+code,'warn'); return;
+  }
+  // Category: from hidden (selected) or from custom input
+  const catSel = document.getElementById('nft-category-sel').value;
+  let category = '';
+  if(catSel==='__new__'){
+    category = document.getElementById('nft-category').value.trim();
+    if(!category){ showToast('⚠️ Adj meg egy kategória nevet!','warn'); return; }
+  } else {
+    category = catSel;
+  }
+  const ft = {
+    id: rUUID(), code, name, category,
+    description: document.getElementById('nft-desc').value.trim(),
+    createdAt: rToday(),
+    isStandard: false  // explicitly custom
+  };
   failureTypes.push(ft);
   if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
-  closeModal('newFTypeModal'); showView('r-ftypes');
+  closeModal('newFTypeModal');
+  showToast(`✅ Egyedi hibatípus hozzáadva: [${code}] ${name}`, 'ok');
+  showView('r-ftypes');
 }
+
 function openEditFType(id){
-  editingFTypeId=id;
-  const ft=failureTypes.find(x=>x.id===id);
-  document.getElementById('eft-code').value=ft.code;
-  document.getElementById('eft-name').value=ft.name;
-  document.getElementById('eft-category').value=ft.category||'';
-  document.getElementById('eft-desc').value=ft.description||'';
+  editingFTypeId = id;
+  const ft = failureTypes.find(x=>x.id===id);
+  document.getElementById('eft-code').value = ft.code;
+  document.getElementById('eft-name').value = ft.name;
+  document.getElementById('eft-desc').value = ft.description||'';
+  // Standard warning
+  const warn = document.getElementById('eft-std-warn');
+  warn.style.display = ft.isStandard ? 'block' : 'none';
+  // Category dropdown
+  const sel = document.getElementById('eft-category-sel');
+  sel.innerHTML = '<option value="">-- válassz --</option>' + _ftCategoryOptions(ft.category||'');
+  document.getElementById('eft-category-hidden').value = ft.category||'';
+  document.getElementById('eft-custom-cat-row').style.display = 'none';
+  document.getElementById('eft-category').value = '';
   openModal('editFTypeModal');
 }
+
 function saveFailureType(){
-  const code=document.getElementById('eft-code').value.trim();
-  const name=document.getElementById('eft-name').value.trim();
-  if(!code||!name){ alert('Hibakód és megnevezés kötelező!'); return; }
-  const ft=failureTypes.find(x=>x.id===editingFTypeId);
-  ft.code=code; ft.name=name;
-  ft.category=document.getElementById('eft-category').value.trim();
-  ft.description=document.getElementById('eft-desc').value.trim();
-  rTickets.filter(t=>t.failureTypeId===ft.id).forEach(t=>{ t.failureTypeName=ft.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
+  const code = document.getElementById('eft-code').value.trim();
+  const name = document.getElementById('eft-name').value.trim();
+  if(!code||!name){ showToast('⚠️ Hibakód és megnevezés kötelező!','warn'); return; }
+  const ft = failureTypes.find(x=>x.id===editingFTypeId);
+  // Check code uniqueness (excluding self)
+  if(failureTypes.some(f=>f.id!==editingFTypeId && f.code.toLowerCase()===code.toLowerCase())){
+    showToast('⚠️ Ez a hibakód már létezik egy másik típusnál!','warn'); return;
+  }
+  // Category
+  const catSel = document.getElementById('eft-category-sel').value;
+  let category = '';
+  if(catSel==='__new__'){
+    category = document.getElementById('eft-category').value.trim();
+    if(!category){ showToast('⚠️ Adj meg egy kategória nevet!','warn'); return; }
+  } else {
+    category = catSel || document.getElementById('eft-category-hidden').value;
+  }
+  ft.code = code; ft.name = name; ft.category = category;
+  ft.description = document.getElementById('eft-desc').value.trim();
+  // Update denormalized name in tickets
+  rTickets.filter(t=>t.failureTypeId===ft.id).forEach(t=>{
+    t.failureTypeName=ft.name; t.failureTypeCode=ft.code;
+    if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
+  });
   if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
-  closeModal('editFTypeModal'); showView('r-ftypes');
+  closeModal('editFTypeModal');
+  showToast(`✅ Hibatípus mentve: [${code}] ${name}`, 'ok');
+  showView('r-ftypes');
 }
+
 function deleteFType(id){
-  const ft=failureTypes.find(x=>x.id===id);
-  if(rTickets.some(t=>t.failureTypeId===id)){ alert('Nem törölhető: hibajegyek tartoznak hozzá.'); return; }
-  openDeleteConfirm(`Törlöd a "${ft.code} – ${ft.name}" hibatípust?`, ()=>{
-    failureTypes=failureTypes.filter(x=>x.id!==id);
+  const ft = failureTypes.find(x=>x.id===id);
+  if(rTickets.some(t=>t.failureTypeId===id)){
+    showToast('⚠️ Nem törölhető: hibajegyek tartoznak hozzá. Előbb zárd le vagy töröld a hibajegyeket.','warn');
+    return;
+  }
+  openDeleteConfirm(`Törlöd a "${ft.code} – ${ft.name}" hibatípust?${ft.isStandard?' (Standard típus!)':''}`, ()=>{
+    failureTypes = failureTypes.filter(x=>x.id!==id);
     if(window.fbDelFailureType) window.fbDelFailureType(id).catch(err=>console.error(err));
+    showToast(`🗑️ Hibatípus törölve: ${ft.code}`, 'warn');
     showView('r-ftypes');
   });
 }
+
+Object.assign(window, { nftCatSelChange, eftCatSelChange, nftCodeCheck,
+  openNewFTypeModal, createFailureType, openEditFType, saveFailureType, deleteFType });
 
 // ── HIBAJEGYEK ────────────────────────────────────────────────────────────────
 let tkFilter={status:'',eqId:'',ftId:'',from:'',to:''};
@@ -3805,50 +4156,342 @@ function renderTickets(){
   </div>`;
 }
 
+// ── STANDARD HIBATÍPUSOK (előre feltöltve) ────────────────────────────────────
+const STANDARD_FAILURE_TYPES = [
+  {code:'FT-E01', category:'Elektromos',    name:'Kommunikációs hiba',         description:'OCPP / backend kapcsolat megszakad'},
+  {code:'FT-E02', category:'Elektromos',    name:'Feszültség kiesés',           description:'Bemeneti fázishiba vagy biztosítékcsere szükséges'},
+  {code:'FT-E03', category:'Elektromos',    name:'Földzárlat',                  description:'Szigeteléshiba, érintésvédelmi riasztás'},
+  {code:'FT-E04', category:'Elektromos',    name:'Túlfeszültség védelem kioldás',description:'OVP/UVP relé kikapcsolt'},
+  {code:'FT-E05', category:'Elektromos',    name:'Mérési hiba (kWh)',           description:'Energiamérő kalibrációs eltérés'},
+  {code:'FT-M01', category:'Mechanikai',    name:'Csatlakozó sérülés (Type 2)', description:'Dugó elhajlás, zárszerkezet meghibásodás'},
+  {code:'FT-M02', category:'Mechanikai',    name:'Csatlakozó sérülés (CCS)',    description:'DC combo csatlakozó mechanikai sérülése'},
+  {code:'FT-M03', category:'Mechanikai',    name:'Kábel sérülés',               description:'Töltőkábel külső szigetelés sérülése'},
+  {code:'FT-M04', category:'Mechanikai',    name:'Ajtó / burkolat sérülés',     description:'Vandalizmus, ütközési kár'},
+  {code:'FT-M05', category:'Mechanikai',    name:'Hűtés meghibásodás',          description:'Ventilátor leállás, hőmérséklet riasztás'},
+  {code:'FT-S01', category:'Szoftver',      name:'Firmware hiba',               description:'Fagyás, reboot loop, update sikertelen'},
+  {code:'FT-S02', category:'Szoftver',      name:'RFID olvasó hiba',            description:'Kártya nem azonosítható'},
+  {code:'FT-S03', category:'Szoftver',      name:'Fizetési terminál hiba',      description:'POS nem válaszol, tranzakció sikertelen'},
+  {code:'FT-S04', category:'Szoftver',      name:'Kijelző / UI hiba',           description:'Képernyő fekete, fagyott felület'},
+  {code:'FT-S05', category:'Szoftver',      name:'Töltés nem indul (szoftver)', description:'Backend engedélyezés nem érkezik'},
+  {code:'FT-H01', category:'Hálózat',       name:'4G/LTE kapcsolat kiesés',     description:'SIM / mobilnet probléma'},
+  {code:'FT-H02', category:'Hálózat',       name:'Ethernet kapcsolat kiesés',   description:'LAN kábel, switch hiba'},
+  {code:'FT-H03', category:'Hálózat',       name:'DNS / backend elérhetetlen',  description:'Szerver oldali probléma'},
+  {code:'FT-P01', category:'Teljesítmény',  name:'Csökkentett teljesítmény',    description:'Derating aktív, hőmérséklet vagy feszültség miatt'},
+  {code:'FT-P02', category:'Teljesítmény',  name:'Töltési sebesség eltérés',    description:'Tényleges kW elmarad a névlegestől'},
+  {code:'FT-K01', category:'Karbantartás',  name:'Tervezett karbantartás',      description:'PM – periodikus ellenőrzés, tisztítás'},
+  {code:'FT-K02', category:'Karbantartás',  name:'Akkumulátor / UPS csere',     description:'Backup rendszer életkor alapú csere'},
+  {code:'FT-E99', category:'Egyéb',         name:'Ismeretlen hiba',             description:'Kivizsgálás szükséges'},
+];
+
+function seedStandardFailureTypes(){
+  if(failureTypes.length > 0) return; // Ne írja felül ha már van adat
+  STANDARD_FAILURE_TYPES.forEach(ft => {
+    const exists = failureTypes.some(x=>x.code===ft.code);
+    if(!exists){
+      const newFt = {id:rUUID(), ...ft, createdAt:rToday(), isStandard:true};
+      failureTypes.push(newFt);
+      if(window.fbSaveFailureType) window.fbSaveFailureType(newFt).catch(e=>console.error(e));
+    }
+  });
+}
+
+// ── DATETIME PICKER ───────────────────────────────────────────────────────────
+const _dtpState = {}; // {widgetId: {year,month,day,hour,minute,onChange}}
+
+function initDtpWidget(widgetId, onChange, initialValue){
+  const now = initialValue ? new Date(initialValue) : new Date();
+  _dtpState[widgetId] = {
+    year: now.getFullYear(), month: now.getMonth(),
+    day: initialValue ? now.getDate() : null,
+    hour: now.getHours(), minute: now.getMinutes(),
+    onChange
+  };
+  renderDtpWidget(widgetId);
+}
+
+function renderDtpWidget(widgetId){
+  const s = _dtpState[widgetId];
+  const el = document.getElementById(widgetId);
+  if(!el) return;
+  const hasVal = s.day !== null;
+  const displayStr = hasVal
+    ? `${s.year}-${String(s.month+1).padStart(2,'0')}-${String(s.day).padStart(2,'0')}  ${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')}`
+    : 'Kattints a dátum kiválasztásához';
+  el.innerHTML = `
+    <div class="dtp-display" onclick="toggleDtpPopup('${widgetId}')">
+      <span class="dtp-display-icon">📅</span>
+      <span class="dtp-display-val ${hasVal?'':'empty'}">${displayStr}</span>
+      ${hasVal?`<span class="dtp-clear" onclick="event.stopPropagation();clearDtp('${widgetId}')" title="Törlés">✕</span>`:''}
+    </div>`;
+}
+
+function clearDtp(widgetId){
+  const s = _dtpState[widgetId];
+  s.day = null;
+  renderDtpWidget(widgetId);
+  if(s.onChange) s.onChange(null);
+  updateDowntimePreview();
+}
+
+function getDtpValue(widgetId){
+  const s = _dtpState[widgetId];
+  if(!s || s.day===null) return '';
+  return `${s.year}-${String(s.month+1).padStart(2,'0')}-${String(s.day).padStart(2,'0')}T${String(s.hour).padStart(2,'0')}:${String(s.minute).padStart(2,'0')}`;
+}
+
+let _activeDtpWidget = null;
+
+function toggleDtpPopup(widgetId){
+  const popup = document.getElementById('dtpicker-popup');
+  if(_activeDtpWidget === widgetId && popup.style.display !== 'none'){
+    popup.style.display = 'none'; _activeDtpWidget = null; return;
+  }
+  _activeDtpWidget = widgetId;
+  renderDtpPopup(widgetId);
+  // Position popup near widget
+  const el = document.getElementById(widgetId);
+  const rect = el.getBoundingClientRect();
+  popup.style.display = 'block';
+  const popH = 380, popW = 310;
+  let top = rect.bottom + 4, left = rect.left;
+  if(top + popH > window.innerHeight) top = rect.top - popH - 4;
+  if(left + popW > window.innerWidth) left = window.innerWidth - popW - 8;
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+}
+
+function renderDtpPopup(widgetId){
+  const s = _dtpState[widgetId];
+  const popup = document.getElementById('dtpicker-popup');
+  const MONTHS = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+  const DAYS = ['H','K','Sz','Cs','P','Sz','V'];
+  const today = new Date();
+
+  // Build calendar grid
+  const firstDay = new Date(s.year, s.month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(s.year, s.month+1, 0).getDate();
+  const daysInPrevMonth = new Date(s.year, s.month, 0).getDate();
+  // Convert to Mon-first
+  const startOffset = (firstDay + 6) % 7;
+
+  let cells = '';
+  // Prev month filler
+  for(let i=startOffset-1; i>=0; i--){
+    cells += `<div class="dtp-day other-month">${daysInPrevMonth - i}</div>`;
+  }
+  // This month
+  for(let d=1; d<=daysInMonth; d++){
+    const isToday = (d===today.getDate() && s.month===today.getMonth() && s.year===today.getFullYear());
+    const isSel = (d===s.day);
+    cells += `<div class="dtp-day ${isToday?'today':''} ${isSel?'selected':''}" onclick="selectDtpDay('${widgetId}',${d})">${d}</div>`;
+  }
+  // Next month filler
+  const totalCells = startOffset + daysInMonth;
+  const remainder = totalCells % 7;
+  if(remainder !== 0) for(let d=1; d<=7-remainder; d++) cells += `<div class="dtp-day other-month">${d}</div>`;
+
+  popup.innerHTML = `
+    <div style="margin-bottom:2px;">
+      <div class="dtp-cal-header">
+        <button class="dtp-cal-nav" onclick="dtpNavMonth('${widgetId}',-1)">‹</button>
+        <span class="dtp-cal-month">${MONTHS[s.month]} ${s.year}</span>
+        <button class="dtp-cal-nav" onclick="dtpNavMonth('${widgetId}',1)">›</button>
+      </div>
+      <div class="dtp-cal-grid">
+        ${DAYS.map(d=>`<div class="dtp-dow">${d}</div>`).join('')}
+        ${cells}
+      </div>
+    </div>
+    <div class="dtp-time-row">
+      <span class="dtp-time-label">⏰ Idő:</span>
+      <div class="dtp-time-part">
+        <button class="dtp-time-spin" onclick="dtpSpinTime('${widgetId}','hour',1)">▲</button>
+        <input class="dtp-time-input" id="dtp-h-${widgetId}" type="number" min="0" max="23" value="${String(s.hour).padStart(2,'0')}" oninput="dtpTimeInput('${widgetId}','hour',this.value)">
+        <button class="dtp-time-spin" onclick="dtpSpinTime('${widgetId}','hour',-1)">▼</button>
+      </div>
+      <span class="dtp-time-sep">:</span>
+      <div class="dtp-time-part">
+        <button class="dtp-time-spin" onclick="dtpSpinTime('${widgetId}','minute',5)">▲</button>
+        <input class="dtp-time-input" id="dtp-m-${widgetId}" type="number" min="0" max="59" value="${String(s.minute).padStart(2,'0')}" oninput="dtpTimeInput('${widgetId}','minute',this.value)">
+        <button class="dtp-time-spin" onclick="dtpSpinTime('${widgetId}','minute',-5)">▼</button>
+      </div>
+      <button class="dtp-ok-btn" onclick="closeDtpPopup('${widgetId}')">✓ OK</button>
+    </div>`;
+}
+
+function selectDtpDay(widgetId, day){
+  const s = _dtpState[widgetId];
+  s.day = day;
+  renderDtpPopup(widgetId);
+  renderDtpWidget(widgetId);
+  if(s.onChange) s.onChange(getDtpValue(widgetId));
+  updateDowntimePreview();
+}
+
+function dtpNavMonth(widgetId, dir){
+  const s = _dtpState[widgetId];
+  s.month += dir;
+  if(s.month > 11){ s.month=0; s.year++; }
+  if(s.month < 0){ s.month=11; s.year--; }
+  renderDtpPopup(widgetId);
+}
+
+function dtpSpinTime(widgetId, unit, delta){
+  const s = _dtpState[widgetId];
+  if(unit==='hour'){
+    s.hour = (s.hour + delta + 24) % 24;
+  } else {
+    s.minute = (s.minute + delta + 60) % 60;
+  }
+  renderDtpPopup(widgetId);
+  if(s.day !== null){ renderDtpWidget(widgetId); if(s.onChange) s.onChange(getDtpValue(widgetId)); }
+  updateDowntimePreview();
+}
+
+function dtpTimeInput(widgetId, unit, val){
+  const s = _dtpState[widgetId];
+  const n = parseInt(val, 10);
+  if(isNaN(n)) return;
+  if(unit==='hour') s.hour = Math.min(23, Math.max(0, n));
+  else s.minute = Math.min(59, Math.max(0, n));
+  if(s.day !== null){ renderDtpWidget(widgetId); if(s.onChange) s.onChange(getDtpValue(widgetId)); }
+  updateDowntimePreview();
+}
+
+function closeDtpPopup(widgetId){
+  document.getElementById('dtpicker-popup').style.display='none';
+  _activeDtpWidget=null;
+  renderDtpWidget(widgetId);
+  updateDowntimePreview();
+}
+
+// Close popup on outside click
+document.addEventListener('click', e=>{
+  if(_activeDtpWidget && !e.target.closest('.dtp-widget') && !e.target.closest('#dtpicker-popup'))
+  { document.getElementById('dtpicker-popup').style.display='none'; _activeDtpWidget=null; }
+});
+
+function updateDowntimePreview(){
+  const el = document.getElementById('ntk-downtime-preview');
+  if(!el) return;
+  const s = getDtpValue('dtpicker-start');
+  const e = getDtpValue('dtpicker-end');
+  if(s && e){
+    const min = calcDowntime(s, e);
+    el.textContent = min > 0 ? `⏱ Számított állásidő: ${fmtDowntime(min)}` : '⚠️ A vége előbb van mint a kezdete!';
+    el.style.color = min > 0 ? 'var(--accent)' : 'var(--danger)';
+  } else {
+    el.textContent = s ? '⏱ Leállás vége nincs megadva – hibajegy nyitott marad' : '';
+    el.style.color = 'var(--text-dim)';
+  }
+}
+
+// ── SEVERITY SELECTOR ─────────────────────────────────────────────────────────
+function selectSeverity(val){
+  document.getElementById('ntk-severity').value = val;
+  document.querySelectorAll('.sev-btn').forEach(btn => {
+    btn.className = 'sev-btn';
+    btn.style.cssText = 'flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;';
+  });
+  const active = document.getElementById('sev-'+val);
+  if(active) active.classList.add('active-'+val);
+}
+
+// ── HIBATÍPUS SZŰRÉS KATEGÓRIA SZERINT ───────────────────────────────────────
+function filterFTypesByCategory(){
+  const cat = document.getElementById('ntk-ftcat').value;
+  const ftSel = document.getElementById('ntk-ftype');
+  const list = cat ? failureTypes.filter(f=>f.category===cat) : failureTypes;
+  const sorted = [...list].sort((a,b)=>a.code.localeCompare(b.code));
+  ftSel.innerHTML = '<option value="">-- válassz hibatípust --</option>' +
+    sorted.map(f=>`<option value="${f.id}">[${f.code}] ${f.name}</option>`).join('');
+  document.getElementById('ntk-ftype-desc').style.display='none';
+}
+
+// ── ÚJ HIBAJEGY MODAL ─────────────────────────────────────────────────────────
 function openNewTicketModal(){
-  const eqSel=document.getElementById('ntk-equipment');
-  eqSel.innerHTML='<option value="">-- válassz berendezést --</option>'+
-    equipment.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-  const ftSel=document.getElementById('ntk-ftype');
-  ftSel.innerHTML='<option value="">-- válassz hibatípust --</option>'+
-    failureTypes.map(f=>`<option value="${f.id}">[${f.code}] ${f.name}</option>`).join('');
-  ['ntk-shortDesc','ntk-fullDesc'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ntk-severity').value='medium';
-  const now=new Date().toISOString().slice(0,16);
-  document.getElementById('ntk-downtimeStart').value=now;
-  document.getElementById('ntk-downtimeEnd').value='';
+  // Seed standard failure types if empty
+  seedStandardFailureTypes();
+
+  // Equipment dropdown
+  const eqSel = document.getElementById('ntk-equipment');
+  eqSel.innerHTML = '<option value="">-- válassz berendezést --</option>' +
+    [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu')).map(e=>`<option value="${e.id}">${e.name}${e.assetId?' ['+e.assetId+']':''}</option>`).join('');
+
+  // Category filter
+  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort();
+  const catSel = document.getElementById('ntk-ftcat');
+  catSel.innerHTML = '<option value="">── Összes kategória ──</option>' +
+    cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  // Failure type dropdown (all)
+  filterFTypesByCategory();
+
+  // Reset fields
+  ['ntk-shortDesc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const ftd = document.getElementById('ntk-fullDesc'); if(ftd) ftd.value='';
+  document.getElementById('ntk-ftype-desc').style.display='none';
+
+  // Severity: default medium
+  selectSeverity('medium');
+
+  // Init datetime pickers
+  const now = new Date();
+  initDtpWidget('dtpicker-start', ()=>updateDowntimePreview(), now.toISOString());
+  initDtpWidget('dtpicker-end', ()=>updateDowntimePreview(), null);
+
+  updateDowntimePreview();
   openModal('newTicketModal');
 }
+
 function rTicketFTypeChange(){
-  const ftId=document.getElementById('ntk-ftype').value;
-  const ft=failureTypes.find(x=>x.id===ftId);
-  if(ft) document.getElementById('ntk-shortDesc').value=ft.name;
+  const ftId = document.getElementById('ntk-ftype').value;
+  const ft = failureTypes.find(x=>x.id===ftId);
+  if(ft){
+    document.getElementById('ntk-shortDesc').value = ft.name;
+    const descEl = document.getElementById('ntk-ftype-desc');
+    if(ft.description){ descEl.textContent = 'ℹ️ '+ft.description; descEl.style.display='block'; }
+    else descEl.style.display='none';
+  }
 }
+
 function createTicket(){
-  const eqId=document.getElementById('ntk-equipment').value;
-  const ftId=document.getElementById('ntk-ftype').value;
+  const eqId = document.getElementById('ntk-equipment').value;
+  const ftId = document.getElementById('ntk-ftype').value;
   if(!eqId||!ftId){ alert('Berendezés és hibatípus kötelező!'); return; }
-  const eq=equipment.find(x=>x.id===eqId), ft=failureTypes.find(x=>x.id===ftId);
-  const ds=document.getElementById('ntk-downtimeStart').value;
-  const de=document.getElementById('ntk-downtimeEnd').value;
-  const t={
-    id:rUUID(),
-    ticketNumber:genTicketNum(),
-    equipmentId:eqId, equipmentName:eq.name,
-    failureTypeId:ftId, failureTypeName:ft.name,
-    shortDesc:document.getElementById('ntk-shortDesc').value.trim()||ft.name,
-    fullDesc:document.getElementById('ntk-fullDesc').value.trim(),
-    severity:document.getElementById('ntk-severity').value,
-    downtimeStart:ds, downtimeEnd:de,
-    downtimeMinutes:calcDowntime(ds,de),
-    status:'open', rootCause:'', resolution:'',
-    createdAt:rToday(), updatedAt:rToday(), closedAt:'',
-    log:[{time:rNow(),msg:'Hibajegy megnyitva',type:'create'}]
+  const eq = equipment.find(x=>x.id===eqId), ft = failureTypes.find(x=>x.id===ftId);
+  const ds = getDtpValue('dtpicker-start');
+  const de = getDtpValue('dtpicker-end');
+  if(!ds){ alert('A leállás kezdete kötelező!'); return; }
+  const t = {
+    id: rUUID(),
+    ticketNumber: genTicketNum(),
+    equipmentId: eqId, equipmentName: eq.name,
+    failureTypeId: ftId, failureTypeName: ft.name, failureTypeCode: ft.code,
+    shortDesc: document.getElementById('ntk-shortDesc').value.trim() || ft.name,
+    fullDesc: document.getElementById('ntk-fullDesc').value.trim(),
+    severity: document.getElementById('ntk-severity').value,
+    downtimeStart: ds, downtimeEnd: de,
+    downtimeMinutes: calcDowntime(ds, de),
+    status: 'open', rootCause: '', resolution: '',
+    createdAt: rToday(), updatedAt: rToday(), closedAt: '',
+    log: [{time:rNow(), msg:'Hibajegy megnyitva', type:'create'}]
   };
   rTickets.push(t);
   if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
-  closeModal('newTicketModal'); showView('r-ticket-detail',t.id);
+  closeModal('newTicketModal');
+  document.getElementById('dtpicker-popup').style.display='none';
+  showView('r-ticket-detail', t.id);
 }
+
+Object.assign(window, {
+  initDtpWidget, renderDtpWidget, clearDtp, getDtpValue,
+  toggleDtpPopup, renderDtpPopup, selectDtpDay, dtpNavMonth,
+  dtpSpinTime, dtpTimeInput, closeDtpPopup, updateDowntimePreview,
+  selectSeverity, filterFTypesByCategory,
+  openNewTicketModal, rTicketFTypeChange, createTicket,
+  seedStandardFailureTypes
+});
 
 // ── HIBAJEGY RÉSZLAP ─────────────────────────────────────────────────────────
 function renderTicketDetail(tid){
@@ -4182,15 +4825,372 @@ function drawPareto(){
 }
 function redrawPareto(){ mc().innerHTML=renderPareto(); setTimeout(drawPareto,100); }
 
+// ── RELIABILITY EXPORT ────────────────────────────────────────────────────────
+
+function openRelExportModal(){
+  // Set default date range to current year
+  const y = new Date().getFullYear();
+  const fromEl = document.getElementById('rel-exp-from');
+  const toEl   = document.getElementById('rel-exp-to');
+  if(fromEl && !fromEl.value) fromEl.value = y + '-01-01';
+  if(toEl   && !toEl.value)   toEl.value   = y + '-12-31';
+  openModal('relExportModal');
+}
+
+function _relExpDateFilter(tickets){
+  const from = document.getElementById('rel-exp-from')?.value || '';
+  const to   = document.getElementById('rel-exp-to')?.value   || '';
+  return tickets.filter(t => {
+    if(from && t.createdAt < from) return false;
+    if(to   && t.createdAt > to)   return false;
+    return true;
+  });
+}
+
+function _buildXLS(rows, sheetName){
+  let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
+  html += `<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>${sheetName}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>`;
+  rows.forEach((row, ri) => {
+    const isBold = ri === 0;
+    html += `<tr${isBold ? ' style="font-weight:bold;background:#1e2535;color:#e8a020;"' : ''}>`;
+    row.forEach(cell => {
+      const isNum = ri > 0 && typeof cell === 'number';
+      const safe = String(cell ?? '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += isNum ? `<td style="mso-number-format:'# ##0';">${cell}</td>` : `<td>${safe}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table></body></html>';
+  return html;
+}
+
+function _downloadXLS(html, filename){
+  const blob = new Blob(['\ufeff' + html], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('✅ Exportálva: ' + filename, 'ok');
+  closeModal('relExportModal');
+}
+
+function relExportXLS(mode){
+  const today = new Date().toISOString().slice(0,10);
+  const tks = _relExpDateFilter(rTickets);
+
+  if(mode === 'tickets'){
+    const rows = [['Jegyszám','Berendezés','AssetID','Hibatípus','Hibakód','Kategória','Súlyosság','Státusz','Leállás kezdete','Leállás vége','Állásidő (perc)','Állásidő (óra)','Gyökérok','Létrehozva','Lezárva']];
+    tks.sort((a,b) => b.createdAt.localeCompare(a.createdAt)).forEach(t => {
+      const eq = equipment.find(e=>e.id===t.equipmentId);
+      const ft = failureTypes.find(f=>f.id===t.failureTypeId);
+      const sevMap = {critical:'Kritikus',high:'Magas',medium:'Közepes',low:'Alacsony'};
+      const stMap  = {open:'Nyitott',in_progress:'Folyamatban',closed:'Lezárt'};
+      rows.push([
+        t.ticketNumber, t.equipmentName||'', eq?.assetId||'',
+        t.failureTypeName||'', ft?.code||t.failureTypeCode||'', ft?.category||'',
+        sevMap[t.severity]||t.severity, stMap[t.status]||t.status,
+        t.downtimeStart||'', t.downtimeEnd||'',
+        t.downtimeMinutes||0, t.downtimeMinutes ? Math.round(t.downtimeMinutes/60*10)/10 : 0,
+        t.rootCause||'', t.createdAt||'', t.closedAt||''
+      ]);
+    });
+    _downloadXLS(_buildXLS(rows,'Hibajegyek'), `rel_hibajegyek_${today}.xls`);
+
+  } else if(mode === 'downtime'){
+    // Per equipment summary
+    const rows = [['Berendezés','AssetID','Helyszín','Típus','Gyártó','Hibaszám','Összes állásidő (perc)','Összes állásidő (óra)','Átl. állásidő/hiba (perc)','Lezárt hibák','Nyitott hibák','MTBF (nap)*','MTTR (óra)*']];
+    const sorted = [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
+    sorted.forEach(eq => {
+      const eqTks = tks.filter(t=>t.equipmentId===eq.id);
+      const total = eqTks.reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+      const closed = eqTks.filter(t=>t.status==='closed').length;
+      const open   = eqTks.filter(t=>t.status!=='closed').length;
+      const avgDt  = eqTks.length > 0 ? Math.round(total/eqTks.length) : 0;
+      // MTBF: operating days / failure count (simplified)
+      const fromDate = document.getElementById('rel-exp-from')?.value;
+      const toDate   = document.getElementById('rel-exp-to')?.value;
+      let periodDays = 365;
+      if(fromDate && toDate) periodDays = Math.max(1,Math.round((new Date(toDate)-new Date(fromDate))/(1000*86400)));
+      const mtbf = eqTks.length > 0 ? Math.round((periodDays - total/1440) / eqTks.length * 10)/10 : '';
+      const mttr = closed > 0 ? Math.round(total/60/closed*10)/10 : '';
+      rows.push([
+        eq.name, eq.assetId||'', eq.location||'', eq.type||'', eq.manufacturer||'',
+        eqTks.length, total, Math.round(total/60*10)/10, avgDt,
+        closed, open, mtbf, mttr
+      ]);
+    });
+    rows.push(['','','','','','','','','','','','* MTBF/MTTR közelítő értékek az adott időszakra','']);
+    _downloadXLS(_buildXLS(rows,'Állásidő'), `rel_allasido_${today}.xls`);
+
+  } else if(mode === 'pareto'){
+    // Failure type pareto
+    const ftCount={}, ftDown={};
+    tks.forEach(t=>{
+      const key = t.failureTypeName||'Ismeretlen';
+      ftCount[key]=(ftCount[key]||0)+1;
+      ftDown[key]=(ftDown[key]||0)+(t.downtimeMinutes||0);
+    });
+    const sorted1 = Object.entries(ftCount).sort((a,b)=>b[1]-a[1]);
+    const total1 = sorted1.reduce((s,x)=>s+x[1],0);
+    const sorted2 = Object.entries(ftDown).sort((a,b)=>b[1]-a[1]);
+    const total2 = sorted2.reduce((s,x)=>s+x[1],0);
+
+    const rows = [['Hibatípus','Hibakód','Kategória','Darabszám','Kum. db','Kum. %','Állásidő (perc)','Állásidő (óra)','Kum. állásidő (perc)','Kum. állásidő %','80/20 határ']];
+    let cumCnt=0, cumDt=0;
+    // Merge by failure type name
+    const allFtNames = [...new Set([...sorted1.map(x=>x[0]),...sorted2.map(x=>x[0])])];
+    allFtNames.sort((a,b)=>(ftCount[b]||0)-(ftCount[a]||0)).forEach(name => {
+      const ft = failureTypes.find(f=>f.name===name);
+      const cnt = ftCount[name]||0;
+      const dt  = ftDown[name]||0;
+      cumCnt += cnt; cumDt += dt;
+      const cumCntPct = total1>0 ? Math.round(cumCnt/total1*100) : 0;
+      const cumDtPct  = total2>0 ? Math.round(cumDt/total2*100)  : 0;
+      rows.push([
+        name, ft?.code||'', ft?.category||'',
+        cnt, cumCnt, cumCntPct,
+        dt, Math.round(dt/60*10)/10,
+        cumDt, cumDtPct,
+        cumCntPct<=80 ? '◀ TOP 80%' : ''
+      ]);
+    });
+    _downloadXLS(_buildXLS(rows,'Pareto'), `rel_pareto_${today}.xls`);
+
+  } else if(mode === 'monthly'){
+    // Monthly trend
+    const monthly = {};
+    tks.forEach(t => {
+      const m = (t.createdAt||'').slice(0,7);
+      if(!m) return;
+      if(!monthly[m]) monthly[m]={cnt:0,dt:0,closed:0};
+      monthly[m].cnt++;
+      monthly[m].dt += t.downtimeMinutes||0;
+      if(t.status==='closed') monthly[m].closed++;
+    });
+    const rows = [['Hónap','Hibaszám','Lezárt','Nyitott','Állásidő (perc)','Állásidő (óra)','Átl. állásidő/hiba (perc)']];
+    Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([m,d])=>{
+      rows.push([m, d.cnt, d.closed, d.cnt-d.closed, d.dt, Math.round(d.dt/60*10)/10, d.cnt>0?Math.round(d.dt/d.cnt):0]);
+    });
+    _downloadXLS(_buildXLS(rows,'Havi trend'), `rel_havi_trend_${today}.xls`);
+
+  } else if(mode === 'ca'){
+    const rows = [['CA szám','Cím','Leírás','Felelős','Határidő','Státusz','Kapcsolódó hibajegy','Létrehozva','Lezárva','Megjegyzés']];
+    [...correctiveActs].sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).forEach(ca=>{
+      const st = caStatus(ca);
+      const stLabel = {in_progress:'Folyamatban',overdue:'Lejárt!',closed:'Lezárt'}[st]||st;
+      rows.push([ca.caNumber||'',ca.title||'',ca.description||'',ca.responsibleName||'',ca.dueDate||'',stLabel,ca.ticketId||'',ca.createdAt||'',ca.closedAt||'',ca.notes||'']);
+    });
+    _downloadXLS(_buildXLS(rows,'Korrektív akciók'), `rel_ca_${today}.xls`);
+
+  } else if(mode === 'ca-overdue'){
+    const todayStr = rToday();
+    const soon = new Date(); soon.setDate(soon.getDate()+14);
+    const soonStr = soon.toISOString().split('T')[0];
+    const filtered = correctiveActs.filter(ca=>{
+      const st=caStatus(ca); return st==='overdue'||(st==='in_progress'&&ca.dueDate<=soonStr);
+    });
+    const rows = [['CA szám','Cím','Felelős','Határidő','Státusz','Késés (nap)','Kapcsolódó hibajegy']];
+    filtered.sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).forEach(ca=>{
+      const st=caStatus(ca);
+      const stLabel={in_progress:'Közelgő',overdue:'LEJÁRT'}[st]||st;
+      const delay = ca.dueDate ? Math.max(0,Math.round((new Date(todayStr)-new Date(ca.dueDate))/(1000*86400))) : '';
+      rows.push([ca.caNumber||'',ca.title||'',ca.responsibleName||'',ca.dueDate||'',stLabel,delay,ca.ticketId||'']);
+    });
+    _downloadXLS(_buildXLS(rows,'Lejárt CA-k'), `rel_ca_lejart_${today}.xls`);
+
+  } else if(mode === 'equipment'){
+    const rows = [['Megnevezés','AssetID','Típus','Gyártó','Sorozatszám','Helyszín','Telepítés','Hibaszám','Állásidő (óra)','Megjegyzés']];
+    [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu')).forEach(eq=>{
+      const eqTks=tks.filter(t=>t.equipmentId===eq.id);
+      const dt=eqTks.reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+      rows.push([eq.name,eq.assetId||'',eq.type||'',eq.manufacturer||'',eq.serialNumber||'',eq.location||'',eq.installedAt||'',eqTks.length,Math.round(dt/60*10)/10,eq.notes||'']);
+    });
+    _downloadXLS(_buildXLS(rows,'Berendezések'), `rel_berendezesek_${today}.xls`);
+
+  } else if(mode === 'ftypes'){
+    const rows = [['Hibakód','Kategória','Megnevezés','Leírás','Hibajegyek száma','Standard?']];
+    [...failureTypes].sort((a,b)=>a.code.localeCompare(b.code)).forEach(ft=>{
+      const cnt=rTickets.filter(t=>t.failureTypeId===ft.id).length;
+      rows.push([ft.code,ft.category||'',ft.name,ft.description||'',cnt,ft.isStandard?'Igen':'Egyedi']);
+    });
+    _downloadXLS(_buildXLS(rows,'Hibatípusok'), `rel_hibatipusok_${today}.xls`);
+  }
+}
+
+async function relExportFullReport(){
+  showToast('⏳ Teljes riport összeállítása...','info');
+  if(!window.JSZip){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    });
+  }
+  const zip = new JSZip();
+  const today = new Date().toISOString().slice(0,10);
+  const tks   = _relExpDateFilter(rTickets);
+  const from  = document.getElementById('rel-exp-from')?.value||'';
+  const to    = document.getElementById('rel-exp-to')?.value||'';
+
+  // Helper: build XLS string
+  function xls(rows,sheet){ return '\ufeff'+_buildXLS(rows,sheet); }
+
+  // 1. Hibajegyek
+  const tkRows=[['Jegyszám','Berendezés','AssetID','Hibatípus','Hibakód','Kategória','Súlyosság','Státusz','Leállás kezdete','Leállás vége','Állásidő (perc)','Állásidő (óra)','Gyökérok','Létrehozva','Lezárva']];
+  tks.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).forEach(t=>{
+    const eq=equipment.find(e=>e.id===t.equipmentId);
+    const ft=failureTypes.find(f=>f.id===t.failureTypeId);
+    const sevMap={critical:'Kritikus',high:'Magas',medium:'Közepes',low:'Alacsony'};
+    const stMap={open:'Nyitott',in_progress:'Folyamatban',closed:'Lezárt'};
+    tkRows.push([t.ticketNumber,t.equipmentName||'',eq?.assetId||'',t.failureTypeName||'',ft?.code||'',ft?.category||'',sevMap[t.severity]||'',stMap[t.status]||'',t.downtimeStart||'',t.downtimeEnd||'',t.downtimeMinutes||0,t.downtimeMinutes?Math.round(t.downtimeMinutes/60*10)/10:0,t.rootCause||'',t.createdAt||'',t.closedAt||'']);
+  });
+  zip.file('1_hibajegyek.xls', xls(tkRows,'Hibajegyek'));
+
+  // 2. Állásidő / berendezés
+  const dtRows=[['Berendezés','AssetID','Helyszín','Hibaszám','Állásidő (óra)','Lezárt','Nyitott']];
+  equipment.forEach(eq=>{
+    const et=tks.filter(t=>t.equipmentId===eq.id);
+    const dt=et.reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+    dtRows.push([eq.name,eq.assetId||'',eq.location||'',et.length,Math.round(dt/60*10)/10,et.filter(t=>t.status==='closed').length,et.filter(t=>t.status!=='closed').length]);
+  });
+  zip.file('2_allasido_osszesito.xls', xls(dtRows,'Állásidő'));
+
+  // 3. Pareto
+  const ftCount={},ftDown={};
+  tks.forEach(t=>{ const k=t.failureTypeName||'?'; ftCount[k]=(ftCount[k]||0)+1; ftDown[k]=(ftDown[k]||0)+(t.downtimeMinutes||0); });
+  const sorted1=Object.entries(ftCount).sort((a,b)=>b[1]-a[1]);
+  const total1=sorted1.reduce((s,x)=>s+x[1],0);
+  const paretoRows=[['Hibatípus','Hibakód','Darabszám','Kum. %','Állásidő (óra)','80/20']];
+  let cum=0;
+  sorted1.forEach(([name,cnt])=>{
+    const ft=failureTypes.find(f=>f.name===name);
+    const dt=ftDown[name]||0; cum+=cnt;
+    const pct=total1>0?Math.round(cum/total1*100):0;
+    paretoRows.push([name,ft?.code||'',cnt,pct,Math.round(dt/60*10)/10,pct<=80?'TOP 80%':'']);
+  });
+  zip.file('3_pareto.xls', xls(paretoRows,'Pareto'));
+
+  // 4. Havi trend
+  const monthly={};
+  tks.forEach(t=>{const m=(t.createdAt||'').slice(0,7);if(!m)return;if(!monthly[m])monthly[m]={cnt:0,dt:0};monthly[m].cnt++;monthly[m].dt+=t.downtimeMinutes||0;});
+  const mRows=[['Hónap','Hibaszám','Állásidő (perc)','Állásidő (óra)']];
+  Object.entries(monthly).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([m,d])=>mRows.push([m,d.cnt,d.dt,Math.round(d.dt/60*10)/10]));
+  zip.file('4_havi_trend.xls', xls(mRows,'Havi'));
+
+  // 5. CA-k
+  const caRows=[['CA szám','Cím','Felelős','Határidő','Státusz','Kapcsolódó jegy','Létrehozva','Lezárva']];
+  correctiveActs.sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).forEach(ca=>{
+    const st=caStatus(ca); const stLabel={in_progress:'Folyamatban',overdue:'Lejárt!',closed:'Lezárt'}[st]||st;
+    caRows.push([ca.caNumber||'',ca.title||'',ca.responsibleName||'',ca.dueDate||'',stLabel,ca.ticketId||'',ca.createdAt||'',ca.closedAt||'']);
+  });
+  zip.file('5_korrektiv_akciok.xls', xls(caRows,'CA-k'));
+
+  // 6. HTML összefoglaló
+  zip.file('0_osszefoglalo.html', _buildRelHtmlReport(tks, from, to));
+
+  const blob = await zip.generateAsync({type:'blob'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`reliability_riport_${today}.zip`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  showToast('✅ Teljes riport letöltve!','ok');
+  closeModal('relExportModal');
+}
+
+function _buildRelHtmlReport(tks, from, to){
+  const today = new Date().toLocaleString('hu-HU');
+  const openTk=tks.filter(t=>t.status!=='closed').length;
+  const closedTk=tks.filter(t=>t.status==='closed').length;
+  const totalDt=tks.reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+  const openCA=correctiveActs.filter(c=>caStatus(c)!=='closed').length;
+  const overdueCA=correctiveActs.filter(c=>caStatus(c)==='overdue').length;
+
+  // Top 5 berendezés
+  const eqCount={};
+  tks.forEach(t=>eqCount[t.equipmentName]=(eqCount[t.equipmentName]||0)+1);
+  const top5eq=Object.entries(eqCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  // Top 5 hibatípus
+  const ftCount={};
+  tks.forEach(t=>ftCount[t.failureTypeName]=(ftCount[t.failureTypeName]||0)+1);
+  const top5ft=Object.entries(ftCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  return `<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Reliability Riport – MiniGo</title>
+<style>body{font-family:Arial,sans-serif;padding:32px;max-width:1000px;margin:0 auto;color:#222;background:#fafafa;}
+h1{color:#e8a020;border-bottom:3px solid #e8a020;padding-bottom:10px;}
+h2{color:#2d7dd2;margin-top:28px;border-left:4px solid #2d7dd2;padding-left:10px;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0;}
+.stat{background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;text-align:center;}
+.stat-val{font-size:28px;font-weight:700;color:#e8a020;}
+.stat-label{font-size:11px;color:#888;margin-top:4px;}
+table{border-collapse:collapse;width:100%;margin-top:10px;}
+th,td{border:1px solid #ddd;padding:8px 12px;text-align:left;font-size:12px;}
+th{background:#f0f0f0;font-weight:600;}
+tr:nth-child(even){background:#fafafa;}
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:600;}
+.badge-open{background:#fff3cd;color:#e8a020;border:1px solid #e8a020;}
+.badge-closed{background:#d4edda;color:#27ae60;border:1px solid #27ae60;}
+.badge-overdue{background:#f8d7da;color:#e05252;border:1px solid #e05252;}
+footer{margin-top:40px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:12px;}
+</style></head><body>
+<h1>⚡ Reliability Riport – MiniGo</h1>
+<p style="color:#888;font-size:12px;">Generálva: ${today}${from||to?' · Időszak: '+(from||'?')+' – '+(to||'?'):' · Összes adat'}</p>
+
+<div class="stats">
+  <div class="stat"><div class="stat-val">${tks.length}</div><div class="stat-label">Összes hibajegy</div></div>
+  <div class="stat"><div class="stat-val" style="color:#e05252">${openTk}</div><div class="stat-label">Nyitott hibajegy</div></div>
+  <div class="stat"><div class="stat-val" style="color:#27ae60">${closedTk}</div><div class="stat-label">Lezárt hibajegy</div></div>
+  <div class="stat"><div class="stat-val">${Math.round(totalDt/60)}ó</div><div class="stat-label">Összes állásidő</div></div>
+</div>
+<div class="stats" style="grid-template-columns:repeat(2,1fr);">
+  <div class="stat"><div class="stat-val" style="color:${overdueCA>0?'#e05252':'#e8a020'}">${openCA}</div><div class="stat-label">Nyitott CA${overdueCA>0?' ('+overdueCA+' lejárt!)':''}</div></div>
+  <div class="stat"><div class="stat-val">${correctiveActs.filter(c=>caStatus(c)==='closed').length}</div><div class="stat-label">Lezárt CA</div></div>
+</div>
+
+<h2>🏆 Top 5 berendezés – hibaszám szerint</h2>
+<table><tr><th>#</th><th>Berendezés</th><th>Hibaszám</th><th>Állásidő (óra)</th></tr>
+${top5eq.map(([name,cnt],i)=>{
+  const dt=tks.filter(t=>t.equipmentName===name).reduce((s,t)=>s+(t.downtimeMinutes||0),0);
+  return `<tr><td>${i+1}</td><td>${name}</td><td>${cnt}</td><td>${Math.round(dt/60*10)/10}</td></tr>`;
+}).join('')}
+</table>
+
+<h2>📋 Top 5 hibatípus – előfordulás szerint</h2>
+<table><tr><th>#</th><th>Hibatípus</th><th>Előfordulás</th></tr>
+${top5ft.map(([name,cnt],i)=>`<tr><td>${i+1}</td><td>${name}</td><td>${cnt}</td></tr>`).join('')}
+</table>
+
+<h2>🔴 Nyitott hibajegyek</h2>
+<table><tr><th>Jegyszám</th><th>Berendezés</th><th>Hibatípus</th><th>Súlyosság</th><th>Leállás kezdete</th><th>Állásidő</th></tr>
+${tks.filter(t=>t.status!=='closed').slice(0,20).map(t=>{
+  const sevMap={critical:'Kritikus',high:'Magas',medium:'Közepes',low:'Alacsony'};
+  return `<tr><td>${t.ticketNumber}</td><td>${t.equipmentName||''}</td><td>${t.failureTypeName||''}</td><td>${sevMap[t.severity]||''}</td><td>${t.downtimeStart||''}</td><td>${fmtDowntime(t.downtimeMinutes)}</td></tr>`;
+}).join('')}
+</table>
+
+<h2>⚠️ Lejárt / közelgő korrektív akciók</h2>
+<table><tr><th>CA szám</th><th>Cím</th><th>Felelős</th><th>Határidő</th><th>Státusz</th></tr>
+${correctiveActs.filter(ca=>caStatus(ca)!=='closed').sort((a,b)=>(a.dueDate||'').localeCompare(b.dueDate||'')).slice(0,15).map(ca=>{
+  const st=caStatus(ca); const stLabel={in_progress:'Folyamatban',overdue:'LEJÁRT!'}[st]||st;
+  const cls=st==='overdue'?'badge-overdue':'badge-open';
+  return `<tr><td>${ca.caNumber||''}</td><td>${ca.title||''}</td><td>${ca.responsibleName||''}</td><td>${ca.dueDate||''}</td><td><span class="badge ${cls}">${stLabel}</span></td></tr>`;
+}).join('')}
+</table>
+
+<footer>MiniGo ERP · Reliability modul · ${today}</footer>
+</body></html>`;
+}
+
+Object.assign(window, { openRelExportModal, relExportXLS, relExportFullReport });
+
 // ── WINDOW EXPOSE ─────────────────────────────────────────────────────────────
 Object.assign(window,{
   openNewEquipmentModal,createEquipment,openEditEquipment,saveEquipment,deleteEquipment,
   openNewRespModal,createResponsible,openEditResponsible,saveResponsible,deleteResponsible,
   openNewFTypeModal,createFailureType,openEditFType,saveFailureType,deleteFType,
-  openNewTicketModal,rTicketFTypeChange,createTicket,advanceTicketDirect,
-  saveTicketDowntimeEnd,saveTicketRoot,
+  advanceTicketDirect, saveTicketDowntimeEnd, saveTicketRoot,
   openNewCAModal,openNewCAModalForTicket,createCA,openEditCA,saveCA,closeCA,deleteCA,
-  redrawPareto,
+  redrawPareto, renderFailureTypes, seedAndRefreshFTypes,
 });
 
 // ════════════════════════════════════════════════════════════════════
