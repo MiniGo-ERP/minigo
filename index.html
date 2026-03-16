@@ -5616,127 +5616,358 @@ function deleteCA(id){
 }
 
 // ── PARETO ELEMZÉS ───────────────────────────────────────────────────────────
-let paretoFilter={period:'all',eqId:''};
+// ── PARETO ELEMZÉS ───────────────────────────────────────────────────────────
+let paretoFilter = {
+  type:   '1',    // '1'|'2'|'3'|'4'
+  maxCols: 10,    // 1-20
+  from:   '',     // YYYY-MM-DD
+  to:     '',     // YYYY-MM-DD
+};
+
 function renderPareto(){
+  const today = rToday();
+  const d30   = new Date(); d30.setDate(d30.getDate()-30);
+  const d30s  = d30.toISOString().split('T')[0];
+
   return `
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Pareto elemzés</span>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
-      <select class="form-input" style="padding:5px 8px;font-size:11px;width:130px" onchange="paretoFilter.period=this.value;redrawPareto()">
-        <option value="30" ${paretoFilter.period==='30'?'selected':''}>Utolsó 30 nap</option>
-        <option value="90" ${paretoFilter.period==='90'?'selected':''}>Utolsó 90 nap</option>
-        <option value="365" ${paretoFilter.period==='365'?'selected':''}>Utolsó 1 év</option>
-        <option value="all" ${paretoFilter.period==='all'?'selected':''}>Összes</option>
-      </select>
-      <select class="form-input" style="padding:5px 8px;font-size:11px;width:160px" onchange="paretoFilter.eqId=this.value;redrawPareto()">
-        <option value="">Összes berendezés</option>
-        ${equipment.map(e=>`<option value="${e.id}" ${paretoFilter.eqId===e.id?'selected':''}>${e.name}</option>`).join('')}
-      </select>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:16px;">
+
+    <!-- Pareto típus választó -->
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">Pareto típusa</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      ${[
+        ['1','🔴 P1 – Hibajegy / Berendezés'],
+        ['2','⏱ P2 – Állásidő / Berendezés'],
+        ['3','📋 P3 – Hibajegy / Típus'],
+        ['4','🏢 P4 – Állásidő / Gyártó'],
+      ].map(([val,lbl])=>`
+        <div onclick="setParetoType('${val}')" id="ptab-${val}"
+          style="cursor:pointer;padding:7px 14px;border-radius:5px;font-family:var(--mono);font-size:11px;font-weight:600;
+                 border:1px solid ${paretoFilter.type===val?'var(--accent)':'var(--border)'};
+                 background:${paretoFilter.type===val?'rgba(232,160,32,0.12)':'var(--surface2)'};
+                 color:${paretoFilter.type===val?'var(--accent)':'var(--text-dim)'};
+                 transition:all 0.15s;">
+          ${lbl}
+        </div>`).join('')}
+    </div>
+
+    <!-- Szűrők -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Oszlopok száma (max 20)</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button onclick="setParetoMaxCols(Math.max(1,paretoFilter.maxCols-1))" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;">−</button>
+          <span id="pareto-cols-display" style="font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text-bright);min-width:28px;text-align:center;">${paretoFilter.maxCols}</span>
+          <button onclick="setParetoMaxCols(Math.min(20,paretoFilter.maxCols+1))" style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);width:26px;height:26px;cursor:pointer;font-size:14px;line-height:1;">+</button>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Időszak – tól</div>
+        <input type="date" class="form-input" id="pareto-from" value="${paretoFilter.from||d30s}" style="padding:5px 8px;font-size:11px;width:140px;" onchange="paretoFilter.from=this.value;redrawPareto()">
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Időszak – ig</div>
+        <input type="date" class="form-input" id="pareto-to" value="${paretoFilter.to||today}" style="padding:5px 8px;font-size:11px;width:140px;" onchange="paretoFilter.to=this.value;redrawPareto()">
+      </div>
+      <button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="paretoFilter.from='';paretoFilter.to='';document.getElementById('pareto-from').value='';document.getElementById('pareto-to').value='';redrawPareto()">✕ Szűrő törlése</button>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-    <div class="cf-chart">
-      <div class="panel-title">Pareto 1 – Hibák darabszáma</div>
-      <canvas id="pareto1Canvas" height="280"></canvas>
-    </div>
-    <div class="cf-chart">
-      <div class="panel-title">Pareto 2 – Állásidő (óra)</div>
-      <canvas id="pareto2Canvas" height="280"></canvas>
-    </div>
+
+  <!-- Canvas -->
+  <div class="cf-chart" style="padding:20px 16px 10px;">
+    <div id="pareto-title" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;"></div>
+    <canvas id="pareto1Canvas" style="width:100%;display:block;"></canvas>
+    <div id="pareto-legend" style="margin-top:12px;font-size:11px;color:var(--text-dim);display:flex;gap:16px;flex-wrap:wrap;"></div>
   </div>`;
 }
+
+function setParetoType(t){
+  paretoFilter.type = t;
+  redrawPareto();
+}
+
+function setParetoMaxCols(n){
+  paretoFilter.maxCols = n;
+  const el = document.getElementById('pareto-cols-display');
+  if(el) el.textContent = n;
+  redrawPareto();
+}
+
 function getFilteredTickets(){
-  let tks=[...rTickets];
-  if(paretoFilter.period!=='all'){
-    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-parseInt(paretoFilter.period));
-    const cutStr=cutoff.toISOString().split('T')[0];
-    tks=tks.filter(t=>t.createdAt>=cutStr);
-  }
-  if(paretoFilter.eqId) tks=tks.filter(t=>t.equipmentId===paretoFilter.eqId);
+  let tks = [...rTickets];
+  const from = paretoFilter.from || (document.getElementById('pareto-from')?.value || '');
+  const to   = paretoFilter.to   || (document.getElementById('pareto-to')?.value   || '');
+  if(from) tks = tks.filter(t => (t.createdAt||'') >= from);
+  if(to)   tks = tks.filter(t => (t.createdAt||'') <= to);
   return tks;
 }
-function drawParetoChart(canvasId, labels, values, yLabel, color){
-  const canvas=document.getElementById(canvasId);
-  if(!canvas) return;
-  const ctx=canvas.getContext('2d');
-  const W=canvas.offsetWidth||canvas.parentElement.offsetWidth-36||400;
-  canvas.width=W; canvas.height=280;
-  const pad={l:50,r:50,t:20,b:80};
-  const chartW=W-pad.l-pad.r, chartH=280-pad.t-pad.b;
-  ctx.clearRect(0,0,W,280);
 
-  if(labels.length===0){
-    ctx.fillStyle='#6b7a96'; ctx.font='13px IBM Plex Mono,monospace';
-    ctx.textAlign='center'; ctx.fillText('Nincs adat',W/2,150); return;
+function drawPareto(){
+  const tks   = getFilteredTickets();
+  const type  = paretoFilter.type;
+  const max   = paretoFilter.maxCols || 10;
+  const titleEl  = document.getElementById('pareto-title');
+  const legendEl = document.getElementById('pareto-legend');
+
+  const TITLES = {
+    '1': 'P1 – Hibajegyek száma / Berendezés',
+    '2': 'P2 – Állásidő (óra) / Berendezés',
+    '3': 'P3 – Hibajegyek száma / Berendezés típus',
+    '4': 'P4 – Állásidő (óra) / Gyártó',
+  };
+  if(titleEl) titleEl.textContent = TITLES[type] || '';
+
+  // Build aggregated data
+  // Each entry: { key, label, mainVal, subVal, subLabel }
+  let entries = [];
+
+  if(type === '1'){
+    // Hibajegy szám / berendezés (assetId + name)
+    const map = {};
+    tks.forEach(t=>{
+      const eq = equipment.find(e=>e.id===t.equipmentId);
+      const key = t.equipmentId||'?';
+      if(!map[key]) map[key] = { label: eq?.assetId || eq?.name || t.equipmentName || key, cnt:0, dt:0 };
+      map[key].cnt++;
+      map[key].dt += t.downtimeMinutes||0;
+    });
+    entries = Object.values(map).map(v=>({
+      label:    v.label,
+      mainVal:  v.cnt,
+      subVal:   Math.round(v.dt/60*10)/10,
+      subLabel: 'óra állásidő',
+    })).sort((a,b)=>b.mainVal-a.mainVal).slice(0,max);
+
+  } else if(type === '2'){
+    // Állásidő (óra) / berendezés
+    const map = {};
+    tks.forEach(t=>{
+      const eq = equipment.find(e=>e.id===t.equipmentId);
+      const key = t.equipmentId||'?';
+      if(!map[key]) map[key] = { label: eq?.assetId || eq?.name || t.equipmentName || key, cnt:0, dt:0 };
+      map[key].cnt++;
+      map[key].dt += t.downtimeMinutes||0;
+    });
+    entries = Object.values(map).map(v=>({
+      label:    v.label,
+      mainVal:  Math.round(v.dt/60*10)/10,
+      subVal:   v.cnt,
+      subLabel: 'db hibajegy',
+    })).sort((a,b)=>b.mainVal-a.mainVal).slice(0,max);
+
+  } else if(type === '3'){
+    // Hibajegy szám / berendezés típus
+    const map = {};
+    tks.forEach(t=>{
+      const eq = equipment.find(e=>e.id===t.equipmentId);
+      const key = eq?.type || 'Ismeretlen típus';
+      if(!map[key]) map[key] = { cnt:0, dt:0 };
+      map[key].cnt++;
+      map[key].dt += t.downtimeMinutes||0;
+    });
+    entries = Object.entries(map).map(([k,v])=>({
+      label:    k,
+      mainVal:  v.cnt,
+      subVal:   Math.round(v.dt/60*10)/10,
+      subLabel: 'óra állásidő',
+    })).sort((a,b)=>b.mainVal-a.mainVal).slice(0,max);
+
+  } else if(type === '4'){
+    // Állásidő (óra) / gyártó
+    const map = {};
+    tks.forEach(t=>{
+      const eq = equipment.find(e=>e.id===t.equipmentId);
+      const key = eq?.manufacturer || 'Ismeretlen gyártó';
+      if(!map[key]) map[key] = { cnt:0, dt:0 };
+      map[key].cnt++;
+      map[key].dt += t.downtimeMinutes||0;
+    });
+    entries = Object.entries(map).map(([k,v])=>({
+      label:    k,
+      mainVal:  Math.round(v.dt/60*10)/10,
+      subVal:   v.cnt,
+      subLabel: 'db hibajegy',
+    })).sort((a,b)=>b.mainVal-a.mainVal).slice(0,max);
   }
 
-  const total=values.reduce((s,v)=>s+v,0);
-  const maxV=Math.max(...values,1);
-  const barW=Math.max(10,chartW/labels.length-8);
+  const mainLabel = (type==='2'||type==='4') ? 'óra' : 'db';
+  const barColor  = (type==='2'||type==='4') ? '#2d7dd2' : '#e8a020';
 
-  // Cumulative
-  let cumPct=[];
-  let cum=0;
-  values.forEach(v=>{ cum+=v; cumPct.push(cum/total*100); });
+  drawParetoChart('pareto1Canvas', entries, mainLabel, barColor);
 
-  // Bars
-  labels.forEach((lbl,i)=>{
-    const x=pad.l+i*(chartW/labels.length)+4;
-    const barH=values[i]/maxV*chartH;
-    const y=pad.t+chartH-barH;
-    const is80=cumPct[i]<=80||(i>0&&cumPct[i-1]<80);
-    ctx.fillStyle=is80?color:color+'88';
-    ctx.fillRect(x,y,barW,barH);
-    // Label
-    ctx.fillStyle='#6b7a96'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
-    const maxLbl=Math.floor(chartW/labels.length/6);
-    const shortLbl=lbl.length>maxLbl?lbl.slice(0,maxLbl)+'…':lbl;
-    ctx.save(); ctx.translate(x+barW/2,pad.t+chartH+6); ctx.rotate(-Math.PI/4);
-    ctx.fillText(shortLbl,0,0); ctx.restore();
-    // Value
-    ctx.fillStyle='#d4dbe8'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='center';
-    ctx.fillText(values[i],x+barW/2,y-3);
+  // Legend
+  if(legendEl){
+    const total = entries.reduce((s,e)=>s+e.mainVal,0);
+    legendEl.innerHTML = `
+      <span style="display:inline-flex;align-items:center;gap:5px;">
+        <span style="width:12px;height:12px;background:${barColor};border-radius:2px;display:inline-block;"></span>
+        ${mainLabel==='db'?'Hibajegyek száma':'Állásidő (óra)'}
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:5px;">
+        <span style="width:24px;height:2px;background:#e05252;display:inline-block;border-top:2px dashed #e05252;"></span>
+        Kumulatív %
+      </span>
+      <span style="color:var(--text-dim)">Összesen: ${total} ${mainLabel} · ${tks.length} hibajegy · ${entries.length} elem megjelenítve</span>`;
+  }
+}
+
+function drawParetoChart(canvasId, entries, yLabel, color){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const W = (canvas.parentElement?.offsetWidth || 700) - 32;
+  const H = 380;
+  canvas.width  = W;
+  canvas.height = H;
+  canvas.style.height = H + 'px';
+
+  const pad = { l:60, r:60, t:40, b:100 };
+  const chartW = W - pad.l - pad.r;
+  const chartH = H - pad.t - pad.b;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if(!entries || entries.length === 0){
+    ctx.fillStyle = '#6b7a96';
+    ctx.font = '13px IBM Plex Mono,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Nincs adat a kiválasztott időszakban', W/2, H/2);
+    return;
+  }
+
+  const values  = entries.map(e => e.mainVal);
+  const total   = values.reduce((s,v) => s+v, 0);
+  const maxV    = Math.max(...values, 0.001);
+  const n       = entries.length;
+  const barStep = chartW / n;
+  const barW    = Math.max(6, barStep * 0.65);
+
+  // Cumulative %
+  const cumPct = [];
+  let cum = 0;
+  values.forEach(v => { cum += v; cumPct.push(total > 0 ? cum/total*100 : 0); });
+
+  // --- Grid lines (horizontal, left scale) ---
+  const gridLevels = [0, 25, 50, 75, 100];
+  gridLevels.forEach(pct => {
+    const y = pad.t + chartH - (pct/100) * chartH;
+    ctx.strokeStyle = pct === 0 ? '#3a4560' : '#2a3347';
+    ctx.lineWidth = pct === 0 ? 1 : 0.5;
+    ctx.setLineDash(pct === 0 ? [] : [3,4]);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + chartW, y); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Left axis: real value
+    const val = maxV * pct / 100;
+    const valStr = val === 0 ? '0' : val >= 100 ? String(Math.round(val)) : val.toFixed(val < 10 ? 1 : 0);
+    ctx.fillStyle = '#6b7a96'; ctx.font = '9px IBM Plex Mono,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(valStr, pad.l - 6, y + 3);
+
+    // Right axis: %
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#e0525288';
+    ctx.fillText(pct + '%', pad.l + chartW + 6, y + 3);
   });
 
-  // Cumulative line
-  ctx.strokeStyle='#e05252'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  // --- Y axis label ---
+  ctx.save();
+  ctx.translate(14, pad.t + chartH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillStyle = '#6b7a96'; ctx.font = '9px IBM Plex Mono,monospace'; ctx.textAlign = 'center';
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
+
+  // --- Bars ---
+  entries.forEach((entry, i) => {
+    const cx   = pad.l + i * barStep + barStep/2;   // center x of slot
+    const bx   = cx - barW/2;
+    const barH = (values[i] / maxV) * chartH;
+    const by   = pad.t + chartH - barH;
+    const is80 = cumPct[i] <= 80.5 || (i > 0 && cumPct[i-1] < 80);
+
+    // Bar shadow
+    ctx.fillStyle = is80 ? color + '33' : '#ffffff08';
+    ctx.fillRect(bx+2, by+2, barW, barH);
+
+    // Bar fill
+    ctx.fillStyle = is80 ? color : color + '55';
+    ctx.fillRect(bx, by, barW, barH);
+
+    // Bar border
+    ctx.strokeStyle = is80 ? color : color + '88';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(bx, by, barW, barH);
+
+    // --- Main value label (above bar) ---
+    const mainStr = entry.mainVal % 1 === 0 ? String(entry.mainVal) : entry.mainVal.toFixed(1);
+    ctx.fillStyle = '#f0f4ff';
+    ctx.font = 'bold 10px IBM Plex Mono,monospace';
+    ctx.textAlign = 'center';
+    const labelY = Math.max(pad.t + 14, by - 18);
+    ctx.fillText(mainStr, cx, labelY);
+
+    // --- Sub value label (secondary metric, smaller, just above bar or inside if room) ---
+    const subStr = `(${entry.subVal}${entry.subLabel ? ' '+entry.subLabel : ''})`;
+    ctx.fillStyle = '#7a8aaa';
+    ctx.font = '8px IBM Plex Mono,monospace';
+    ctx.textAlign = 'center';
+    const subY = Math.max(pad.t + 25, by - 6);
+    if(barH > 16) ctx.fillText(subStr, cx, subY);
+
+    // --- X axis label (rotated -45°) ---
+    ctx.save();
+    ctx.translate(cx, pad.t + chartH + 10);
+    ctx.rotate(-Math.PI / 4);
+    ctx.fillStyle = '#9bacc8';
+    ctx.font = '9px IBM Plex Mono,monospace';
+    ctx.textAlign = 'right';
+    const maxChars = Math.max(6, Math.floor(barStep / 5.5));
+    const lbl = entry.label.length > maxChars ? entry.label.slice(0, maxChars) + '…' : entry.label;
+    ctx.fillText(lbl, 0, 0);
+    ctx.restore();
+  });
+
+  // --- Cumulative line ---
+  ctx.strokeStyle = '#e05252'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
   ctx.beginPath();
-  labels.forEach((lbl,i)=>{
-    const x=pad.l+i*(chartW/labels.length)+barW/2+4;
-    const y=pad.t+chartH-(cumPct[i]/100)*chartH;
-    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  entries.forEach((_, i) => {
+    const x = pad.l + i * barStep + barStep/2;
+    const y = pad.t + chartH - (cumPct[i]/100) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  ctx.stroke();
+  ctx.stroke(); ctx.setLineDash([]);
 
-  // 80% line
-  ctx.strokeStyle='#e05252'; ctx.lineWidth=1; ctx.setLineDash([6,4]);
-  const y80=pad.t+chartH-0.8*chartH;
-  ctx.beginPath(); ctx.moveTo(pad.l,y80); ctx.lineTo(W-pad.r,y80); ctx.stroke();
+  // Dots + % labels on cumulative line
+  entries.forEach((_, i) => {
+    const x = pad.l + i * barStep + barStep/2;
+    const y = pad.t + chartH - (cumPct[i]/100) * chartH;
+    ctx.fillStyle = '#e05252';
+    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ff8080'; ctx.font = '8px IBM Plex Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText(Math.round(cumPct[i]) + '%', x, y - 8);
+  });
+
+  // --- 80% reference line ---
+  const y80 = pad.t + chartH * 0.2;
+  ctx.strokeStyle = '#e05252aa'; ctx.lineWidth = 1.2; ctx.setLineDash([8, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, y80); ctx.lineTo(pad.l + chartW, y80); ctx.stroke();
   ctx.setLineDash([]);
-  ctx.fillStyle='#e05252'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='left';
-  ctx.fillText('80%',W-pad.r+2,y80+3);
+  ctx.fillStyle = '#e05252'; ctx.font = 'bold 9px IBM Plex Mono,monospace'; ctx.textAlign = 'left';
+  ctx.fillText('80%', pad.l + chartW + 6, y80 + 3);
 
-  // Y axis
-  ctx.strokeStyle='#2a3347'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(pad.l,pad.t); ctx.lineTo(pad.l,pad.t+chartH); ctx.stroke();
-  ctx.fillStyle='#6b7a96'; ctx.font='9px IBM Plex Mono,monospace'; ctx.textAlign='right';
-  ctx.fillText(yLabel,pad.l-5,pad.t-5);
+  // --- Axes ---
+  ctx.strokeStyle = '#3a4560'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + chartH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t + chartH); ctx.lineTo(pad.l + chartW, pad.t + chartH); ctx.stroke();
 }
-function drawPareto(){
-  const tks=getFilteredTickets();
-  // Pareto 1: count
-  const cnt={};
-  tks.forEach(t=>{ cnt[t.failureTypeName||'?']=(cnt[t.failureTypeName||'?']||0)+1; });
-  const sorted1=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
-  drawParetoChart('pareto1Canvas',sorted1.map(x=>x[0]),sorted1.map(x=>x[1]),'db','#e8a020');
-  // Pareto 2: downtime
-  const dt={};
-  tks.forEach(t=>{ dt[t.failureTypeName||'?']=(dt[t.failureTypeName||'?']||0)+(t.downtimeMinutes||0); });
-  const sorted2=Object.entries(dt).sort((a,b)=>b[1]-a[1]);
-  drawParetoChart('pareto2Canvas',sorted2.map(x=>x[0]),sorted2.map(x=>Math.round(x[1]/60*10)/10),'óra','#2d7dd2');
-}
-function redrawPareto(){ mc().innerHTML=renderPareto(); setTimeout(drawPareto,100); }
 
+function redrawPareto(){
+  mc().innerHTML = renderPareto();
+  setTimeout(drawPareto, 80);
+}
+
+Object.assign(window, { setParetoType, setParetoMaxCols, redrawPareto, drawPareto, drawParetoChart, getFilteredTickets });
 // ── RELIABILITY EXPORT ────────────────────────────────────────────────────────
 
 function openRelExportModal(){
