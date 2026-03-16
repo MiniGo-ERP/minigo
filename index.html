@@ -757,6 +757,11 @@
         <div class="sidebar-item" onclick="openNewEquipmentModal()"><span>🏭</span> Új berendezés</div>
         <div class="sidebar-item" onclick="openEqCatalogModal()"><span>🗂️</span> Eszköz katalógus</div>
         <div class="sidebar-item" onclick="openRelExportModal()"><span>📊</span> Export / Riport</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-item" id="nav-r-trash" onclick="showView('r-trash')" style="color:var(--danger);opacity:0.7;">
+          <span>🗑️</span> Kuka
+          <span id="trash-count-badge-rel" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;"></span>
+        </div>
       </div>
     </div>
   </div>
@@ -1783,20 +1788,22 @@ async function loadFromFirestore() {
     }
     // Load Reliability collections (silently, empty if first run)
     try {
-      const [eqSnap, ftSnap, respSnap, tkSnap, caSnap, trashSnap] = await Promise.all([
+      const [eqSnap, ftSnap, respSnap, tkSnap, caSnap, trashSnap, relTrashSnap] = await Promise.all([
         getDocs(collection(db,'equipment')),
         getDocs(collection(db,'failureTypes')),
         getDocs(collection(db,'responsibles')),
         getDocs(collection(db,'tickets')),
         getDocs(collection(db,'correctiveActions')),
         getDocs(collection(db,'trash')),
+        getDocs(collection(db,'rel_trash')),
       ]);
       if(!eqSnap.empty)    equipment      = eqSnap.docs.map(d=>d.data());
       if(!ftSnap.empty)    failureTypes   = ftSnap.docs.map(d=>d.data());
       if(!respSnap.empty)  responsibles   = respSnap.docs.map(d=>d.data());
       if(!tkSnap.empty)    rTickets       = tkSnap.docs.map(d=>d.data());
       if(!caSnap.empty)    correctiveActs = caSnap.docs.map(d=>d.data());
-      if(!trashSnap.empty) trashBin       = trashSnap.docs.map(d=>d.data());
+      if(!trashSnap.empty)    trashBin    = trashSnap.docs.map(d=>d.data());
+      if(!relTrashSnap.empty) relTrashBin = relTrashSnap.docs.map(d=>d.data());
       // Seed standard failure types if none exist
       if(ftSnap.empty && window.seedStandardFailureTypes) window.seedStandardFailureTypes();
       // Auto-purge items older than 5 days
@@ -1848,8 +1855,16 @@ async function fbSaveTrashItem(item) {
 async function fbDeleteTrashItem(id) {
   await fbDeleteDocFS(doc(db, 'trash', id));
 }
-window.fbSaveTrashItem = fbSaveTrashItem;
-window.fbDeleteTrashItem = fbDeleteTrashItem;
+async function fbSaveRelTrashItem(item) {
+  await setDoc(doc(db, 'rel_trash', item.id), item);
+}
+async function fbDeleteRelTrashItem(id) {
+  await fbDeleteDocFS(doc(db, 'rel_trash', id));
+}
+window.fbSaveTrashItem    = fbSaveTrashItem;
+window.fbDeleteTrashItem  = fbDeleteTrashItem;
+window.fbSaveRelTrashItem   = fbSaveRelTrashItem;
+window.fbDeleteRelTrashItem = fbDeleteRelTrashItem;
 
 // Indítást az onAuthStateChanged kezeli
 
@@ -1866,7 +1881,8 @@ const STATUSES = [
   {label:'Projekt kész',             short:'Kész ✓',          cls:'s-9'},
 ];
 const FOLDERS = ['Árajánlat','TIG','Képek','VBF','EGYÉB'];
-let trashBin = []; // {id, type:'project'|'client'|'supplier', data, deletedAt, label}
+let trashBin    = []; // Projektkövetés kuka: project|client|supplier
+let relTrashBin = []; // Reliability kuka: equipment|responsible|failuretype|ticket|ca
 
 let clients = [
   {id:'parkl',  name:'Parkl',  contact:'Horváth Péter', email:'info@parkl.net', counter:34},
@@ -3408,11 +3424,18 @@ function deleteProject(pid){
 }
 
 // ── KUKA LOGIKA ──────────────────────────────────────────────────────────────
+const REL_TRASH_TYPES = new Set(['equipment','responsible','failuretype','ticket','ca']);
+
 function moveToTrash(type, id, data, label){
   const trashId = 'trash_' + id + '_' + Date.now();
   const item = { id: trashId, type, originalId: id, data: JSON.parse(JSON.stringify(data)), deletedAt: new Date().toISOString(), label };
-  trashBin.push(item);
-  if(window.fbSaveTrashItem) window.fbSaveTrashItem(item).catch(e=>console.error(e));
+  if(REL_TRASH_TYPES.has(type)){
+    relTrashBin.push(item);
+    if(window.fbSaveRelTrashItem) window.fbSaveRelTrashItem(item).catch(e=>console.error(e));
+  } else {
+    trashBin.push(item);
+    if(window.fbSaveTrashItem) window.fbSaveTrashItem(item).catch(e=>console.error(e));
+  }
   updateTrashBadge();
   showToast(`🗑️ "${label}" a kukába került (5 nap múlva törlődik)`);
 }
@@ -3420,27 +3443,33 @@ function moveToTrash(type, id, data, label){
 function purgeOldTrash(){
   const now = Date.now();
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
-  const expired = trashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
-  expired.forEach(i => {
-    if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e));
-  });
+  // Proj trash
+  const expiredProj = trashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
+  expiredProj.forEach(i => { if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e)); });
   trashBin = trashBin.filter(i => (now - new Date(i.deletedAt).getTime()) <= FIVE_DAYS);
+  // Rel trash
+  const expiredRel = relTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
+  expiredRel.forEach(i => { if(window.fbDeleteRelTrashItem) window.fbDeleteRelTrashItem(i.id).catch(e=>console.error(e)); });
+  relTrashBin = relTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) <= FIVE_DAYS);
   updateTrashBadge();
 }
 
 function updateTrashBadge(){
-  const badge = document.getElementById('trash-count-badge');
-  if(!badge) return;
-  if(trashBin.length > 0){
-    badge.style.display = '';
-    badge.textContent = trashBin.length;
-  } else {
-    badge.style.display = 'none';
-  }
+  const projCount = trashBin.length;
+  const relCount  = relTrashBin.length;
+  // Proj sidebar badge
+  const b1 = document.getElementById('trash-count-badge');
+  if(b1){ b1.style.display = projCount > 0 ? '' : 'none'; b1.textContent = projCount; }
+  // Rel sidebar badge
+  const b2 = document.getElementById('trash-count-badge-rel');
+  if(b2){ b2.style.display = relCount > 0 ? '' : 'none'; b2.textContent = relCount; }
 }
 
 function restoreFromTrash(trashId){
-  const item = trashBin.find(i=>i.id===trashId);
+  // Find in either bin
+  let item = trashBin.find(i=>i.id===trashId);
+  let isRel = false;
+  if(!item){ item = relTrashBin.find(i=>i.id===trashId); isRel = true; }
   if(!item) return;
   if(item.type === 'project'){
     if(projects.find(p=>p.id===item.originalId)){
@@ -3460,12 +3489,48 @@ function restoreFromTrash(trashId){
     }
     suppliers.push(item.data);
     if(window.fbSaveSupplier) window.fbSaveSupplier(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'equipment'){
+    if(equipment.find(e=>e.id===item.originalId)){
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" berendezés már létezik.`); return;
+    }
+    equipment.push(item.data);
+    if(window.fbSaveEquipment) window.fbSaveEquipment(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'responsible'){
+    if(responsibles.find(r=>r.id===item.originalId)){
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" felelős már létezik.`); return;
+    }
+    responsibles.push(item.data);
+    if(window.fbSaveResponsible) window.fbSaveResponsible(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'failuretype'){
+    if(failureTypes.find(f=>f.id===item.originalId)){
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" hibatípus már létezik.`); return;
+    }
+    failureTypes.push(item.data);
+    if(window.fbSaveFailureType) window.fbSaveFailureType(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'ticket'){
+    if(rTickets.find(t=>t.id===item.originalId)){
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" hibajegy már létezik.`); return;
+    }
+    rTickets.push(item.data);
+    if(window.fbSaveTicket) window.fbSaveTicket(item.data).catch(e=>console.error(e));
+  } else if(item.type === 'ca'){
+    if(correctiveActs.find(a=>a.id===item.originalId)){
+      showToast(`⚠️ Nem lehet visszaállítani: "${item.label}" CA már létezik.`); return;
+    }
+    correctiveActs.push(item.data);
+    if(window.fbSaveCA) window.fbSaveCA(item.data).catch(e=>console.error(e));
   }
-  trashBin = trashBin.filter(i=>i.id!==trashId);
-  if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(trashId).catch(e=>console.error(e));
+  // Remove from correct bin
+  if(isRel){
+    relTrashBin = relTrashBin.filter(i=>i.id!==trashId);
+    if(window.fbDeleteRelTrashItem) window.fbDeleteRelTrashItem(trashId).catch(e=>console.error(e));
+  } else {
+    trashBin = trashBin.filter(i=>i.id!==trashId);
+    if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(trashId).catch(e=>console.error(e));
+  }
   updateTrashBadge();
   showToast(`✓ "${item.label}" visszaállítva`);
-  showView('trash');
+  showView(isRel ? 'r-trash' : 'trash');
 }
 
 function permanentDeleteFromTrash(trashId){
@@ -3479,57 +3544,105 @@ function permanentDeleteFromTrash(trashId){
   });
 }
 
+function permanentDeleteFromRelTrash(trashId){
+  const item = relTrashBin.find(i=>i.id===trashId);
+  if(!item) return;
+  openDeleteConfirm(`Véglegesen törlöd: "${item.label}"? Ez nem vonható vissza!`, ()=>{
+    relTrashBin = relTrashBin.filter(i=>i.id!==trashId);
+    if(window.fbDeleteRelTrashItem) window.fbDeleteRelTrashItem(trashId).catch(e=>console.error(e));
+    updateTrashBadge();
+    showView('r-trash');
+  });
+}
+
 function emptyTrash(){
   if(trashBin.length === 0) return;
-  openDeleteConfirm(`Véglegesen törlöd a kuka összes elemét (${trashBin.length} db)? Ez nem vonható vissza!`, ()=>{
-    trashBin.forEach(i => {
-      if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e));
-    });
+  openDeleteConfirm(`Véglegesen törlöd a Projektkövetés kukájának összes elemét (${trashBin.length} db)? Ez nem vonható vissza!`, ()=>{
+    trashBin.forEach(i => { if(window.fbDeleteTrashItem) window.fbDeleteTrashItem(i.id).catch(e=>console.error(e)); });
     trashBin = [];
     updateTrashBadge();
     showView('trash');
   });
 }
 
-function renderTrash(){
-  const TYPE_LABEL = {project:'📁 Projekt', client:'🏢 Megrendelő', supplier:'🔧 Szállító'};
-  const TYPE_COLOR = {project:'var(--accent)', client:'var(--accent2)', supplier:'#9b59b6'};
+function emptyRelTrash(){
+  if(relTrashBin.length === 0) return;
+  openDeleteConfirm(`Véglegesen törlöd a Reliability kukájának összes elemét (${relTrashBin.length} db)? Ez nem vonható vissza!`, ()=>{
+    relTrashBin.forEach(i => { if(window.fbDeleteRelTrashItem) window.fbDeleteRelTrashItem(i.id).catch(e=>console.error(e)); });
+    relTrashBin = [];
+    updateTrashBadge();
+    showView('r-trash');
+  });
+}
+
+function _renderTrashRows(items, deleteCallback, emptyCallback, title, emptyLabel){
+  const TYPE_LABEL = {
+    project:'📁 Projekt', client:'🏢 Megrendelő', supplier:'🔧 Szállító',
+    equipment:'🏭 Berendezés', responsible:'👤 Felelős',
+    failuretype:'📋 Hibatípus', ticket:'🔴 Hibajegy', ca:'✅ Korrektív akció'
+  };
+  const TYPE_COLOR = {
+    project:'var(--accent)', client:'var(--accent2)', supplier:'#9b59b6',
+    equipment:'#9b59b6', responsible:'#2d7dd2',
+    failuretype:'#e8a020', ticket:'var(--danger)', ca:'var(--success)'
+  };
   const now = Date.now();
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
-
-  const sorted = [...trashBin].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));
+  const sorted = [...items].sort((a,b)=>new Date(b.deletedAt)-new Date(a.deletedAt));
 
   const rows = sorted.map(item => {
     const age = now - new Date(item.deletedAt).getTime();
     const remaining = Math.max(0, Math.ceil((FIVE_DAYS - age) / (24*60*60*1000)));
-    const deletedDate = item.deletedAt.split('T')[0];
+    const deletedDate = new Date(item.deletedAt).toLocaleDateString('hu-HU');
     const urgentStyle = remaining <= 1 ? 'border-color:var(--danger);' : '';
+    const color = TYPE_COLOR[item.type] || 'var(--text-dim)';
+    const label = TYPE_LABEL[item.type] || item.type;
     return `
     <div style="background:var(--surface);border:1px solid var(--border);${urgentStyle}border-radius:6px;padding:13px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px;">
-      <div style="font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLOR[item.type]};color:${TYPE_COLOR[item.type]};background:${TYPE_COLOR[item.type]}22;white-space:nowrap;">${TYPE_LABEL[item.type]||item.type}</div>
+      <div style="font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid ${color};color:${color};background:${color}22;white-space:nowrap;">${label}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">${item.label}</div>
+        <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.label}</div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Törölve: ${deletedDate}</div>
       </div>
       <div style="font-family:var(--mono);font-size:11px;color:${remaining<=1?'var(--danger)':'var(--text-dim)'};white-space:nowrap;">${remaining} nap</div>
       <button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="restoreFromTrash('${item.id}')">↩ Visszaállít</button>
-      <button class="icon-btn del" title="Végleges törlés" onclick="permanentDeleteFromTrash('${item.id}')">🗑️</button>
+      <button class="icon-btn del" title="Végleges törlés" onclick="${deleteCallback}('${item.id}')">🗑️</button>
     </div>`;
   }).join('');
 
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">🗑️ Kuka – ${trashBin.length} elem</span>
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">🗑️ ${title} – ${items.length} elem</span>
     <div style="margin-left:auto;">
-      ${trashBin.length>0?`<button class="btn btn-danger" style="padding:5px 12px;font-size:10px;" onclick="emptyTrash()">🗑️ Kuka ürítése</button>`:''}
+      ${items.length>0?`<button class="btn btn-danger" style="padding:5px 12px;font-size:10px;" onclick="${emptyCallback}()">🗑️ Kuka ürítése</button>`:''}
     </div>
   </div>
-  ${trashBin.length===0
-    ? `<div class="empty-state"><div class="em-icon">🗑️</div><div class="em-title">A kuka üres</div><div class="em-desc" style="font-size:11px;color:var(--text-dim);margin-top:6px;">A törölt elemek itt jelennek meg, és 5 nap után automatikusan törlődnek.</div></div>`
+  ${items.length===0
+    ? `<div class="empty-state"><div class="em-icon">🗑️</div><div class="em-title">A kuka üres</div><div style="font-size:11px;color:var(--text-dim);margin-top:6px;">${emptyLabel}</div></div>`
     : `<div style="background:rgba(224,82,82,0.07);border:1px solid rgba(224,82,82,0.2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);">
         ⏳ Az elemek <strong style="color:var(--text)">5 nap</strong> után automatikusan véglegesen törlődnek. Addig visszaállíthatók.
        </div>${rows}`
   }`;
+}
+
+function renderTrash(){
+  return _renderTrashRows(
+    trashBin,
+    'permanentDeleteFromTrash',
+    'emptyTrash',
+    'Projektkövetés – Kuka',
+    'A törölt projektek, megrendelők és szállítók itt jelennek meg.'
+  );
+}
+
+function renderRelTrash(){
+  return _renderTrashRows(
+    relTrashBin,
+    'permanentDeleteFromRelTrash',
+    'emptyRelTrash',
+    'Reliability – Kuka',
+    'A törölt berendezések, felelősök, hibatípusok, hibajegyek és CA-k itt jelennek meg.'
+  );
 }
 
 // ── KUKA NÉZET REGISZTRÁCIÓ ───────────────────────────────────────────────────
@@ -3760,14 +3873,14 @@ function caStatusBadge(ca){
 const _origShowView = showView;
 function _reliabilityShowView(v,x){
   // Reliability views handled separately
-  const rViews=['r-dashboard','r-tickets','r-ticket-detail','r-pareto','r-ca','r-equipment','r-resp','r-ftypes','r-ftcats'];
+  const rViews=['r-dashboard','r-tickets','r-ticket-detail','r-pareto','r-ca','r-equipment','r-resp','r-ftypes','r-ftcats','r-trash'];
   if(rViews.includes(v)){
     currentView=v; closeSidebar();
     document.getElementById('searchInput').value='';
     document.querySelectorAll('.sidebar-item').forEach(e=>e.classList.remove('active'));
     const navMap={'r-dashboard':'nav-r-dashboard','r-tickets':'nav-r-tickets','r-ticket-detail':'nav-r-tickets',
       'r-pareto':'nav-r-pareto','r-ca':'nav-r-ca','r-equipment':'nav-r-equipment',
-      'r-resp':'nav-r-resp','r-ftypes':'nav-r-ftypes','r-ftcats':'nav-r-ftcats'};
+      'r-resp':'nav-r-resp','r-ftypes':'nav-r-ftypes','r-ftcats':'nav-r-ftcats','r-trash':'nav-r-trash'};
     const navEl=document.getElementById(navMap[v]); if(navEl) navEl.classList.add('active');
     const renders={
       'r-dashboard':  ()=>{ bc([{l:'⚡ Reliability'},{l:'Áttekintés'}]); mc().innerHTML=renderRDashboard(); },
@@ -3779,6 +3892,7 @@ function _reliabilityShowView(v,x){
       'r-resp':       ()=>{ bc([{l:'⚡ Reliability'},{l:'Felelősök'}]); mc().innerHTML=renderResponsibles(); },
       'r-ftypes':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibatípusok'}]); mc().innerHTML=renderFailureTypes(); },
       'r-ftcats':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibatípus Kategóriák'}]); mc().innerHTML=renderFTCategories(); },
+      'r-trash':      ()=>{ bc([{l:'⚡ Reliability'},{l:'Kuka'}]); mc().innerHTML=renderRelTrash(); updateTrashBadge(); },
     };
     if(renders[v]) renders[v]();
     return;
@@ -4080,7 +4194,8 @@ function saveEquipment(){
 function deleteEquipment(id){
   const e=equipment.find(x=>x.id===id);
   if(rTickets.some(t=>t.equipmentId===id)){ showToast('⚠️ Nem törölhető: hibajegyek tartoznak hozzá.','warn'); return; }
-  openDeleteConfirm(`Törlöd a "${e.name}" berendezést?`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${e.name}" berendezés. 5 nap után automatikusan törlődik.`, ()=>{
+    moveToTrash('equipment', id, e, e.name);
     equipment=equipment.filter(x=>x.id!==id);
     if(window.fbDelEquipment) window.fbDelEquipment(id).catch(err=>console.error(err));
     showView('r-equipment');
@@ -4292,7 +4407,7 @@ function deleteResponsible(id){
     : '';
 
   openDeleteConfirm(
-    `Törlöd a "${fullName}" felelőst?${anonymusWarning}`,
+    `Kukába kerül: "${fullName}" felelős. 5 nap után automatikusan törlődik.${anonymusWarning}`,
     ()=>{
       // Set ANONYMUS on closed CAs
       if(closedCAs.length > 0){
@@ -4302,6 +4417,7 @@ function deleteResponsible(id){
         });
         showToast(`ℹ️ ${closedCAs.length} lezárt CA-ban a felelős neve "[TÖROLT]"-ra módosult.`,'info');
       }
+      moveToTrash('responsible', id, r, fullName);
       responsibles = responsibles.filter(x=>x.id!==id);
       if(window.fbDelResponsible) window.fbDelResponsible(id).catch(err=>console.error(err));
       showView('r-resp');
@@ -4704,10 +4820,11 @@ function deleteFType(id){
     showToast('⚠️ Nem törölhető: hibajegyek tartoznak hozzá. Előbb zárd le vagy töröld a hibajegyeket.','warn');
     return;
   }
-  openDeleteConfirm(`Törlöd a "${ft.code} – ${ft.name}" hibatípust?${ft.isStandard?' (Standard típus!)':''}`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${ft.code} – ${ft.name}" hibatípus.${ft.isStandard?' (Standard típus!)':''} 5 nap után törlődik.`, ()=>{
+    moveToTrash('failuretype', id, ft, `${ft.code} – ${ft.name}`);
     failureTypes = failureTypes.filter(x=>x.id!==id);
     if(window.fbDelFailureType) window.fbDelFailureType(id).catch(err=>console.error(err));
-    showToast(`🗑️ Hibatípus törölve: ${ft.code}`, 'warn');
+    showToast(`🗑️ Hibatípus kukába került: ${ft.code}`, 'warn');
     showView('r-ftypes');
   });
 }
@@ -5472,12 +5589,12 @@ function deleteTicketWithCheck(tid){
   const caInfo = linkedCAs.length > 0
     ? `\n\nℹ️ ${linkedCAs.length} korrektív akció van ehhez rendelve (${linkedCAs.map(c=>c.caNumber).join(', ')}) – ezek megmaradnak, de elveszítik a hibajegy-hivatkozást.`
     : '';
-  openDeleteConfirm(`Törlöd a "${t.ticketNumber}" hibajegyet?${caInfo}`, ()=>{
-    // Orphan any linked CAs (clear ticketId)
+  openDeleteConfirm(`Kukába kerül: "${t.ticketNumber}" hibajegy. 5 nap után törlődik.${caInfo}`, ()=>{
     linkedCAs.forEach(ca=>{
       ca.ticketId='';
       if(window.fbSaveCA) window.fbSaveCA(ca).catch(e=>console.error(e));
     });
+    moveToTrash('ticket', tid, t, t.ticketNumber + (t.shortDesc ? ` – ${t.shortDesc}` : ''));
     rTickets=rTickets.filter(x=>x.id!==tid);
     if(window.fbDelTicket) window.fbDelTicket(tid).catch(e=>console.error(e));
     showView('r-tickets');
@@ -5490,7 +5607,8 @@ function deleteCA(id){
   const ticketInfo = linkedTicket
     ? `\n\nℹ️ Ez a CA a ${linkedTicket.ticketNumber} hibajegyhez volt rendelve – a hibajegy megmarad.`
     : '';
-  openDeleteConfirm(`Törlöd a "${ca.caNumber}" korrektív akciót?${ticketInfo}`, ()=>{
+  openDeleteConfirm(`Kukába kerül: "${ca.caNumber}" korrektív akció. 5 nap után törlődik.${ticketInfo}`, ()=>{
+    moveToTrash('ca', id, ca, `${ca.caNumber} – ${ca.title}`);
     correctiveActs=correctiveActs.filter(x=>x.id!==id);
     if(window.fbDelCA) window.fbDelCA(id).catch(err=>console.error(err));
     showView('r-ca');
@@ -5985,6 +6103,7 @@ Object.assign(window,{
   advanceTicketDirect, saveTicketDowntimeEnd, saveTicketRoot,
   openNewCAModal,openNewCAModalForTicket,createCA,openEditCA,saveCA,closeCA,deleteCA,deleteTicketWithCheck,
   redrawPareto, renderFailureTypes, seedAndRefreshFTypes,
+  renderRelTrash, permanentDeleteFromRelTrash, emptyRelTrash,
 });
 
 // ════════════════════════════════════════════════════════════════════
@@ -6101,7 +6220,8 @@ const _fns = { nav,bc,mc,doSearch,filterByStatus,filterByType,applyDashboardFilt
   openEditSupplierModal:openEditSupplier,
   saveEditSupplier,confirmDeleteSupplier:deleteSupplier,
   saveEditProject,saveEditIncomeInvoice,saveEditCostInvoice,
-  restoreFromTrash,permanentDeleteFromTrash,emptyTrash
+  restoreFromTrash,permanentDeleteFromTrash,emptyTrash,
+  permanentDeleteFromRelTrash,emptyRelTrash,renderRelTrash,
 };
 Object.assign(window, _fns);
 
