@@ -276,6 +276,22 @@
   .rel-exp-opt { cursor:pointer; padding:11px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; transition:all 0.15s; display:flex; gap:12px; align-items:flex-start; }
   .rel-exp-opt:hover { border-color:var(--accent); background:rgba(232,160,32,0.06); }
 
+  /* COMBO INPUT (Megnevezés / Típus / Gyártó) */
+  .eq-combo-wrap { position:relative; }
+  .eq-combo-input { width:100%; }
+  .eq-combo-dropdown { position:absolute; left:0; right:0; top:calc(100% + 3px); background:var(--surface); border:1px solid var(--accent); border-radius:5px; z-index:150; box-shadow:0 8px 24px rgba(0,0,0,0.4); max-height:200px; overflow-y:auto; }
+  .eq-combo-item { padding:8px 12px; font-size:12px; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:8px; transition:background 0.1s; }
+  .eq-combo-item:hover { background:rgba(232,160,32,0.1); color:var(--accent); }
+  .eq-combo-item .eq-combo-icon { font-size:10px; color:var(--text-dim); }
+  .eq-combo-empty { padding:8px 12px; font-size:11px; color:var(--text-dim); font-family:var(--mono); }
+
+  /* CATALOG ADMIN LIST */
+  .cat-list-item { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--surface); border:1px solid var(--border); border-radius:4px; }
+  .cat-list-item:hover { border-color:var(--border); background:var(--surface2); }
+  .cat-item-text { flex:1; font-size:12px; color:var(--text); font-family:var(--mono); }
+  .cat-item-edit { display:none; flex:1; }
+  .cat-list-item:hover .cat-item-edit-btn { opacity:1; }
+
   /* EDIT / DELETE */
   .row-actions { display:flex; gap:5px; margin-left:auto; opacity:0; transition:opacity 0.15s; flex-shrink:0; }
   .project-card:hover .row-actions,
@@ -738,6 +754,7 @@
         <div class="sidebar-item" onclick="openNewTicketModal()"><span>🔴</span> Új hibajegy</div>
         <div class="sidebar-item" onclick="openNewCAModal()"><span>✅</span> Új CA</div>
         <div class="sidebar-item" onclick="openNewEquipmentModal()"><span>🏭</span> Új berendezés</div>
+        <div class="sidebar-item" onclick="openEqCatalogModal()"><span>🗂️</span> Eszköz katalógus</div>
         <div class="sidebar-item" onclick="openRelExportModal()"><span>📊</span> Export / Riport</div>
       </div>
     </div>
@@ -1152,13 +1169,40 @@
 
 <!-- MODAL: ÚJ BERENDEZÉS -->
 <div class="modal-overlay" id="newEquipmentModal">
-  <div class="modal">
+  <div class="modal" style="width:540px;">
     <div class="modal-title">🏭 Új Berendezés</div>
-    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="neq-name" placeholder="pl. ABB Terra 54 #3"></div>
-    <div class="form-row-2">
-      <div><label class="form-label">Típus</label><input class="form-input" id="neq-type" placeholder="pl. DC töltő"></div>
-      <div><label class="form-label">Gyártó</label><input class="form-input" id="neq-manufacturer" placeholder="pl. ABB"></div>
+
+    <!-- Megnevezés combo -->
+    <div class="form-row">
+      <label class="form-label">Megnevezés * <span style="color:var(--text-dim);font-weight:400;">– válassz listából vagy írj be egyedit</span></label>
+      <div class="eq-combo-wrap" id="neq-name-wrap">
+        <input class="form-input eq-combo-input" id="neq-name" placeholder="pl. ABB Terra 54 #3" autocomplete="off"
+          oninput="eqComboFilter('neq-name','eqNames')" onfocus="eqComboOpen('neq-name','eqNames')" onblur="eqComboBlur('neq-name')">
+        <div class="eq-combo-dropdown" id="neq-name-dd" style="display:none;"></div>
+      </div>
     </div>
+
+    <div class="form-row-2">
+      <!-- Típus combo -->
+      <div>
+        <label class="form-label">Típus <span style="color:var(--text-dim);font-weight:400;">– listából vagy egyedi</span></label>
+        <div class="eq-combo-wrap">
+          <input class="form-input eq-combo-input" id="neq-type" placeholder="pl. DC töltő" autocomplete="off"
+            oninput="eqComboFilter('neq-type','eqTypes')" onfocus="eqComboOpen('neq-type','eqTypes')" onblur="eqComboBlur('neq-type')">
+          <div class="eq-combo-dropdown" id="neq-type-dd" style="display:none;"></div>
+        </div>
+      </div>
+      <!-- Gyártó combo -->
+      <div>
+        <label class="form-label">Gyártó <span style="color:var(--text-dim);font-weight:400;">– listából vagy egyedi</span></label>
+        <div class="eq-combo-wrap">
+          <input class="form-input eq-combo-input" id="neq-manufacturer" placeholder="pl. ABB" autocomplete="off"
+            oninput="eqComboFilter('neq-manufacturer','eqManufacturers')" onfocus="eqComboOpen('neq-manufacturer','eqManufacturers')" onblur="eqComboBlur('neq-manufacturer')">
+          <div class="eq-combo-dropdown" id="neq-manufacturer-dd" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="form-row-2">
       <div><label class="form-label">Sorozatszám</label><input class="form-input" id="neq-serial" placeholder="pl. SN-123456"></div>
       <div><label class="form-label">Belső azonosító</label><input class="form-input" id="neq-assetId" placeholder="pl. EQ-0042"></div>
@@ -1166,6 +1210,10 @@
     <div class="form-row"><label class="form-label">Helyszín</label><input class="form-input" id="neq-location" placeholder="pl. Haller Parkoló – B szint"></div>
     <div class="form-row"><label class="form-label">Telepítés dátuma</label><input class="form-input" type="date" id="neq-installedAt"></div>
     <div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="neq-notes" placeholder="opcionális"></div>
+
+    <div style="padding:8px 0 4px;font-size:11px;color:var(--text-dim);">
+      💡 <span style="cursor:pointer;color:var(--accent2);text-decoration:underline;" onclick="openEqCatalogModal()">Katalógus kezelése</span> – Megnevezés / Típus / Gyártó listák szerkesztése
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('newEquipmentModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createEquipment()">✓ Hozzáadás</button>
@@ -1175,12 +1223,34 @@
 
 <!-- MODAL: BERENDEZÉS SZERKESZTÉS -->
 <div class="modal-overlay" id="editEquipmentModal">
-  <div class="modal">
+  <div class="modal" style="width:540px;">
     <div class="modal-title">✏️ Berendezés szerkesztése</div>
-    <div class="form-row"><label class="form-label">Megnevezés *</label><input class="form-input" id="eeq-name"></div>
+
+    <div class="form-row">
+      <label class="form-label">Megnevezés *</label>
+      <div class="eq-combo-wrap">
+        <input class="form-input eq-combo-input" id="eeq-name" autocomplete="off"
+          oninput="eqComboFilter('eeq-name','eqNames')" onfocus="eqComboOpen('eeq-name','eqNames')" onblur="eqComboBlur('eeq-name')">
+        <div class="eq-combo-dropdown" id="eeq-name-dd" style="display:none;"></div>
+      </div>
+    </div>
     <div class="form-row-2">
-      <div><label class="form-label">Típus</label><input class="form-input" id="eeq-type"></div>
-      <div><label class="form-label">Gyártó</label><input class="form-input" id="eeq-manufacturer"></div>
+      <div>
+        <label class="form-label">Típus</label>
+        <div class="eq-combo-wrap">
+          <input class="form-input eq-combo-input" id="eeq-type" autocomplete="off"
+            oninput="eqComboFilter('eeq-type','eqTypes')" onfocus="eqComboOpen('eeq-type','eqTypes')" onblur="eqComboBlur('eeq-type')">
+          <div class="eq-combo-dropdown" id="eeq-type-dd" style="display:none;"></div>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Gyártó</label>
+        <div class="eq-combo-wrap">
+          <input class="form-input eq-combo-input" id="eeq-manufacturer" autocomplete="off"
+            oninput="eqComboFilter('eeq-manufacturer','eqManufacturers')" onfocus="eqComboOpen('eeq-manufacturer','eqManufacturers')" onblur="eqComboBlur('eeq-manufacturer')">
+          <div class="eq-combo-dropdown" id="eeq-manufacturer-dd" style="display:none;"></div>
+        </div>
+      </div>
     </div>
     <div class="form-row-2">
       <div><label class="form-label">Sorozatszám</label><input class="form-input" id="eeq-serial"></div>
@@ -1192,6 +1262,49 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('editEquipmentModal')">Mégse</button>
       <button class="btn btn-primary" onclick="saveEquipment()">✓ Mentés</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ESZKÖZ KATALÓGUS ADMIN -->
+<div class="modal-overlay" id="eqCatalogModal">
+  <div class="modal" style="width:620px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-title">🗂️ Berendezés Katalógus – Admin</div>
+    <div style="font-size:11px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">
+      Az itt felvett elemek az Új / Szerkesztés modalban ajánlatként jelennek meg Megnevezés, Típus és Gyártó mezőknél. Bármikor bővíthetők, módosíthatók, törölhetők.
+    </div>
+
+    <!-- Tab sáv -->
+    <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+      <div id="cat-tab-names" onclick="switchCatTab('names')" style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;background:var(--accent);color:#0f1117;transition:all 0.15s;">🏷️ MEGNEVEZÉS</div>
+      <div id="cat-tab-types" onclick="switchCatTab('types')" style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text-dim);transition:all 0.15s;">⚙️ TÍPUS</div>
+      <div id="cat-tab-mfr"   onclick="switchCatTab('mfr')"   style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text-dim);transition:all 0.15s;">🏢 GYÁRTÓ</div>
+    </div>
+
+    <div id="cat-pane-names">
+      <div id="cat-list-names" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:260px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="cat-input-names" placeholder="Új megnevezés hozzáadása..." style="flex:1;" onkeydown="if(event.key==='Enter')addCatItem('names')">
+        <button class="btn btn-primary" onclick="addCatItem('names')">➕ Hozzáad</button>
+      </div>
+    </div>
+    <div id="cat-pane-types" style="display:none;">
+      <div id="cat-list-types" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:260px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="cat-input-types" placeholder="Új típus hozzáadása..." style="flex:1;" onkeydown="if(event.key==='Enter')addCatItem('types')">
+        <button class="btn btn-primary" onclick="addCatItem('types')">➕ Hozzáad</button>
+      </div>
+    </div>
+    <div id="cat-pane-mfr" style="display:none;">
+      <div id="cat-list-mfr" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;max-height:260px;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="cat-input-mfr" placeholder="Új gyártó hozzáadása..." style="flex:1;" onkeydown="if(event.key==='Enter')addCatItem('mfr')">
+        <button class="btn btn-primary" onclick="addCatItem('mfr')">➕ Hozzáad</button>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeModal('eqCatalogModal')">✕ Bezárás</button>
     </div>
   </div>
 </div>
@@ -3723,11 +3836,118 @@ function renderRDashboard(){
   </div>`;
 }
 
+// ── BERENDEZÉS KATALÓGUS ─────────────────────────────────────────────────────
+// Default catalog lists (localStorage-based, admin editable)
+const EQ_CATALOG_KEY = 'minigo_eq_catalog';
+
+function loadEqCatalog(){
+  try {
+    const saved = localStorage.getItem(EQ_CATALOG_KEY);
+    if(saved) return JSON.parse(saved);
+  } catch(e){}
+  // Default lists
+  return {
+    eqNames: [
+      'ABB Terra 54 AC', 'ABB Terra 54 DC', 'ABB Terra 184', 'ABB Terra 360',
+      'Kempower S-series', 'Kempower T-series',
+      'Webasto Pure', 'Webasto Next', 'Webasto Unite',
+      'Wallbox Pulsar Plus', 'Wallbox Commander 2',
+      'Schneider EVlink Pro AC', 'Schneider EVlink Smart',
+      'Siemens VersiCharge', 'Siemens Sicharge D',
+      'ChargePoint CT4000', 'ChargePoint CPF25',
+      'KEBA P30', 'KEBA KC-P20',
+      'Tritium Veefil-RT 50', 'Tritium Veefil-PK 175',
+      'Delta AC Max', 'Delta DC Wallbox',
+      'BTC Power 60kW DC', 'BTC Power 120kW DC',
+    ],
+    eqTypes: [
+      'AC töltő – 1 fázis', 'AC töltő – 3 fázis',
+      'DC töltő – gyorstöltő', 'DC töltő – ultra gyors',
+      'AC/DC kombinált', 'Fali töltő (wallbox)',
+      'Oszlopos töltőállomás', 'Padló töltő',
+      'Mozgó töltő', 'Otthoni töltő',
+    ],
+    eqManufacturers: [
+      'ABB', 'Kempower', 'Webasto', 'Wallbox', 'Schneider Electric',
+      'Siemens', 'ChargePoint', 'KEBA', 'Tritium', 'Delta Electronics',
+      'BTC Power', 'EVBox', 'Alfen', 'Eaton', 'Phoenix Contact',
+      'Mennekes', 'Hager', 'Legrand', 'Voltie', 'Zaptec',
+    ],
+  };
+}
+
+function saveEqCatalog(cat){
+  try { localStorage.setItem(EQ_CATALOG_KEY, JSON.stringify(cat)); } catch(e){ console.warn(e); }
+}
+
+let _eqCatalog = loadEqCatalog();
+// expose shortcuts
+function get_eqNames()         { return _eqCatalog.eqNames; }
+function get_eqTypes()         { return _eqCatalog.eqTypes; }
+function get_eqManufacturers() { return _eqCatalog.eqManufacturers; }
+
+// ── COMBO INPUT LOGIC ─────────────────────────────────────────────────────────
+const _comboListMap = {
+  eqNames:         ()=> _eqCatalog.eqNames,
+  eqTypes:         ()=> _eqCatalog.eqTypes,
+  eqManufacturers: ()=> _eqCatalog.eqManufacturers,
+};
+
+function _getComboDD(inputId){
+  return document.getElementById(inputId + '-dd');
+}
+
+function eqComboOpen(inputId, listKey){
+  eqComboFilter(inputId, listKey);
+}
+
+function eqComboFilter(inputId, listKey){
+  const input = document.getElementById(inputId);
+  const dd    = _getComboDD(inputId);
+  if(!input || !dd) return;
+  const q = input.value.trim().toLowerCase();
+  const items = (_comboListMap[listKey] ? _comboListMap[listKey]() : [])
+    .filter(v => !q || v.toLowerCase().includes(q))
+    .sort((a,b) => a.localeCompare(b,'hu'));
+
+  if(items.length === 0){
+    dd.innerHTML = `<div class="eq-combo-empty">Nincs találat – írj be egyedi értéket</div>`;
+  } else {
+    dd.innerHTML = items.map(v => {
+      const safe = v.replace(/</g,'&lt;');
+      const bold = q ? v.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<b>$1</b>') : v;
+      return `<div class="eq-combo-item" onmousedown="eqComboSelect('${inputId}','${safe}')">${bold}</div>`;
+    }).join('');
+  }
+  dd.style.display = 'block';
+}
+
+function eqComboSelect(inputId, value){
+  const input = document.getElementById(inputId);
+  if(input) input.value = value;
+  const dd = _getComboDD(inputId);
+  if(dd) dd.style.display = 'none';
+}
+
+function eqComboBlur(inputId){
+  // Small delay so mousedown on item fires first
+  setTimeout(() => {
+    const dd = _getComboDD(inputId);
+    if(dd) dd.style.display = 'none';
+  }, 180);
+}
+
 // ── BERENDEZÉSEK ─────────────────────────────────────────────────────────────
 function renderEquipment(){
   const sorted=[...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
   return `
-  <div class="panel-title">Berendezések (${sorted.length})</div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim)">Berendezések (${sorted.length})</span>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="openEqCatalogModal()">🗂️ Katalógus</button>
+      <button class="btn btn-primary" onclick="openNewEquipmentModal()">➕ Új berendezés</button>
+    </div>
+  </div>
   <div class="grid-2">
     ${sorted.map(e=>{
       const cnt=rTickets.filter(t=>t.equipmentId===e.id).length;
@@ -3754,14 +3974,21 @@ function renderEquipment(){
 }
 
 function openNewEquipmentModal(){
-  ['neq-name','neq-type','neq-manufacturer','neq-serial','neq-assetId','neq-location','neq-notes'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('neq-installedAt').value='';
+  ['neq-name','neq-type','neq-manufacturer','neq-serial','neq-assetId','neq-location','neq-notes'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const d=document.getElementById('neq-installedAt'); if(d) d.value='';
+  // Close any open dropdowns
+  ['neq-name-dd','neq-type-dd','neq-manufacturer-dd'].forEach(id=>{
+    const dd=document.getElementById(id); if(dd) dd.style.display='none';
+  });
   openModal('newEquipmentModal');
 }
+
 function createEquipment(){
   const name=document.getElementById('neq-name').value.trim();
-  if(!name){ alert('Add meg a berendezés nevét!'); return; }
-  const e={id:rUUID(),name,
+  if(!name){ showToast('⚠️ Add meg a berendezés nevét!','warn'); return; }
+  const e={id:rUUID(), name,
     type:document.getElementById('neq-type').value.trim(),
     manufacturer:document.getElementById('neq-manufacturer').value.trim(),
     serialNumber:document.getElementById('neq-serial').value.trim(),
@@ -3772,8 +3999,21 @@ function createEquipment(){
     createdAt:rToday()};
   equipment.push(e);
   if(window.fbSaveEquipment) window.fbSaveEquipment(e).catch(err=>console.error(err));
-  closeModal('newEquipmentModal'); showView('r-equipment');
+  // Auto-add new values to catalog
+  _autoCatalogAdd('eqNames', name);
+  _autoCatalogAdd('eqTypes', e.type);
+  _autoCatalogAdd('eqManufacturers', e.manufacturer);
+  closeModal('newEquipmentModal');
+  showToast(`✅ Berendezés felvéve: ${name}`, 'ok');
+  showView('r-equipment');
 }
+
+function _autoCatalogAdd(listKey, value){
+  if(!value) return;
+  const list = _eqCatalog[listKey];
+  if(!list.includes(value)){ list.push(value); saveEqCatalog(_eqCatalog); }
+}
+
 function openEditEquipment(id){
   editingEqId=id;
   const e=equipment.find(x=>x.id===id);
@@ -3785,33 +4025,160 @@ function openEditEquipment(id){
   document.getElementById('eeq-location').value=e.location||'';
   document.getElementById('eeq-installedAt').value=e.installedAt||'';
   document.getElementById('eeq-notes').value=e.notes||'';
+  ['eeq-name-dd','eeq-type-dd','eeq-manufacturer-dd'].forEach(id=>{
+    const dd=document.getElementById(id); if(dd) dd.style.display='none';
+  });
   openModal('editEquipmentModal');
 }
+
 function saveEquipment(){
   const name=document.getElementById('eeq-name').value.trim();
-  if(!name){ alert('Add meg a berendezés nevét!'); return; }
+  if(!name){ showToast('⚠️ Add meg a berendezés nevét!','warn'); return; }
   const e=equipment.find(x=>x.id===editingEqId);
-  e.name=name; e.type=document.getElementById('eeq-type').value.trim();
+  e.name=name;
+  e.type=document.getElementById('eeq-type').value.trim();
   e.manufacturer=document.getElementById('eeq-manufacturer').value.trim();
   e.serialNumber=document.getElementById('eeq-serial').value.trim();
   e.assetId=document.getElementById('eeq-assetId').value.trim();
   e.location=document.getElementById('eeq-location').value.trim();
   e.installedAt=document.getElementById('eeq-installedAt').value;
   e.notes=document.getElementById('eeq-notes').value.trim();
+  // Auto-add to catalog
+  _autoCatalogAdd('eqNames', name);
+  _autoCatalogAdd('eqTypes', e.type);
+  _autoCatalogAdd('eqManufacturers', e.manufacturer);
   // Update denormalized name in tickets
   rTickets.filter(t=>t.equipmentId===e.id).forEach(t=>{ t.equipmentName=e.name; if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err)); });
   if(window.fbSaveEquipment) window.fbSaveEquipment(e).catch(err=>console.error(err));
-  closeModal('editEquipmentModal'); showView('r-equipment');
+  closeModal('editEquipmentModal');
+  showToast(`✅ Berendezés mentve: ${name}`, 'ok');
+  showView('r-equipment');
 }
+
 function deleteEquipment(id){
   const e=equipment.find(x=>x.id===id);
-  if(rTickets.some(t=>t.equipmentId===id)){ alert('Nem törölhető: berendezéshez tartoznak hibajegyek.'); return; }
+  if(rTickets.some(t=>t.equipmentId===id)){ showToast('⚠️ Nem törölhető: hibajegyek tartoznak hozzá.','warn'); return; }
   openDeleteConfirm(`Törlöd a "${e.name}" berendezést?`, ()=>{
     equipment=equipment.filter(x=>x.id!==id);
     if(window.fbDelEquipment) window.fbDelEquipment(id).catch(err=>console.error(err));
     showView('r-equipment');
   });
 }
+
+// ── KATALÓGUS ADMIN MODAL ─────────────────────────────────────────────────────
+let _activeCatTab = 'names';
+const _catTabMap = {
+  names: {listKey:'eqNames',       pane:'cat-pane-names', tab:'cat-tab-names', input:'cat-input-names', list:'cat-list-names'},
+  types: {listKey:'eqTypes',       pane:'cat-pane-types', tab:'cat-tab-types', input:'cat-input-types', list:'cat-list-types'},
+  mfr:   {listKey:'eqManufacturers',pane:'cat-pane-mfr',  tab:'cat-tab-mfr',   input:'cat-input-mfr',   list:'cat-list-mfr'},
+};
+
+function openEqCatalogModal(){
+  _activeCatTab = 'names';
+  switchCatTab('names');
+  openModal('eqCatalogModal');
+}
+
+function switchCatTab(tab){
+  _activeCatTab = tab;
+  Object.entries(_catTabMap).forEach(([key, cfg])=>{
+    const tabEl  = document.getElementById(cfg.tab);
+    const paneEl = document.getElementById(cfg.pane);
+    const isActive = key === tab;
+    if(tabEl)  { tabEl.style.background = isActive ? 'var(--accent)' : 'var(--surface2)'; tabEl.style.color = isActive ? '#0f1117' : 'var(--text-dim)'; }
+    if(paneEl) paneEl.style.display = isActive ? 'block' : 'none';
+  });
+  renderCatList(tab);
+}
+
+function renderCatList(tab){
+  const cfg = _catTabMap[tab];
+  const listEl = document.getElementById(cfg.list);
+  if(!listEl) return;
+  const items = [...(_eqCatalog[cfg.listKey]||[])].sort((a,b)=>a.localeCompare(b,'hu'));
+  if(items.length === 0){
+    listEl.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:8px;">Nincs elem a listában.</div>`;
+    return;
+  }
+  listEl.innerHTML = items.map((item, i) => {
+    const safeItem = item.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<div class="cat-list-item" id="cat-item-${tab}-${i}">
+      <span class="cat-item-text" id="cat-text-${tab}-${i}">${item}</span>
+      <input class="form-input cat-item-edit" id="cat-edit-${tab}-${i}" value="${item.replace(/"/g,'&quot;')}" style="display:none;padding:4px 8px;font-size:12px;"
+        onkeydown="if(event.key==='Enter')saveCatItem('${tab}',${i});if(event.key==='Escape')cancelCatEdit('${tab}',${i})">
+      <button class="icon-btn edit" style="opacity:0.5;flex-shrink:0;" title="Szerkesztés"
+        onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5"
+        onclick="startCatEdit('${tab}',${i})">✏️</button>
+      <button class="icon-btn del" style="opacity:0.5;flex-shrink:0;" title="Törlés"
+        onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5"
+        onclick="deleteCatItem('${tab}','${safeItem}')">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function addCatItem(tab){
+  const cfg = _catTabMap[tab];
+  const input = document.getElementById(cfg.input);
+  const val = input.value.trim();
+  if(!val){ showToast('⚠️ Írj be egy értéket!','warn'); return; }
+  const list = _eqCatalog[cfg.listKey];
+  if(list.some(x=>x.toLowerCase()===val.toLowerCase())){
+    showToast('⚠️ Ez már szerepel a listában!','warn'); return;
+  }
+  list.push(val);
+  saveEqCatalog(_eqCatalog);
+  input.value = '';
+  renderCatList(tab);
+  showToast(`✅ Hozzáadva: ${val}`, 'ok');
+}
+
+function startCatEdit(tab, idx){
+  const cfg = _catTabMap[tab];
+  const items = [...(_eqCatalog[cfg.listKey]||[])].sort((a,b)=>a.localeCompare(b,'hu'));
+  const textEl = document.getElementById(`cat-text-${tab}-${idx}`);
+  const editEl = document.getElementById(`cat-edit-${tab}-${idx}`);
+  if(!textEl||!editEl) return;
+  textEl.style.display = 'none';
+  editEl.style.display = 'block';
+  editEl.focus(); editEl.select();
+}
+
+function cancelCatEdit(tab, idx){
+  const textEl = document.getElementById(`cat-text-${tab}-${idx}`);
+  const editEl = document.getElementById(`cat-edit-${tab}-${idx}`);
+  if(textEl) textEl.style.display = '';
+  if(editEl) editEl.style.display = 'none';
+}
+
+function saveCatItem(tab, idx){
+  const cfg = _catTabMap[tab];
+  const editEl = document.getElementById(`cat-edit-${tab}-${idx}`);
+  const newVal = editEl ? editEl.value.trim() : '';
+  if(!newVal){ showToast('⚠️ Nem lehet üres!','warn'); return; }
+  const sorted = [...(_eqCatalog[cfg.listKey]||[])].sort((a,b)=>a.localeCompare(b,'hu'));
+  const oldVal = sorted[idx];
+  const mainList = _eqCatalog[cfg.listKey];
+  const mainIdx = mainList.indexOf(oldVal);
+  if(mainIdx > -1) mainList[mainIdx] = newVal;
+  saveEqCatalog(_eqCatalog);
+  renderCatList(tab);
+  showToast(`✅ Módosítva: ${newVal}`, 'ok');
+}
+
+function deleteCatItem(tab, item){
+  const cfg = _catTabMap[tab];
+  _eqCatalog[cfg.listKey] = _eqCatalog[cfg.listKey].filter(x=>x!==item);
+  saveEqCatalog(_eqCatalog);
+  renderCatList(tab);
+  showToast(`🗑️ Törölve: ${item}`, 'warn');
+}
+
+Object.assign(window, {
+  openNewEquipmentModal, createEquipment, openEditEquipment, saveEquipment, deleteEquipment,
+  eqComboOpen, eqComboFilter, eqComboSelect, eqComboBlur,
+  openEqCatalogModal, switchCatTab, addCatItem, startCatEdit, cancelCatEdit, saveCatItem, deleteCatItem,
+  renderEquipment,
+});
 
 // ── FELELŐSÖK ────────────────────────────────────────────────────────────────
 function renderResponsibles(){
