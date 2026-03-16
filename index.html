@@ -1578,7 +1578,7 @@
       </div>
       <div onclick="relExportXLS('pareto')" class="rel-exp-opt">
         <span style="font-size:18px;flex-shrink:0">📊</span>
-        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Pareto adatok (hibatípus + állásidő)</div>
+        <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:2px;">Pareto export (P1–P4, 4 fájl)</div>
         <div style="font-size:11px;color:var(--text-dim);">Hibatípusonkénti darabszám, állásidő, kumulatív %, 80/20 elemzés</div></div>
       </div>
       <div onclick="relExportXLS('monthly')" class="rel-exp-opt">
@@ -6341,40 +6341,70 @@ function relExportXLS(mode){
     _downloadXLS(_buildXLS(rows,'Állásidő'), `rel_allasido_${today}.xls`);
 
   } else if(mode === 'pareto'){
-    // Failure type pareto
-    const ftCount={}, ftDown={};
-    tks.forEach(t=>{
-      const key = t.failureTypeName||'Ismeretlen';
-      ftCount[key]=(ftCount[key]||0)+1;
-      ftDown[key]=(ftDown[key]||0)+(t.downtimeMinutes||0);
-    });
-    const sorted1 = Object.entries(ftCount).sort((a,b)=>b[1]-a[1]);
-    const total1 = sorted1.reduce((s,x)=>s+x[1],0);
-    const sorted2 = Object.entries(ftDown).sort((a,b)=>b[1]-a[1]);
-    const total2 = sorted2.reduce((s,x)=>s+x[1],0);
+    // P1–P4 Pareto export — mind a 4 típus, külön lapon
+    // Időszak szűrő a paretoFilter from/to alapján (ha üres: összes)
+    const pFrom = paretoFilter.from || '';
+    const pTo   = paretoFilter.to   || '';
+    let ptks = [...rTickets];
+    if(pFrom) ptks = ptks.filter(t=>(t.createdAt||'') >= pFrom);
+    if(pTo)   ptks = ptks.filter(t=>(t.createdAt||'') <= pTo);
 
-    const rows = [['Hibatípus','Hibakód','Kategória','Darabszám','Kum. db','Kum. %','Állásidő (perc)','Állásidő (óra)','Kum. állásidő (perc)','Kum. állásidő %','80/20 határ']];
-    let cumCnt=0, cumDt=0;
-    // Merge by failure type name
-    const allFtNames = [...new Set([...sorted1.map(x=>x[0]),...sorted2.map(x=>x[0])])];
-    allFtNames.sort((a,b)=>(ftCount[b]||0)-(ftCount[a]||0)).forEach(name => {
-      const ft = failureTypes.find(f=>f.name===name);
-      const cnt = ftCount[name]||0;
-      const dt  = ftDown[name]||0;
-      cumCnt += cnt; cumDt += dt;
-      const cumCntPct = total1>0 ? Math.round(cumCnt/total1*100) : 0;
-      const cumDtPct  = total2>0 ? Math.round(cumDt/total2*100)  : 0;
-      rows.push([
-        name, ft?.code||'', ft?.category||'',
-        cnt, cumCnt, cumCntPct,
-        dt, Math.round(dt/60*10)/10,
-        cumDt, cumDtPct,
-        cumCntPct<=80 ? '◀ TOP 80%' : ''
-      ]);
-    });
-    _downloadXLS(_buildXLS(rows,'Pareto'), `rel_pareto_${today}.xls`);
+    function buildParetoRows(groupKey, sortBy, headerLabel){
+      // groupKey: fn(ticket) -> string key
+      // sortBy: 'cnt' | 'dt'
+      const map = {};
+      ptks.forEach(t=>{
+        const k = groupKey(t) || 'Ismeretlen';
+        if(!map[k]) map[k] = {cnt:0, dt:0};
+        map[k].cnt++;
+        map[k].dt += t.downtimeMinutes||0;
+      });
+      const entries = Object.entries(map)
+        .map(([k,v]) => ({label:k, cnt:v.cnt, dtMin:v.dt, dtH:Math.round(v.dt/60*10)/10}))
+        .sort((a,b) => sortBy==='cnt' ? b.cnt-a.cnt : b.dtMin-a.dtMin);
+      const totalCnt = entries.reduce((s,e)=>s+e.cnt, 0);
+      const totalDt  = entries.reduce((s,e)=>s+e.dtMin, 0);
+      const rows = [[headerLabel,'Hibajegy (db)','Kum. db','Kum. %','Állásidő (perc)','Állásidő (óra)','Kum. áll. (perc)','Kum. áll. %','80/20 határ']];
+      let cumCnt=0, cumDt=0;
+      entries.forEach(e=>{
+        cumCnt += e.cnt; cumDt += e.dtMin;
+        const pCnt = totalCnt>0 ? Math.round(cumCnt/totalCnt*100) : 0;
+        const pDt  = totalDt>0  ? Math.round(cumDt/totalDt*100)   : 0;
+        const is80 = sortBy==='cnt' ? pCnt<=80 : pDt<=80;
+        rows.push([e.label, e.cnt, cumCnt, pCnt, e.dtMin, e.dtH, cumDt, pDt, is80?'◀ TOP 80%':'']);
+      });
+      rows.push(['ÖSSZESEN', totalCnt,'','', totalDt, Math.round(totalDt/60*10)/10,'','','']);
+      return rows;
+    }
 
-  } else if(mode === 'monthly'){
+    const eqLabel   = t => { const e=equipment.find(x=>x.id===t.equipmentId); return e?.assetId||e?.name||t.equipmentName||'?'; };
+    const typeLabel = t => { const e=equipment.find(x=>x.id===t.equipmentId); return e?.type||'Ismeretlen típus'; };
+    const mfrLabel  = t => { const e=equipment.find(x=>x.id===t.equipmentId); return e?.manufacturer||'Ismeretlen gyártó'; };
+
+    const p1rows = buildParetoRows(eqLabel,   'cnt', 'Berendezés (azonosító)');
+    const p2rows = buildParetoRows(eqLabel,   'dt',  'Berendezés (azonosító)');
+    const p3rows = buildParetoRows(typeLabel, 'cnt', 'Berendezés típus');
+    const p4rows = buildParetoRows(mfrLabel,  'dt',  'Gyártó');
+
+    const periodInfo = pFrom||pTo ? `${pFrom||'—'} – ${pTo||'—'}` : 'Teljes időszak';
+    const meta = [['MiniGo Pareto Export'], ['Időszak:', periodInfo], ['Hibajegyek:', ptks.length+' db'], []];
+
+    // Build multi-sheet XLS using separate workbook approach — 4 sheets
+    function makeSheet(rows){ return _buildXLS([...meta, ...rows], ''); }
+    const sheets = [
+      {name:'P1 Hibajegy per Berendezés', rows:[...meta,...p1rows]},
+      {name:'P2 Állásidő per Berendezés', rows:[...meta,...p2rows]},
+      {name:'P3 Hibajegy per Típus',      rows:[...meta,...p3rows]},
+      {name:'P4 Állásidő per Gyártó',     rows:[...meta,...p4rows]},
+    ];
+    // Export as 4 separate XLS files (since _buildXLS is single-sheet)
+    sheets.forEach((sh,i) => {
+      setTimeout(() => {
+        _downloadXLS(_buildXLS(sh.rows, sh.name), `rel_pareto_P${i+1}_${today}.xls`);
+      }, i * 400);
+    });
+
+} else if(mode === 'monthly'){
     // Monthly trend
     const monthly = {};
     tks.forEach(t => {
