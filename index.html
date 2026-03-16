@@ -287,7 +287,7 @@
 <body>
 
 <!-- Login képernyő -->
-<div id="loginScreen" style="display:none;position:fixed;inset:0;background:#0f1117;z-index:10000;align-items:center;justify-content:center;padding:20px;">
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:#0f1117;z-index:10000;align-items:center;justify-content:center;padding:20px;">
   <div style="width:100%;max-width:380px;">
     <div style="text-align:center;margin-bottom:36px;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;color:#e8a020;letter-spacing:3px;">MINI<span style="color:#6b7a96">GO</span></div>
@@ -630,6 +630,8 @@
         <div class="sidebar-item" onclick="openNewProjectModal()">  <span>➕</span> Új projekt</div>
         <div class="sidebar-item" onclick="openNewClientModal()">   <span>🏢</span> Új megrendelő</div>
         <div class="sidebar-item" onclick="openNewSupplierModal()"> <span>🔧</span> Új szállító</div>
+        <div class="sidebar-item" onclick="openExportModal()">      <span>📊</span> Export XLS</div>
+        <div class="sidebar-item" onclick="openArchiveBrowser()">   <span>🗃️</span> Archívum</div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -775,21 +777,115 @@
   </div>
 </div>
 
-<!-- MODAL: DOKUMENTUM -->
+<!-- MODAL: DOKUMENTUM (enhanced) -->
 <div class="modal-overlay" id="uploadModal">
-  <div class="modal">
-    <div class="modal-title">📤 Dokumentum Feltöltése</div>
-    <div id="uploadFolderLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px;"></div>
-    <div class="form-row">
-      <label class="form-label">Fájl kiválasztása *</label>
-      <input class="form-input" type="file" id="upload-file" style="padding:6px;" onchange="onUploadFileChange()">
+  <div class="modal" style="width:540px;">
+    <div class="modal-title">📤 Dokumentum Hozzáadása</div>
+    <div id="uploadFolderLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:14px;padding:6px 10px;background:var(--bg);border-radius:4px;border:1px solid var(--border);"></div>
+
+    <!-- Tab selector -->
+    <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:5px;overflow:hidden;">
+      <div id="uploadTab-local" onclick="switchUploadTab('local')"
+        style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.5px;cursor:pointer;background:var(--accent);color:#0f1117;transition:all 0.15s;">
+        💾 HELYI FÁJL (HDD)
+      </div>
+      <div id="uploadTab-link" onclick="switchUploadTab('link')"
+        style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.5px;cursor:pointer;background:var(--surface2);color:var(--text-dim);transition:all 0.15s;">
+        🔗 ELÉRÉSI ÚT / URL
+      </div>
+      <div id="uploadTab-cloud" onclick="switchUploadTab('cloud')"
+        style="flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.5px;cursor:pointer;background:var(--surface2);color:var(--text-dim);transition:all 0.15s;">
+        ☁️ FIREBASE
+      </div>
     </div>
-    <div class="form-row"><label class="form-label">Fájl neve *</label><input class="form-input" id="upload-name" placeholder="pl. Ajanlat_v1.xlsx"></div>
-    <div class="form-row"><label class="form-label">Dátum</label><input class="form-input" type="date" id="upload-date"></div>
+
+    <!-- TAB: HELYI FÁJL -->
+    <div id="uploadPane-local">
+      <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.25);border-radius:5px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:var(--text-dim);line-height:1.6;">
+        📁 A fájl a <b style="color:var(--text)">saját gépeden</b> marad – csak a neve és elérési útja kerül rögzítésre.<br>
+        Megnyitáshoz a böngésző a helyi fájlrendszerből nyitja meg. Chrome/Edge ajánlott.
+      </div>
+      <div class="form-row">
+        <label class="form-label">Fájl kiválasztása (helyi) *</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="form-input" type="file" id="upload-file-local"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.zip,.rar,.txt,.csv,.ppt,.pptx,.dwg,.dxf"
+            style="padding:6px;flex:1;" onchange="onLocalFileChange()">
+        </div>
+        <div id="upload-file-info" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px;"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjelenítési név *</label>
+        <input class="form-input" id="upload-name-local" placeholder="pl. Ajanlat_v1.xlsx">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Dátum</label>
+        <input class="form-input" type="date" id="upload-date-local">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjegyzés (opcionális)</label>
+        <input class="form-input" id="upload-note-local" placeholder="pl. végleges verzió, jóváhagyott">
+      </div>
+    </div>
+
+    <!-- TAB: ELÉRÉSI ÚT -->
+    <div id="uploadPane-link" style="display:none;">
+      <div style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.25);border-radius:5px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:var(--text-dim);line-height:1.6;">
+        🔗 Adj meg egy helyi Windows elérési utat (pl. <code style="color:var(--accent)">C:\MiniGo\HALLER_IV_34\TIG.pdf</code>) vagy egy URL-t. A hivatkozás kattintással megnyitható.
+      </div>
+      <div class="form-row">
+        <label class="form-label">Fájl elérési útja / URL *</label>
+        <input class="form-input" id="upload-path" placeholder="pl. C:\Projektek\HALLER_IV_34\Ajanlat.xlsx">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjelenítési név *</label>
+        <input class="form-input" id="upload-name-link" placeholder="pl. Árajánlat v1">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Dátum</label>
+        <input class="form-input" type="date" id="upload-date-link">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjegyzés (opcionális)</label>
+        <input class="form-input" id="upload-note-link" placeholder="opcionális">
+      </div>
+    </div>
+
+    <!-- TAB: FIREBASE -->
+    <div id="uploadPane-cloud" style="display:none;">
+      <div style="background:rgba(39,174,96,0.06);border:1px solid rgba(39,174,96,0.25);border-radius:5px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:var(--text-dim);line-height:1.6;">
+        ☁️ Fájl feltöltése Firebase Storage-ba. Max. ajánlott méret: <b style="color:var(--text)">10 MB</b>. Képek, PDF, XLS, Word feltölthetők.
+      </div>
+      <div class="form-row">
+        <label class="form-label">Fájl kiválasztása *</label>
+        <input class="form-input" type="file" id="upload-file-cloud"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.zip,.txt,.csv,.ppt,.pptx"
+          style="padding:6px;" onchange="onCloudFileChange()">
+        <div id="upload-cloud-size" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:4px;"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjelenítési név *</label>
+        <input class="form-input" id="upload-name-cloud" placeholder="pl. Ajanlat_v1.xlsx">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Dátum</label>
+        <input class="form-input" type="date" id="upload-date-cloud">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Megjegyzés (opcionális)</label>
+        <input class="form-input" id="upload-note-cloud" placeholder="opcionális">
+      </div>
+    </div>
+
     <div id="upload-status" style="font-size:11px;color:var(--accent);font-family:var(--mono);min-height:18px;margin-bottom:4px;"></div>
+    <div style="margin-top:4px;">
+      <div style="background:rgba(42,51,71,0.5);border-radius:3px;height:4px;overflow:hidden;display:none;" id="upload-progress-bar">
+        <div id="upload-progress-fill" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s;"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('uploadModal')">Mégse</button>
-      <button class="btn btn-primary" id="uploadConfirmBtn" onclick="confirmUpload()">✓ Feltöltés</button>
+      <button class="btn btn-primary" id="uploadConfirmBtn" onclick="confirmUploadNew()">✓ Hozzáadás</button>
     </div>
   </div>
 </div>
@@ -947,6 +1043,29 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('crossRegModal')">Nem, koszonom</button>
       <button class="btn btn-primary" id="crossRegConfirmBtn">Igen, rogzitsd!</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ARCHIVUM -->
+<div class="modal-overlay" id="archiveModal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-title">📦 Projekt Archiválása</div>
+    <div id="archiveModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('archiveModal')">Mégse</button>
+      <button class="btn btn-primary" id="archiveConfirmBtn">📦 Archiválás</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ARCHIVUM BÖNGÉSZŐ -->
+<div class="modal-overlay" id="archiveBrowserModal">
+  <div class="modal" style="width:700px;max-height:85vh;">
+    <div class="modal-title">🗃️ Archívum</div>
+    <div id="archiveBrowserBody" style="max-height:calc(85vh - 140px);overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('archiveBrowserModal')">✕ Bezárás</button>
     </div>
   </div>
 </div>
@@ -1866,12 +1985,29 @@ function renderProjectDetail(pid){
           <div class="doc-folder-count">${(p.docs[f]||[]).length} fájl</div>
         </div>
       </div>
-      ${(p.docs[f]||[]).map((d,di)=>`
-        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:3px 4px;border-radius:3px;background:rgba(45,125,210,0.07);">
-          <span style="font-size:10px;font-family:var(--mono);color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· ${d.name}</span>
+      ${(p.docs[f]||[]).map((d,di)=>{
+        const ext = (d.name||'').split('.').pop().toLowerCase();
+        const icon = ext==='pdf'?'📄':ext==='xlsx'||ext==='xls'?'📊':ext==='docx'||ext==='doc'?'📝':ext==='jpg'||ext==='jpeg'||ext==='png'||ext==='gif'?'🖼️':ext==='zip'||ext==='rar'?'🗜️':'📎';
+        const noteHtml = d.note ? `<span style="color:var(--text-dim);font-size:9px;"> · ${d.note}</span>` : '';
+        const dateHtml = d.date ? `<span style="color:var(--text-dim);font-size:9px;"> · ${d.date}</span>` : '';
+        let nameHtml;
+        if(d.url) {
+          nameHtml = `<a href="${d.url}" target="_blank" style="font-size:10px;font-family:var(--mono);color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;" title="${d.name}">${icon} ${d.name}${dateHtml}${noteHtml}</a>`;
+        } else if(d.localPath) {
+          const cleanPath = d.localPath.replace(/\\/g,'/');
+          nameHtml = `<a href="#" onclick="openLocalFile('${d.localPath.replace(/'/g,"\\'")}');return false;" style="font-size:10px;font-family:var(--mono);color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;" title="Helyi fájl: ${d.localPath}">${icon} ${d.name}${dateHtml}${noteHtml}</a>`;
+        } else if(d.linkPath) {
+          nameHtml = `<a href="${d.linkPath.startsWith('http')?d.linkPath:'#'}" ${d.linkPath.startsWith('http')?'target="_blank"':''} onclick="${!d.linkPath.startsWith('http')?"copyToClipboard('"+d.linkPath.replace(/'/g,"\\'")+"');return false;":''}" style="font-size:10px;font-family:var(--mono);color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none;" title="${d.linkPath}">${icon} ${d.name}${dateHtml}${noteHtml}</a>`;
+        } else {
+          nameHtml = `<span style="font-size:10px;font-family:var(--mono);color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.name}">${icon} ${d.name}${dateHtml}${noteHtml}</span>`;
+        }
+        return `
+        <div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:4px 6px;border-radius:3px;background:rgba(45,125,210,0.07);transition:background 0.12s;" onmouseover="this.style.background='rgba(45,125,210,0.14)'" onmouseout="this.style.background='rgba(45,125,210,0.07)'">
+          ${nameHtml}
           <button class="icon-btn edit" style="width:20px;height:20px;font-size:11px;" title="Átnevezés" onclick="openEditDoc('${pid}','${f}',${di})">✏️</button>
           <button class="icon-btn del"  style="width:20px;height:20px;font-size:11px;" title="Törlés"    onclick="deleteDoc('${pid}','${f}',${di})">🗑️</button>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
       <div class="doc-upload-btn" onclick="openUploadModal('${pid}','${f}')">📤 Feltöltés</div>
     </div>`).join('');
 
@@ -1926,6 +2062,8 @@ function renderProjectDetail(pid){
     <div class="detail-actions">
       ${p.status>0?`<button class="btn btn-secondary" onclick="openRevertModal('${pid}')">◀ Előző státusz</button>`:''}
       <button class="btn btn-secondary" onclick="openEditProject('${pid}')">✏️ Szerkesztés</button>
+      <button class="btn btn-secondary" onclick="openArchiveModal('${pid}')" title="Archiválás">📦 Archivál</button>
+      <button class="btn btn-secondary" onclick="downloadProjectZip('${pid}')" title="ZIP csomag letöltése">⬇️ ZIP</button>
       <button class="btn btn-danger" style="padding:7px 10px;" onclick="deleteProject('${pid}')">🗑️</button>
       ${!isLast?`<button class="btn btn-advance" onclick="openAdvanceModal('${pid}')">▶ Következő státusz</button>`
         :'<span class="btn btn-secondary" style="cursor:default">✓ Lezárva</span>'}
@@ -2314,56 +2452,410 @@ function confirmRevert(){
   closeModal('advanceModal'); showView('project-detail',pendingAdvanceId);
 }
 
-// ── DOKUMENTUM FELTÖLTÉS ──────────────────────────────────────────────────────
-function openUploadModal(pid,folder){
-  currentProjectId=pid; currentUploadFolder=folder;
-  document.getElementById('uploadFolderLabel').textContent=`Mappa: ${folder}  ·  Projekt: ${pid}`;
-  document.getElementById('upload-name').value='';
-  document.getElementById('upload-date').value=new Date().toISOString().split('T')[0];
+// ── DOKUMENTUM FELTÖLTÉS (ÚJ - multi-mode) ────────────────────────────────────
+let _uploadTab = 'local';
+
+function switchUploadTab(tab) {
+  _uploadTab = tab;
+  ['local','link','cloud'].forEach(t => {
+    const btn = document.getElementById('uploadTab-'+t);
+    const pane = document.getElementById('uploadPane-'+t);
+    if(btn) { btn.style.background = t===tab ? 'var(--accent)' : 'var(--surface2)'; btn.style.color = t===tab ? '#0f1117' : 'var(--text-dim)'; }
+    if(pane) pane.style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function openUploadModal(pid, folder) {
+  currentProjectId = pid; currentUploadFolder = folder;
+  document.getElementById('uploadFolderLabel').textContent = `📁 Mappa: ${folder}  ·  Projekt: ${pid}`;
+  const today = new Date().toISOString().split('T')[0];
+  ['local','link','cloud'].forEach(t => {
+    const d = document.getElementById('upload-date-'+t); if(d) d.value = today;
+    const n = document.getElementById('upload-name-'+t); if(n) n.value = '';
+    const nt = document.getElementById('upload-note-'+t); if(nt) nt.value = '';
+  });
+  const pf = document.getElementById('upload-file-local'); if(pf) pf.value = '';
+  const cf = document.getElementById('upload-file-cloud'); if(cf) cf.value = '';
+  const pi = document.getElementById('upload-path'); if(pi) pi.value = '';
+  const st = document.getElementById('upload-status'); if(st) { st.textContent=''; st.style.color='var(--accent)'; }
+  const pb = document.getElementById('upload-progress-bar'); if(pb) pb.style.display='none';
+  document.getElementById('upload-file-info').textContent = '';
+  document.getElementById('upload-cloud-size').textContent = '';
+  document.getElementById('uploadConfirmBtn').disabled = false;
+  document.getElementById('uploadConfirmBtn').textContent = '✓ Hozzáadás';
+  switchUploadTab('local');
   openModal('uploadModal');
 }
-function onUploadFileChange(){
-  const f = document.getElementById('upload-file').files[0];
-  if(f && !document.getElementById('upload-name').value){
-    document.getElementById('upload-name').value = f.name;
-  }
+
+function onLocalFileChange() {
+  const f = document.getElementById('upload-file-local').files[0];
+  if(!f) return;
+  const mb = (f.size/1024/1024).toFixed(2);
+  document.getElementById('upload-file-info').textContent = `${f.name}  ·  ${mb} MB`;
+  if(!document.getElementById('upload-name-local').value) document.getElementById('upload-name-local').value = f.name;
 }
-async function confirmUpload(){
-  const name=document.getElementById('upload-name').value.trim();
-  if(!name){ alert('Add meg a fájl nevét!'); return; }
-  const fileInput = document.getElementById('upload-file');
-  const file = fileInput.files[0];
+
+function onCloudFileChange() {
+  const f = document.getElementById('upload-file-cloud').files[0];
+  if(!f) return;
+  const mb = (f.size/1024/1024).toFixed(2);
+  const tooLarge = f.size > 10*1024*1024;
+  document.getElementById('upload-cloud-size').textContent = `${mb} MB ${tooLarge?'⚠️ Ajánlott max 10MB':'✓'}`;
+  document.getElementById('upload-cloud-size').style.color = tooLarge ? 'var(--danger)' : 'var(--success)';
+  if(!document.getElementById('upload-name-cloud').value) document.getElementById('upload-name-cloud').value = f.name;
+}
+
+async function confirmUploadNew() {
+  const p = projects.find(x => x.id === currentProjectId);
   const btn = document.getElementById('uploadConfirmBtn');
   const statusEl = document.getElementById('upload-status');
-  const p=projects.find(x=>x.id===currentProjectId);
-  const date=document.getElementById('upload-date').value;
+  const today = new Date().toISOString().split('T')[0];
 
-  if(file && window.fbUploadFile){
-    btn.disabled=true; btn.textContent='⏳ Feltöltés...';
-    statusEl.textContent='Feltöltés folyamatban...';
-    try {
-      const url = await window.fbUploadFile(currentProjectId, currentUploadFolder, file);
-      (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push({name,date,url});
-      p.log.push({time:nowStr(),msg:`Dokumentum feltöltve (${currentUploadFolder}): ${name}`,type:'upload'});
-      p.updatedAt=new Date().toISOString().split('T')[0];
-      if(window.fbSaveProject) await window.fbSaveProject(p);
-      statusEl.textContent='✓ Sikeres feltöltés!';
-      setTimeout(()=>{ closeModal('uploadModal'); showView('project-detail',currentProjectId); }, 600);
-    } catch(e) {
-      console.error(e);
-      statusEl.style.color='var(--danger)';
-      statusEl.textContent='⚠️ Feltöltési hiba: '+e.message;
-      btn.disabled=false; btn.textContent='✓ Feltöltés';
+  if(_uploadTab === 'local') {
+    const fileInput = document.getElementById('upload-file-local');
+    const file = fileInput.files[0];
+    const name = document.getElementById('upload-name-local').value.trim() || (file ? file.name : '');
+    const date = document.getElementById('upload-date-local').value || today;
+    const note = document.getElementById('upload-note-local').value.trim();
+    if(!name) { statusEl.textContent='⚠️ Add meg a fájl nevét!'; return; }
+
+    let docEntry = {name, date};
+    if(note) docEntry.note = note;
+
+    if(file) {
+      // Store as object URL (session only) — or use File System Access API for path
+      try {
+        // Try to get a persistent file handle if browser supports it
+        docEntry.localFile = true;
+        docEntry.localSize = file.size;
+        // Create a temporary blob URL for immediate access in this session
+        const blobUrl = URL.createObjectURL(file);
+        docEntry.sessionUrl = blobUrl;
+        docEntry.localPath = file.name; // Store filename as hint
+      } catch(e) {
+        // fallback: just store name
+      }
     }
-  } else {
-    // No file selected – save name only (no Storage)
-    (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push({name,date});
-    p.log.push({time:nowStr(),msg:`Dokumentum rögzítve (${currentUploadFolder}): ${name}`,type:'upload'});
-    p.updatedAt=new Date().toISOString().split('T')[0];
+
+    (p.docs[currentUploadFolder] = p.docs[currentUploadFolder]||[]).push(docEntry);
+    p.log.push({time:nowStr(), msg:`Dokumentum rögzítve (${currentUploadFolder}): ${name}${note?' – '+note:''}`, type:'upload'});
+    p.updatedAt = today;
     if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
-    closeModal('uploadModal'); showView('project-detail',currentProjectId);
+    statusEl.style.color='var(--success)'; statusEl.textContent='✅ Dokumentum hozzáadva!';
+    setTimeout(()=>{ closeModal('uploadModal'); showView('project-detail', currentProjectId); }, 600);
+
+  } else if(_uploadTab === 'link') {
+    const path = document.getElementById('upload-path').value.trim();
+    const name = document.getElementById('upload-name-link').value.trim() || path.split(/[\\/]/).pop();
+    const date = document.getElementById('upload-date-link').value || today;
+    const note = document.getElementById('upload-note-link').value.trim();
+    if(!path || !name) { statusEl.textContent='⚠️ Elérési út és név kötelező!'; return; }
+
+    const docEntry = {name, date, linkPath: path};
+    if(note) docEntry.note = note;
+    (p.docs[currentUploadFolder] = p.docs[currentUploadFolder]||[]).push(docEntry);
+    p.log.push({time:nowStr(), msg:`Dokumentum rögzítve (${currentUploadFolder}): ${name} → ${path}`, type:'upload'});
+    p.updatedAt = today;
+    if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+    statusEl.style.color='var(--success)'; statusEl.textContent='✅ Hivatkozás hozzáadva!';
+    setTimeout(()=>{ closeModal('uploadModal'); showView('project-detail', currentProjectId); }, 600);
+
+  } else if(_uploadTab === 'cloud') {
+    const fileInput = document.getElementById('upload-file-cloud');
+    const file = fileInput.files[0];
+    const name = document.getElementById('upload-name-cloud').value.trim() || (file?file.name:'');
+    const date = document.getElementById('upload-date-cloud').value || today;
+    const note = document.getElementById('upload-note-cloud').value.trim();
+    if(!name) { statusEl.textContent='⚠️ Add meg a fájl nevét!'; return; }
+
+    if(file && window.fbUploadFile) {
+      btn.disabled=true; btn.textContent='⏳ Feltöltés...';
+      statusEl.textContent='Feltöltés folyamatban...'; statusEl.style.color='var(--accent)';
+      const pb = document.getElementById('upload-progress-bar');
+      const pf = document.getElementById('upload-progress-fill');
+      if(pb) { pb.style.display='block'; pf.style.width='30%'; }
+      try {
+        const url = await window.fbUploadFile(currentProjectId, currentUploadFolder, file);
+        if(pf) pf.style.width='100%';
+        const docEntry = {name, date, url};
+        if(note) docEntry.note = note;
+        (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push(docEntry);
+        p.log.push({time:nowStr(), msg:`Dokumentum feltöltve Firebase-be (${currentUploadFolder}): ${name}`, type:'upload'});
+        p.updatedAt=today;
+        if(window.fbSaveProject) await window.fbSaveProject(p);
+        statusEl.style.color='var(--success)'; statusEl.textContent='✅ Sikeres feltöltés!';
+        setTimeout(()=>{ closeModal('uploadModal'); showView('project-detail',currentProjectId); }, 700);
+      } catch(e) {
+        console.error(e);
+        statusEl.style.color='var(--danger)';
+        statusEl.textContent='⚠️ Feltöltési hiba: '+e.message;
+        btn.disabled=false; btn.textContent='✓ Feltöltés';
+        if(pb) pb.style.display='none';
+      }
+    } else {
+      // No file, save name only
+      const docEntry = {name, date};
+      if(note) docEntry.note = note;
+      (p.docs[currentUploadFolder]=p.docs[currentUploadFolder]||[]).push(docEntry);
+      p.log.push({time:nowStr(), msg:`Dokumentum rögzítve (${currentUploadFolder}): ${name}`, type:'upload'});
+      p.updatedAt=today;
+      if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+      closeModal('uploadModal'); showView('project-detail',currentProjectId);
+    }
   }
 }
+
+// Backward compat
+function onUploadFileChange(){ onLocalFileChange(); }
+async function confirmUpload(){ confirmUploadNew(); }
+
+// ── HELYI FÁJL MEGNYITÁS ──────────────────────────────────────────────────────
+function openLocalFile(path) {
+  // Chrome biztonsági okokból nem nyit meg helyi fájlt href-ből,
+  // ezért az elérési utat a vágólapra másoljuk + tájékoztatjuk a felhasználót
+  copyToClipboard(path);
+  showToast('📋 Elérési út vágólapra másolva: ' + path.slice(0,60) + (path.length>60?'…':''), 'info');
+}
+
+function copyToClipboard(text) {
+  try {
+    navigator.clipboard.writeText(text).catch(()=>{
+      const el = document.createElement('textarea');
+      el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+    });
+  } catch(e) {
+    const el = document.createElement('textarea');
+    el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+  }
+}
+
+// ── ARCHIVUM ──────────────────────────────────────────────────────────────────
+let archivedProjects = JSON.parse(localStorage.getItem('minigo_archive')||'[]');
+
+function saveArchive() {
+  try { localStorage.setItem('minigo_archive', JSON.stringify(archivedProjects)); } catch(e) { console.warn('Archive save failed:', e); }
+}
+
+function openArchiveModal(pid) {
+  const p = projects.find(x=>x.id===pid);
+  if(!p) return;
+  const co = clients.find(c=>c.id===p.clientId);
+  const inc = pIncome(p), cost = pCost(p), pro = pProfit(p);
+  const docCount = FOLDERS.reduce((s,f)=>s+(p.docs[f]||[]).length,0);
+
+  document.getElementById('archiveModalBody').innerHTML = `
+    <div style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.3);border-radius:5px;padding:14px;margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);margin-bottom:6px;">${p.id}</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">${co?co.name:p.clientId} · ${p.desc||''}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+        <span style="font-size:11px;color:var(--profit)">💚 Bevétel: ${fmt(inc)}</span>
+        <span style="font-size:11px;color:var(--cost)">🔴 Kiadás: ${fmt(cost)}</span>
+        <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">= Nyereség: ${fmt(pro)}</span>
+        <span style="font-size:11px;color:var(--text-dim)">📎 ${docCount} dokumentum</span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.7;">
+      Az archivált projekt <b style="color:var(--text)">nem törlődik</b>, de átkerül az Archívumba és eltűnik az aktív listából.<br>
+      Az archívumból bármikor visszaállítható, vagy letölthető ZIP csomagként.<br>
+      <b style="color:var(--accent)">Dokumentumok elérési útjai megmaradnak.</b>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Archiválás megjegyzése (opcionális)</label>
+      <input class="form-input" id="archive-note" placeholder="pl. Projekt lezárva, minden dokumentum rendben">
+    </div>`;
+
+  document.getElementById('archiveConfirmBtn').onclick = () => confirmArchive(pid);
+  openModal('archiveModal');
+}
+
+function confirmArchive(pid) {
+  const p = projects.find(x=>x.id===pid);
+  if(!p) return;
+  const note = document.getElementById('archive-note').value.trim();
+  const archived = {
+    ...JSON.parse(JSON.stringify(p)),
+    archivedAt: new Date().toISOString().split('T')[0],
+    archiveNote: note,
+    _archived: true
+  };
+  archivedProjects.unshift(archived);
+  saveArchive();
+
+  // Remove from active projects
+  const idx = projects.findIndex(x=>x.id===pid);
+  if(idx>-1) projects.splice(idx,1);
+  if(window.fbSaveProject) {
+    // mark as archived in Firebase too
+    window.fbSaveProject({...archived}).catch(e=>console.error(e));
+  }
+  closeModal('archiveModal');
+  showToast(`📦 ${pid} archiválva!`, 'ok');
+  showView('projects');
+}
+
+function openArchiveBrowser() {
+  const body = document.getElementById('archiveBrowserBody');
+  if(!archivedProjects.length) {
+    body.innerHTML = `<div class="empty-state"><div class="em-icon">🗃️</div><div class="em-title">Nincs archivált projekt</div><div style="font-size:12px;margin-top:4px;color:var(--text-dim)">Projekt részletnél kattints az "Archivál" gombra</div></div>`;
+  } else {
+    body.innerHTML = archivedProjects.map(p => {
+      const co = clients.find(c=>c.id===p.clientId);
+      const inc = pIncome(p), cost = pCost(p), pro = pProfit(p);
+      const docCount = FOLDERS.reduce((s,f)=>s+(p.docs[f]||[]).length,0);
+      const st = STATUSES[p.status]||STATUSES[0];
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);margin-bottom:3px;">${p.id}</div>
+            <div style="font-size:12px;color:var(--text)">${co?co.name:p.clientId} · ${p.desc||''}</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Archiválva: ${p.archivedAt||'–'} ${p.archiveNote?'· '+p.archiveNote:''}</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
+              <span style="font-size:11px;color:var(--profit)">+${fmt(inc)}</span>
+              <span style="font-size:11px;color:var(--cost)">-${fmt(cost)}</span>
+              <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmt(pro)}</span>
+              <span style="font-size:11px;color:var(--text-dim)">📎 ${docCount} dok.</span>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+            <span class="status-badge ${st.cls}">${st.short}</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="restoreFromArchive('${p.id}')">↩️ Visszaállítás</button>
+              <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="downloadProjectZip('${p.id}',true)">⬇️ ZIP letöltés</button>
+              <button class="btn btn-danger" style="font-size:10px;padding:5px 10px;" onclick="deleteFromArchive('${p.id}')">🗑️</button>
+            </div>
+          </div>
+        </div>
+        ${docCount>0?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          ${FOLDERS.map(f=>(p.docs[f]||[]).map(d=>`
+            <span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 7px;margin:2px;font-size:10px;font-family:var(--mono);color:var(--text-dim);" title="${f}">
+              ${f==='Képek'?'🖼️':f==='TIG'?'📋':f==='Árajánlat'?'📄':'📎'} ${d.name}
+            </span>`).join('')).join('')}
+        </div>`:''}
+      </div>`;
+    }).join('');
+  }
+  openModal('archiveBrowserModal');
+}
+
+function restoreFromArchive(pid) {
+  const idx = archivedProjects.findIndex(x=>x.id===pid);
+  if(idx===-1) return;
+  const p = {...archivedProjects[idx]};
+  delete p._archived; delete p.archivedAt; delete p.archiveNote;
+  projects.unshift(p);
+  archivedProjects.splice(idx,1);
+  saveArchive();
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
+  closeModal('archiveBrowserModal');
+  showToast(`↩️ ${pid} visszaállítva az aktív projektekbe!`, 'ok');
+  showView('project-detail', pid);
+}
+
+function deleteFromArchive(pid) {
+  if(!confirm(`Véglegesen törlöd az archivált projektet: ${pid}?`)) return;
+  const idx = archivedProjects.findIndex(x=>x.id===pid);
+  if(idx>-1) archivedProjects.splice(idx,1);
+  saveArchive();
+  openArchiveBrowser(); // refresh
+  showToast('🗑️ Projekt törölve az archívumból.', 'warn');
+}
+
+// ── ZIP PROJEKTCSOMAG LETÖLTÉS ────────────────────────────────────────────────
+async function downloadProjectZip(pid, fromArchive=false) {
+  const list = fromArchive ? archivedProjects : projects;
+  const p = list.find(x=>x.id===pid);
+  if(!p) return;
+  const co = clients.find(c=>c.id===p.clientId);
+  showToast('⏳ ZIP csomag összeállítása...', 'info');
+
+  // Load JSZip dynamically
+  if(!window.JSZip) {
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    });
+  }
+  const zip = new JSZip();
+  const folder = zip.folder(pid);
+
+  // 1. Projekt adatlap (JSON)
+  const meta = {
+    id: p.id, megrendelo: co?co.name:p.clientId, leiras: p.desc||'',
+    statusz: (STATUSES[p.status]||STATUSES[0]).label,
+    letrehozva: p.createdAt, frissitve: p.updatedAt,
+    bevetel: pIncome(p), kiadas: pCost(p), nyereseg: pProfit(p),
+    archiválva: p.archivedAt||null, archiv_megjegyzes: p.archiveNote||null
+  };
+  folder.file('projekt_adatok.json', JSON.stringify(meta, null, 2));
+
+  // 2. Eseménynapló (txt)
+  const logTxt = (p.log||[]).map(l=>`[${l.time}] ${l.msg}`).join('\n');
+  folder.file('esemenynaplo.txt', logTxt || '(nincs bejegyzes)');
+
+  // 3. Pénzügyi összesítő (CSV)
+  let finCsv = 'Tipus,Szamlaszam,Partner,Osszeg,Datum,Megjegyzes\n';
+  (p.incomeInvoices||[]).forEach(i=>finCsv+=`Kimenő,${i.ref},"${co?co.name:''}",${i.amount},${i.date||''},${i.note||''}\n`);
+  (p.costInvoices||[]).forEach(i=>finCsv+=`Szállítói,${i.ref},"${i.supplierName||''}",${i.amount},${i.date||''},${i.note||''}\n`);
+  folder.file('penzugyi_osszesito.csv', '\ufeff'+finCsv);
+
+  // 4. Dokumentumlista (txt fájlhivatkozásokkal)
+  let docList = `MINIGO DOKUMENTUMLISTA – ${pid}\n${'='.repeat(50)}\n`;
+  FOLDERS.forEach(f=>{
+    const docs = p.docs[f]||[];
+    if(docs.length) {
+      docList += `\n[${f}]\n`;
+      docs.forEach(d=>{
+        docList += `  - ${d.name}  (${d.date||'?'})`;
+        if(d.url) docList += `  URL: ${d.url}`;
+        if(d.linkPath) docList += `  Elérési út: ${d.linkPath}`;
+        if(d.note) docList += `  Megjegyzés: ${d.note}`;
+        docList += '\n';
+      });
+    }
+  });
+  folder.file('dokumentumlista.txt', docList);
+
+  // 5. Kísérőlap HTML
+  const html = generateProjectCard(p, co);
+  folder.file('kiserolap.html', html);
+
+  const blob = await zip.generateAsync({type:'blob'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`${pid}_csomag_${new Date().toISOString().slice(0,10)}.zip`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  showToast(`✅ ZIP letöltve: ${pid}_csomag.zip`, 'ok');
+}
+
+function generateProjectCard(p, co) {
+  const inc=pIncome(p),cost=pCost(p),pro=pProfit(p);
+  const margin=inc>0?Math.round(pro/inc*100):null;
+  const st=(STATUSES[p.status]||STATUSES[0]).label;
+  let docHtml='';
+  FOLDERS.forEach(f=>{const ds=p.docs[f]||[];if(ds.length)docHtml+=`<h3>${f}</h3><ul>${ds.map(d=>`<li>${d.name} (${d.date||'?'})${d.linkPath?` – Elérési út: <code>${d.linkPath}</code>`:''}${d.url?` – <a href="${d.url}">Megnyitás</a>`:''}</li>`).join('')}</ul>`;});
+  return `<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>${p.id} – MiniGo</title><style>body{font-family:Arial,sans-serif;padding:30px;max-width:900px;margin:0 auto;color:#222;}h1{color:#e8a020;border-bottom:2px solid #e8a020;padding-bottom:10px;}h2{color:#2d7dd2;margin-top:24px;}h3{color:#555;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ddd;padding:8px 12px;text-align:left;}th{background:#f5f5f5;}.pos{color:#27ae60;font-weight:bold;}.neg{color:#e05252;font-weight:bold;}</style></head>
+<body><h1>📁 ${p.id}</h1>
+<p><b>Megrendelő:</b> ${co?co.name:p.clientId}<br><b>Leírás:</b> ${p.desc||'–'}<br><b>Státusz:</b> ${st}<br><b>Létrehozva:</b> ${p.createdAt} · <b>Frissítve:</b> ${p.updatedAt}${p.archivedAt?`<br><b>Archiválva:</b> ${p.archivedAt}`:''}</p>
+<h2>💰 Pénzügyek</h2>
+<table><tr><th>Bevétel</th><th>Kiadás</th><th>Nyereség</th><th>Marzs</th></tr><tr><td class="pos">${fmt(inc)}</td><td class="neg">${fmt(cost)}</td><td class="${pro>=0?'pos':'neg'}">${fmt(pro)}</td><td>${margin!==null?margin+'%':'–'}</td></tr></table>
+<h2>🧾 Kimenő számlák</h2><table><tr><th>Számlaszám</th><th>Összeg</th><th>Dátum</th><th>Megj.</th></tr>${(p.incomeInvoices||[]).map(i=>`<tr><td>${i.ref}</td><td class="pos">+${fmt(i.amount)}</td><td>${i.date||''}</td><td>${i.note||''}</td></tr>`).join('')||'<tr><td colspan="4">–</td></tr>'}</table>
+<h2>🔴 Szállítói számlák</h2><table><tr><th>Szállító</th><th>Számlaszám</th><th>Összeg</th><th>Dátum</th><th>Megj.</th></tr>${(p.costInvoices||[]).map(i=>`<tr><td>${i.supplierName||i.supplierId}</td><td>${i.ref}</td><td class="neg">−${fmt(i.amount)}</td><td>${i.date||''}</td><td>${i.note||''}</td></tr>`).join('')||'<tr><td colspan="5">–</td></tr>'}</table>
+<h2>📎 Dokumentumok</h2>${docHtml||'<p>Nincs rögzített dokumentum.</p>'}
+<h2>📋 Eseménynapló</h2><ul>${(p.log||[]).slice().reverse().map(l=>`<li><code>${l.time}</code> – ${l.msg}</li>`).join('')||'<li>–</li>'}</ul>
+<hr><p style="font-size:11px;color:#888;">Generálva: ${new Date().toLocaleString('hu-HU')} · MiniGo Projekt Nyomkövető</p>
+</body></html>`;
+}
+
+Object.assign(window, {
+  switchUploadTab, openUploadModal, onLocalFileChange, onCloudFileChange,
+  confirmUploadNew, confirmUpload, onUploadFileChange,
+  openLocalFile, copyToClipboard,
+  openArchiveModal, confirmArchive, openArchiveBrowser,
+  restoreFromArchive, deleteFromArchive, downloadProjectZip, generateProjectCard,
+  saveArchive
+});
 
 // ── BEVÉTELI SZÁMLA ───────────────────────────────────────────────────────────
 function openIncomeInvoiceModal(pid){
@@ -4132,13 +4624,31 @@ function exportProjectsXLS(mode) {
       const margin=inc>0?Math.round(pro/inc*100):'';
       rows.push([p.id,co?co.name:'',inc,cost,pro,margin]);
     });
+  } else if(mode==='clients') {
+    filename = 'minigo_megrendelok_' + new Date().toISOString().slice(0,10) + '.xls';
+    rows.push(['Megrendelő','Kapcsolattartó','Email','Projektek száma','Összes bevétel (nettó)','Legutóbbi projekt']);
+    clients.forEach(c => {
+      const ps = projects.filter(p=>p.clientId===c.id);
+      const inc = ps.reduce((s,p)=>s+pIncome(p),0);
+      const last = ps.sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))[0];
+      rows.push([c.name, c.contact||'', c.email||'', ps.length, inc, last?last.id:'']);
+    });
+  } else if(mode==='suppliers') {
+    filename = 'minigo_szallitok_' + new Date().toISOString().slice(0,10) + '.xls';
+    rows.push(['Szállító','Kapcsolattartó','Szakterület','Projektek száma','Összes kiadás (nettó)']);
+    suppliers.forEach(s => {
+      const cnt = projects.filter(p=>(p.costInvoices||[]).some(i=>i.supplierId===s.id)).length;
+      const tot = projects.reduce((sum,p)=>sum+(p.costInvoices||[]).filter(i=>i.supplierId===s.id).reduce((ss,i)=>ss+Number(i.amount),0),0);
+      rows.push([s.name, s.contact||'', s.type||'', cnt, tot]);
+    });
   }
 
   // Build HTML table (Excel-compatible XLS via data URI)
   let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
   html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Adatok</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>';
   rows.forEach((row, ri) => {
-    html += '<tr>';
+    const isBold = ri===0;
+    html += `<tr${isBold?' style="font-weight:bold;background:#e8a020;color:#0f1117;"':''}>`;
     row.forEach(cell => {
       const isNum = ri>0 && typeof cell === 'number';
       html += isNum ? `<td style="mso-number-format:'# ##0';">${cell}</td>` : `<td>${String(cell).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>`;
@@ -4161,27 +4671,34 @@ function exportProjectsXLS(mode) {
 function openExportModal(){
   const el = document.getElementById('exportModal');
   if(el){ el.classList.add('active'); return; }
-  // Create modal on-the-fly
   const m = document.createElement('div');
   m.id = 'exportModal';
   m.className = 'modal-overlay';
+
+  function optHtml(icon, onclick, title, desc) {
+    return `<div onclick="${onclick}" style="cursor:pointer;padding:13px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:all 0.15s;display:flex;gap:12px;align-items:flex-start;" onmouseover="this.style.borderColor='var(--accent)';this.style.background='rgba(232,160,32,0.06)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface2)'">
+      <span style="font-size:20px;flex-shrink:0">${icon}</span>
+      <div><div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">${title}</div><div style="font-size:11px;color:var(--text-dim)">${desc}</div></div>
+    </div>`;
+  }
+
   m.innerHTML = `
-  <div class="modal" style="width:400px;">
+  <div class="modal" style="width:460px;">
     <div class="modal-title">📊 Export – Excel / XLS</div>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:18px;">Válaszd ki, milyen adatot szeretnél exportálni:</p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-      <div onclick="exportProjectsXLS('projects')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">📂 Projektek összesítő</div>
-        <div style="font-size:11px;color:var(--text-dim);">Összes projekt: ID, megrendelő, típus, státusz, bevétel, kiadás, nyereség</div>
-      </div>
-      <div onclick="exportProjectsXLS('invoices')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">🧾 Számlák listája</div>
-        <div style="font-size:11px;color:var(--text-dim);">Minden kimenő és szállítói számla, dátum szerint rendezve</div>
-      </div>
-      <div onclick="exportProjectsXLS('cashflow')" style="cursor:pointer;padding:14px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright);margin-bottom:3px;">💰 Cashflow összesítő</div>
-        <div style="font-size:11px;color:var(--text-dim);">Projekt szintű bevétel vs kiadás vs nyereség táblázat</div>
-      </div>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Válaszd ki, milyen adatot szeretnél exportálni:</p>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">📁 Projektek</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      ${optHtml('📂','exportProjectsXLS(\'projects\')', 'Projektek összesítő','ID, megrendelő, típus, státusz, bevétel, kiadás, nyereség, marzs')}
+      ${optHtml('🧾','exportProjectsXLS(\'invoices\')', 'Számlák listája','Minden kimenő és szállítói számla, dátum szerint rendezve')}
+      ${optHtml('💰','exportProjectsXLS(\'cashflow\')', 'Cashflow összesítő','Projekt szintű bevétel vs kiadás vs nyereség')}
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">🏢 Partnerek</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+      ${optHtml('🏢','exportProjectsXLS(\'clients\')',   'Megrendelők listája','Összes megrendelő: cég, kapcsolattartó, projekt szám, bevétel összesítő')}
+      ${optHtml('🔧','exportProjectsXLS(\'suppliers\')', 'Szállítók listája','Összes szállító: cég, szakterület, projekt szám, kiadás összesítő')}
+    </div>
+    <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:4px;padding:8px 12px;font-size:11px;color:var(--text-dim);margin-bottom:16px;">
+      💡 A fájl XLS formátumban töltődik le, Excel és LibreOffice Calc is megnyitja.
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('exportModal')">✕ Mégse</button>
@@ -4203,3 +4720,5 @@ setTimeout(()=>{
 }, 5000);
 </script>
 </div><!-- /appShell -->
+</body>
+</html>
