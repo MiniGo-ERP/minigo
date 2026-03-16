@@ -1425,17 +1425,32 @@
       <select class="form-input" id="ntk-equipment"><option value="">-- válassz berendezést --</option></select>
     </div>
 
-    <!-- Hibatípus kategória szűrő + legördülő -->
+    <!-- Hibatípus kategória — combo -->
     <div class="form-row">
-      <label class="form-label">Hibatípus kategória</label>
-      <select class="form-input" id="ntk-ftcat" onchange="filterFTypesByCategory()" style="margin-bottom:6px;">
-        <option value="">── Összes kategória ──</option>
-      </select>
-      <label class="form-label" style="margin-top:6px;">Hibatípus *</label>
-      <select class="form-input" id="ntk-ftype" onchange="rTicketFTypeChange()">
-        <option value="">-- válassz hibatípust --</option>
-      </select>
-      <div id="ntk-ftype-desc" style="font-size:11px;color:var(--text-dim);margin-top:5px;padding:5px 8px;background:var(--bg);border-radius:3px;display:none;"></div>
+      <label class="form-label">Hibatípus kategória <span style="color:var(--text-dim);font-weight:400;">– szűrő (opcionális)</span></label>
+      <div class="eq-combo-wrap">
+        <input class="form-input eq-combo-input" id="ntk-ftcat-input" placeholder="pl. Elektromos, Mechanikai..." autocomplete="off"
+          oninput="ftComboFilterCat()" onfocus="ftComboOpenCat()" onblur="ftComboBlurCat()">
+        <div class="eq-combo-dropdown" id="ntk-ftcat-dd" style="display:none;"></div>
+      </div>
+      <input type="hidden" id="ntk-ftcat-val">
+    </div>
+
+    <!-- Hibatípus — combo -->
+    <div class="form-row">
+      <label class="form-label">Hibatípus * <span style="color:var(--text-dim);font-weight:400;">– kereshető, kiválasztható</span></label>
+      <div class="eq-combo-wrap">
+        <input class="form-input eq-combo-input" id="ntk-ftype-input" placeholder="Keress hibakód vagy megnevezés alapján..." autocomplete="off"
+          oninput="ftComboFilterType()" onfocus="ftComboOpenType()" onblur="ftComboBlurType()">
+        <div class="eq-combo-dropdown" id="ntk-ftype-dd" style="display:none;max-height:220px;overflow-y:auto;"></div>
+      </div>
+      <input type="hidden" id="ntk-ftype-val">
+      <div id="ntk-ftype-desc" style="font-size:11px;color:var(--text-dim);margin-top:5px;padding:6px 10px;background:var(--bg);border-radius:3px;border-left:2px solid var(--accent2);display:none;line-height:1.5;"></div>
+    </div>
+
+    <!-- Link az admin kezelőhöz -->
+    <div style="font-size:11px;color:var(--text-dim);margin-top:-8px;margin-bottom:10px;">
+      💡 Hibatípusok kezelése (hozzáad, módosít, töröl): <span style="color:var(--accent2);cursor:pointer;text-decoration:underline;" onclick="closeModal('newTicketModal');showView('r-ftypes')">→ Hibatípusok admin fül</span>
     </div>
 
     <div class="form-row"><label class="form-label">Rövid leírás <span style="color:var(--text-dim);font-weight:400">(auto kitöltve, szerkeszthető)</span></label><input class="form-input" id="ntk-shortDesc" placeholder="auto kitöltve hibatípusból"></div>
@@ -1445,10 +1460,10 @@
     <div class="form-row">
       <label class="form-label">Súlyosság *</label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" id="ntk-severity-btns">
-        <div onclick="selectSeverity('low')"    id="sev-low"      class="sev-btn" data-val="low"      style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟢<br>Alacsony</div>
-        <div onclick="selectSeverity('medium')" id="sev-medium"   class="sev-btn" data-val="medium"   style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟡<br>Közepes</div>
-        <div onclick="selectSeverity('high')"   id="sev-high"     class="sev-btn" data-val="high"     style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟠<br>Magas</div>
-        <div onclick="selectSeverity('critical')" id="sev-critical" class="sev-btn" data-val="critical" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🔴<br>Kritikus</div>
+        <div onclick="selectSeverity('low')"      id="sev-low"      class="sev-btn" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟢<br>Alacsony</div>
+        <div onclick="selectSeverity('medium')"   id="sev-medium"   class="sev-btn" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟡<br>Közepes</div>
+        <div onclick="selectSeverity('high')"     id="sev-high"     class="sev-btn" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🟠<br>Magas</div>
+        <div onclick="selectSeverity('critical')" id="sev-critical" class="sev-btn" style="flex:1;min-width:90px;padding:8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;text-align:center;font-family:var(--mono);font-size:11px;transition:all 0.15s;">🔴<br>Kritikus</div>
       </div>
       <input type="hidden" id="ntk-severity" value="medium">
     </div>
@@ -1477,17 +1492,7 @@
 <!-- MODAL: DATETIME PICKER (shared popup) -->
 <div id="dtpicker-popup" style="display:none;position:fixed;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.5);padding:16px;min-width:300px;"></div>
 
-<!-- MODAL: TICKET STÁTUSZ / GYÖKÉROK -->
-<div class="modal-overlay" id="ticketDetailModal">
-  <div class="modal" style="width:580px">
-    <div class="modal-title" id="tkdm-title">Hibajegy részletek</div>
-    <div id="tkdm-body"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('ticketDetailModal')">Bezárás</button>
-      <button class="btn btn-advance" id="tkdm-advBtn" onclick="advanceTicket()">→ Következő státusz</button>
-    </div>
-  </div>
-</div>
+<!-- ticketDetailModal removed - functionality handled inline in renderTicketDetail -->
 
 <!-- MODAL: ÚJ KORREKTÍV AKCIÓ -->
 <div class="modal-overlay" id="newCAModal">
@@ -4765,79 +4770,217 @@ function selectSeverity(val){
 }
 
 // ── HIBATÍPUS SZŰRÉS KATEGÓRIA SZERINT ───────────────────────────────────────
-function filterFTypesByCategory(){
-  const cat = document.getElementById('ntk-ftcat').value;
-  const ftSel = document.getElementById('ntk-ftype');
-  const list = cat ? failureTypes.filter(f=>f.category===cat) : failureTypes;
-  const sorted = [...list].sort((a,b)=>a.code.localeCompare(b.code));
-  ftSel.innerHTML = '<option value="">-- válassz hibatípust --</option>' +
-    sorted.map(f=>`<option value="${f.id}">[${f.code}] ${f.name}</option>`).join('');
-  document.getElementById('ntk-ftype-desc').style.display='none';
+// ── HIBATÍPUS COMBO (Új hibajegy modal) ───────────────────────────────────────
+// Aktív kategória szűrő és kiválasztott hibatípus ID
+let _ftSelectedId  = null;
+let _ftActiveCat   = '';   // '' = összes
+
+function _ftGetList(){
+  // Visszaadja a jelenlegi kategória-szűrő szerint szűrt + kód szerint rendezett listát
+  const list = _ftActiveCat
+    ? failureTypes.filter(f => f.category === _ftActiveCat)
+    : [...failureTypes];
+  return list.sort((a,b) => a.code.localeCompare(b.code));
 }
+
+function _ftRenderCatDD(filterVal){
+  const dd = document.getElementById('ntk-ftcat-dd');
+  if(!dd) return;
+  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'hu'));
+  const q = (filterVal||'').trim().toLowerCase();
+  const filtered = q ? cats.filter(c=>c.toLowerCase().includes(q)) : cats;
+
+  let html = '';
+  // "Összes" reset item
+  html += `<div class="eq-combo-item" onmousedown="ftSelectCat('')" style="color:var(--text-dim);font-style:italic;">
+    ✕ Összes kategória (szűrő törlése)
+  </div>`;
+  if(filtered.length === 0){
+    html += `<div class="eq-combo-empty">Nincs ilyen kategória</div>`;
+  } else {
+    filtered.forEach(c => {
+      const cnt = failureTypes.filter(f=>f.category===c).length;
+      const isActive = c === _ftActiveCat;
+      html += `<div class="eq-combo-item" onmousedown="ftSelectCat('${c.replace(/'/g,"\\'")}')"
+        style="${isActive ? 'background:rgba(232,160,32,0.12);color:var(--accent);' : ''}">
+        <span style="flex:1">${c}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:8px;">${cnt} db</span>
+      </div>`;
+    });
+  }
+  dd.innerHTML = html;
+  dd.style.display = 'block';
+}
+
+function _ftRenderTypeDD(filterVal){
+  const dd = document.getElementById('ntk-ftype-dd');
+  if(!dd) return;
+  const q = (filterVal||'').trim().toLowerCase();
+  const list = _ftGetList();
+  const filtered = q
+    ? list.filter(f => f.code.toLowerCase().includes(q) || f.name.toLowerCase().includes(q) || (f.category||'').toLowerCase().includes(q))
+    : list;
+
+  if(filtered.length === 0){
+    dd.innerHTML = `<div class="eq-combo-empty">Nincs találat – módosítsd a keresést vagy adj hozzá új hibatípust az admin fülön</div>`;
+  } else {
+    // Group by category
+    const cats = [...new Set(filtered.map(f=>f.category||'Egyéb'))];
+    let html = '';
+    cats.forEach(cat => {
+      const items = filtered.filter(f=>(f.category||'Egyéb')===cat);
+      html += `<div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;padding:6px 12px 3px;background:var(--surface2);border-top:1px solid var(--border);">${cat}</div>`;
+      items.forEach(f => {
+        const isSelected = f.id === _ftSelectedId;
+        const stdBadge = f.isStandard ? `<span style="font-family:var(--mono);font-size:8px;color:var(--accent2);background:rgba(45,125,210,0.12);border:1px solid rgba(45,125,210,0.3);padding:1px 5px;border-radius:2px;margin-left:4px;">STD</span>` : '';
+        const nameHtml = q
+          ? f.name.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<b>$1</b>')
+          : f.name;
+        html += `<div class="eq-combo-item" onmousedown="ftSelectType('${f.id}')"
+          style="${isSelected ? 'background:rgba(232,160,32,0.12);color:var(--accent);' : ''}">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--accent2);min-width:60px;flex-shrink:0;">${f.code}</span>
+          <span style="flex:1;">${nameHtml}${stdBadge}</span>
+        </div>`;
+      });
+    });
+    dd.innerHTML = html;
+  }
+  dd.style.display = 'block';
+}
+
+function ftComboOpenCat(){
+  _ftRenderCatDD('');
+}
+function ftComboFilterCat(){
+  const val = document.getElementById('ntk-ftcat-input').value;
+  _ftRenderCatDD(val);
+}
+function ftComboBlurCat(){
+  setTimeout(()=>{ const dd=document.getElementById('ntk-ftcat-dd'); if(dd) dd.style.display='none'; }, 180);
+}
+function ftSelectCat(cat){
+  _ftActiveCat = cat;
+  const inp = document.getElementById('ntk-ftcat-input');
+  const val = document.getElementById('ntk-ftcat-val');
+  if(inp) inp.value = cat;
+  if(val) val.value = cat;
+  const dd = document.getElementById('ntk-ftcat-dd');
+  if(dd) dd.style.display = 'none';
+  // Update the type combo to reflect new category filter
+  // Also clear current selection if it doesn't match the new filter
+  if(cat && _ftSelectedId){
+    const ft = failureTypes.find(f=>f.id===_ftSelectedId);
+    if(ft && ft.category !== cat){
+      _ftSelectedId = null;
+      const typeInp = document.getElementById('ntk-ftype-input');
+      const typeVal = document.getElementById('ntk-ftype-val');
+      if(typeInp) typeInp.value = '';
+      if(typeVal) typeVal.value = '';
+      document.getElementById('ntk-ftype-desc').style.display = 'none';
+      document.getElementById('ntk-shortDesc').value = '';
+    }
+  }
+  // Update cat input display
+  if(inp) inp.style.color = cat ? 'var(--accent)' : 'var(--text)';
+}
+
+function ftComboOpenType(){
+  _ftRenderTypeDD('');
+}
+function ftComboFilterType(){
+  const val = document.getElementById('ntk-ftype-input').value;
+  _ftRenderTypeDD(val);
+}
+function ftComboBlurType(){
+  setTimeout(()=>{ const dd=document.getElementById('ntk-ftype-dd'); if(dd) dd.style.display='none'; }, 180);
+}
+function ftSelectType(ftId){
+  _ftSelectedId = ftId;
+  const ft = failureTypes.find(f=>f.id===ftId);
+  if(!ft) return;
+  const inp = document.getElementById('ntk-ftype-input');
+  const val = document.getElementById('ntk-ftype-val');
+  if(inp) inp.value = `[${ft.code}] ${ft.name}`;
+  if(val) val.value = ftId;
+  const dd = document.getElementById('ntk-ftype-dd');
+  if(dd) dd.style.display = 'none';
+  // Auto-fill short desc
+  const sd = document.getElementById('ntk-shortDesc');
+  if(sd && (!sd.value || sd.value === (failureTypes.find(f=>f.id===_ftSelectedId)||{}).name)) sd.value = ft.name;
+  // Show description hint
+  const descEl = document.getElementById('ntk-ftype-desc');
+  if(descEl){
+    if(ft.description){ descEl.innerHTML = `ℹ️ <b>${ft.code}</b> – ${ft.description}`; descEl.style.display='block'; }
+    else descEl.style.display='none';
+  }
+}
+
+// Keep these for backward compat (called from old code paths)
+function filterFTypesByCategory(){ ftSelectCat(_ftActiveCat); }
+function rTicketFTypeChange(){ /* handled by ftSelectType */ }
 
 // ── ÚJ HIBAJEGY MODAL ─────────────────────────────────────────────────────────
 function openNewTicketModal(){
-  // Seed standard failure types if empty
   seedStandardFailureTypes();
 
   // Equipment dropdown
   const eqSel = document.getElementById('ntk-equipment');
   eqSel.innerHTML = '<option value="">-- válassz berendezést --</option>' +
-    [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu')).map(e=>`<option value="${e.id}">${e.name}${e.assetId?' ['+e.assetId+']':''}</option>`).join('');
+    [...equipment].sort((a,b)=>a.name.localeCompare(b.name,'hu'))
+      .map(e=>`<option value="${e.id}">${e.name}${e.assetId?' ['+e.assetId+']':''}</option>`).join('');
 
-  // Category filter
-  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('ntk-ftcat');
-  catSel.innerHTML = '<option value="">── Összes kategória ──</option>' +
-    cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // Reset failure type combos
+  _ftSelectedId = null;
+  _ftActiveCat  = '';
+  const catInp  = document.getElementById('ntk-ftcat-input');
+  const catVal  = document.getElementById('ntk-ftcat-val');
+  const typeInp = document.getElementById('ntk-ftype-input');
+  const typeVal = document.getElementById('ntk-ftype-val');
+  if(catInp)  { catInp.value=''; catInp.style.color='var(--text)'; }
+  if(catVal)  catVal.value='';
+  if(typeInp) typeInp.value='';
+  if(typeVal) typeVal.value='';
+  ['ntk-ftcat-dd','ntk-ftype-dd'].forEach(id=>{
+    const dd=document.getElementById(id); if(dd) dd.style.display='none';
+  });
 
-  // Failure type dropdown (all)
-  filterFTypesByCategory();
+  // Reset other fields
+  const sd = document.getElementById('ntk-shortDesc'); if(sd) sd.value='';
+  const fd = document.getElementById('ntk-fullDesc');  if(fd) fd.value='';
+  const descEl = document.getElementById('ntk-ftype-desc'); if(descEl) descEl.style.display='none';
 
-  // Reset fields
-  ['ntk-shortDesc'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  const ftd = document.getElementById('ntk-fullDesc'); if(ftd) ftd.value='';
-  document.getElementById('ntk-ftype-desc').style.display='none';
-
-  // Severity: default medium
+  // Severity default
   selectSeverity('medium');
 
   // Init datetime pickers
   const now = new Date();
   initDtpWidget('dtpicker-start', ()=>updateDowntimePreview(), now.toISOString());
-  initDtpWidget('dtpicker-end', ()=>updateDowntimePreview(), null);
-
+  initDtpWidget('dtpicker-end',   ()=>updateDowntimePreview(), null);
   updateDowntimePreview();
-  openModal('newTicketModal');
-}
 
-function rTicketFTypeChange(){
-  const ftId = document.getElementById('ntk-ftype').value;
-  const ft = failureTypes.find(x=>x.id===ftId);
-  if(ft){
-    document.getElementById('ntk-shortDesc').value = ft.name;
-    const descEl = document.getElementById('ntk-ftype-desc');
-    if(ft.description){ descEl.textContent = 'ℹ️ '+ft.description; descEl.style.display='block'; }
-    else descEl.style.display='none';
-  }
+  openModal('newTicketModal');
 }
 
 function createTicket(){
   const eqId = document.getElementById('ntk-equipment').value;
-  const ftId = document.getElementById('ntk-ftype').value;
-  if(!eqId||!ftId){ alert('Berendezés és hibatípus kötelező!'); return; }
-  const eq = equipment.find(x=>x.id===eqId), ft = failureTypes.find(x=>x.id===ftId);
+  const ftId = document.getElementById('ntk-ftype-val').value;
+  if(!eqId){ showToast('⚠️ Válassz berendezést!','warn'); return; }
+  if(!ftId){ showToast('⚠️ Válassz hibatípust!','warn'); return; }
+  const eq = equipment.find(x=>x.id===eqId);
+  const ft = failureTypes.find(x=>x.id===ftId);
+  if(!eq||!ft){ showToast('⚠️ Érvénytelen berendezés vagy hibatípus!','warn'); return; }
   const ds = getDtpValue('dtpicker-start');
   const de = getDtpValue('dtpicker-end');
-  if(!ds){ alert('A leállás kezdete kötelező!'); return; }
+  if(!ds){ showToast('⚠️ A leállás kezdete kötelező!','warn'); return; }
   const t = {
     id: rUUID(),
     ticketNumber: genTicketNum(),
     equipmentId: eqId, equipmentName: eq.name,
     failureTypeId: ftId, failureTypeName: ft.name, failureTypeCode: ft.code,
+    failureTypeCategory: ft.category||'',
     shortDesc: document.getElementById('ntk-shortDesc').value.trim() || ft.name,
-    fullDesc: document.getElementById('ntk-fullDesc').value.trim(),
-    severity: document.getElementById('ntk-severity').value,
+    fullDesc:  document.getElementById('ntk-fullDesc').value.trim(),
+    severity:  document.getElementById('ntk-severity').value,
     downtimeStart: ds, downtimeEnd: de,
     downtimeMinutes: calcDowntime(ds, de),
     status: 'open', rootCause: '', resolution: '',
@@ -4847,7 +4990,8 @@ function createTicket(){
   rTickets.push(t);
   if(window.fbSaveTicket) window.fbSaveTicket(t).catch(err=>console.error(err));
   closeModal('newTicketModal');
-  document.getElementById('dtpicker-popup').style.display='none';
+  const popup = document.getElementById('dtpicker-popup');
+  if(popup) popup.style.display='none';
   showView('r-ticket-detail', t.id);
 }
 
@@ -4855,8 +4999,10 @@ Object.assign(window, {
   initDtpWidget, renderDtpWidget, clearDtp, getDtpValue,
   toggleDtpPopup, renderDtpPopup, selectDtpDay, dtpNavMonth,
   dtpSpinTime, dtpTimeInput, closeDtpPopup, updateDowntimePreview,
-  selectSeverity, filterFTypesByCategory,
-  openNewTicketModal, rTicketFTypeChange, createTicket,
+  selectSeverity, filterFTypesByCategory, rTicketFTypeChange,
+  ftComboOpenCat, ftComboFilterCat, ftComboBlurCat, ftSelectCat,
+  ftComboOpenType, ftComboFilterType, ftComboBlurType, ftSelectType,
+  openNewTicketModal, createTicket,
   seedStandardFailureTypes
 });
 
