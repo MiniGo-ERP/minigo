@@ -757,6 +757,7 @@
         <div class="sidebar-item" onclick="openNewEquipmentModal()"><span>🏭</span> Új berendezés</div>
         <div class="sidebar-item" onclick="openEqCatalogModal()"><span>🗂️</span> Eszköz katalógus</div>
         <div class="sidebar-item" onclick="openRelExportModal()"><span>📊</span> Export / Riport</div>
+        <div class="sidebar-item" onclick="seedDemoData()" style="color:var(--accent2);font-size:10px;opacity:0.8;" title="Fiktív tesztadatok betöltése (100+ berendezés)"><span>🧪</span> Demo adatok</div>
         <div class="sidebar-divider"></div>
         <div class="sidebar-item" id="nav-r-trash" onclick="showView('r-trash')" style="color:var(--danger);opacity:0.7;">
           <span>🗑️</span> Kuka
@@ -5369,7 +5370,281 @@ Object.assign(window, {
   ftComboOpenCat, ftComboFilterCat, ftComboBlurCat, ftSelectCat,
   ftComboOpenType, ftComboFilterType, ftComboBlurType, ftSelectType,
   openNewTicketModal, createTicket,
-  seedStandardFailureTypes
+  seedStandardFailureTypes,
+});
+function seedDemoData(){
+  // Check if demo data already exists
+  const demoEq      = equipment.filter(e=>e._isDemoData);
+  const demoTickets = rTickets.filter(t=>t._isDemoData);
+  const demoCAs     = correctiveActs.filter(a=>a._isDemoData);
+  const demoResps   = responsibles.filter(r=>r._isDemoData);
+
+  if(demoEq.length > 0){
+    // Demo data already loaded — offer to remove
+    openDeleteConfirm(
+      `Demo adatok jelenleg betöltve:\n• ${demoEq.length} berendezés\n• ${demoTickets.length} hibajegy\n• ${demoCAs.length} korrektív akció\n• ${demoResps.length} felelős\n\nEltávolítod és visszaállsz az éles adatokhoz?`,
+      removeDemoData
+    );
+  } else {
+    // No demo data — load it
+    if(equipment.length > 5 || rTickets.length > 10){
+      openDeleteConfirm(
+        `Már vannak éles adatok (${equipment.length} berendezés, ${rTickets.length} hibajegy).\n\nA demo adatok hozzáadódnak a meglévőkhöz. Folytatod?`,
+        _doSeedDemoData
+      );
+    } else {
+      _doSeedDemoData();
+    }
+  }
+}
+
+function removeDemoData(){
+  const demoEqIds      = new Set(equipment.filter(e=>e._isDemoData).map(e=>e.id));
+  const demoTicketIds  = new Set(rTickets.filter(t=>t._isDemoData).map(t=>t.id));
+  const demoCAIds      = new Set(correctiveActs.filter(a=>a._isDemoData).map(a=>a.id));
+  const demoRespIds    = new Set(responsibles.filter(r=>r._isDemoData).map(r=>r.id));
+
+  const eqCount   = demoEqIds.size;
+  const tkCount   = demoTicketIds.size;
+  const caCount   = demoCAIds.size;
+  const respCount = demoRespIds.size;
+
+  // Remove from Firebase
+  demoEqIds.forEach(id    => { if(window.fbDelEquipment)   window.fbDelEquipment(id).catch(e=>console.error(e)); });
+  demoTicketIds.forEach(id => { if(window.fbDelTicket)      window.fbDelTicket(id).catch(e=>console.error(e)); });
+  demoCAIds.forEach(id    => { if(window.fbDelCA)           window.fbDelCA(id).catch(e=>console.error(e)); });
+  demoRespIds.forEach(id  => { if(window.fbDelResponsible)  window.fbDelResponsible(id).catch(e=>console.error(e)); });
+
+  // Remove from memory arrays
+  equipment      = equipment.filter(e=>!e._isDemoData);
+  rTickets       = rTickets.filter(t=>!t._isDemoData);
+  correctiveActs = correctiveActs.filter(a=>!a._isDemoData);
+  responsibles   = responsibles.filter(r=>!r._isDemoData);
+
+  updateTrashBadge();
+  showToast(`✅ Demo adatok eltávolítva: ${eqCount} berendezés, ${tkCount} hibajegy, ${caCount} CA, ${respCount} felelős törölve.`, 'ok');
+  showView('r-dashboard');
+}
+
+function _doSeedDemoData(){
+  // First make sure failure types are seeded
+  seedStandardFailureTypes();
+
+  // ── GYÁRTÓK ─────────────────────────────────────────────────────────────────
+  const MANUFACTURERS = [
+    'ElectroPower Kft.', 'VoltageTech Zrt.', 'PowerCore AG',
+    'EnergiaSystems Kft.', 'SmartGrid Solutions', 'MegaVolt Industries',
+    'CurrentFlow Zrt.', 'ElektroPrime Kft.', 'VoltMaster AG',
+    'NexPower Systems', 'AmpTech International', 'GridForce Kft.',
+    'EnergoMax Zrt.', 'PowerLink Solutions', 'ElektroNova AG',
+  ];
+
+  // ── TÍPUSOK ──────────────────────────────────────────────────────────────────
+  const EQ_TYPES = [
+    'AC Töltő', 'DC Töltő', 'Wallbox', 'Oszlopos töltő',
+    'Gyorstöltő', 'Ultra-gyorstöltő', 'Kétirányú töltő',
+    'Ipari töltő', 'Hordozható töltő', 'Okos wallbox',
+  ];
+
+  // ── BERENDEZÉS NEVEK KOMPONENSEI ─────────────────────────────────────────────
+  const SERIES = [
+    'Terra', 'Volt', 'Charge', 'Power', 'Amp', 'Nexus',
+    'Prime', 'Pro', 'Elite', 'Ultra', 'Max', 'Smart',
+    'Flex', 'Fast', 'Turbo', 'Core', 'Link', 'Edge',
+  ];
+  const MODELS = [
+    '100', '150', '200', '220', '250', '300', '350', '400',
+    '500', '600', '750', '1000', 'Plus', 'X', 'XL', 'S', 'M', 'L',
+  ];
+
+  // ── HELYSZÍNEK ────────────────────────────────────────────────────────────────
+  const LOCATIONS = [
+    'Budapest - Keleti P.', 'Budapest - Déli P.', 'Budapest - Kelenföld',
+    'Debrecen - Centrum', 'Miskolc - Tesco', 'Pécs - Árkád',
+    'Győr - Ipari Park', 'Székesfehérvár - Plaza', 'Kecskemét - Bevásárlóközpont',
+    'Nyíregyháza - Centrum', 'Kaposvár - Parkló', 'Eger - Főtér',
+    'Veszprém - Kórház', 'Szombathely - Vasút', 'Zalaegerszeg - Ipari',
+    'Sopron - Határ', 'Siófok - Strand', 'Tata - Bevásárló',
+    'Dunaújváros - Centrum', 'Esztergom - Bazilika köz',
+  ];
+
+  // ── FAILURE TYPE IDs ─────────────────────────────────────────────────────────
+  const ftIds = failureTypes.map(f => f.id);
+  if(ftIds.length === 0){
+    showToast('⚠️ Először töltsd be a standard hibatípusokat!', 'warn');
+    return;
+  }
+
+  // ── SEGÉDFÜGGVÉNYEK ──────────────────────────────────────────────────────────
+  function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function rndInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function rndDate(daysAgo){ // returns YYYY-MM-DD
+    const d = new Date();
+    d.setDate(d.getDate() - Math.floor(Math.random()*daysAgo));
+    return d.toISOString().split('T')[0];
+  }
+  function rndDateTime(daysAgo){
+    const d = new Date();
+    d.setDate(d.getDate() - Math.floor(Math.random()*daysAgo));
+    d.setHours(rndInt(0,23), rndInt(0,59), 0, 0);
+    return d.toISOString().slice(0,16);
+  }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+
+  // ── FELELŐSÖK ──────────────────────────────────────────────────────────────
+  const RESP_NAMES = [
+    ['Nagy','Béla'],['Kovács','Attila'],['Tóth','Zoltán'],['Szabó','Péter'],
+    ['Horváth','László'],['Varga','Gábor'],['Kiss','Tamás'],['Fekete','Norbert'],
+    ['Balogh','Ádám'],['Molnár','Csaba'],
+  ];
+  const newResps = [];
+  RESP_NAMES.forEach(([last,first])=>{
+    if(!responsibles.find(r=>r.lastName===last && r.firstName===first)){
+      const r = {
+        id: rUUID(), lastName: last, firstName: first,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}@example.hu`,
+        role: rnd(['Karbantartó','Helyszíni technikus','Műszakvezető','Senior technikus']),
+        _isDemoData: true
+      };
+      responsibles.push(r);
+      newResps.push(r);
+      if(window.fbSaveResponsible) window.fbSaveResponsible(r).catch(e=>console.error(e));
+    }
+  });
+
+  // ── 110 BERENDEZÉS GENERÁLÁSA ─────────────────────────────────────────────
+  const newEq = [];
+  const eqCount = 110;
+  for(let i=0; i<eqCount; i++){
+    const mfr   = rnd(MANUFACTURERS);
+    const type  = rnd(EQ_TYPES);
+    const ser   = rnd(SERIES);
+    const mod   = rnd(MODELS);
+    const kw    = rnd([7,11,22,50,75,100,150,175,200,300,350]);
+    const name  = `${mfr.split(' ')[0]} ${ser}-${mod} ${kw}kW`;
+    const assetId = `EQ-${String(i+1).padStart(4,'0')}`;
+    const installYear = rndInt(2019,2024);
+    const installMonth = rndInt(1,12);
+    const eq = {
+      id: rUUID(),
+      name, type, manufacturer: mfr,
+      assetId, serialNumber: `SN-${rndInt(100000,999999)}`,
+      location: rnd(LOCATIONS),
+      installedAt: `${installYear}-${pad2(installMonth)}-${pad2(rndInt(1,28))}`,
+      notes: rnd(['',`${kw}kW névleges teljesítmény`,`${rndInt(1,4)} csatlakozóhely`,'Fedett helyen','Kültéri telepítés']),
+      _isDemoData: true
+    };
+    newEq.push(eq);
+    equipment.push(eq);
+    if(window.fbSaveEquipment) window.fbSaveEquipment(eq).catch(e=>console.error(e));
+  }
+
+  // ── HIBAJEGYEK GENERÁLÁSA (1–30 / berendezés) ────────────────────────────
+  let ticketCounter = rTickets.length + 1;
+  let newTickets = 0;
+
+  newEq.forEach(eq => {
+    const ticketCount = rndInt(1, 30);
+    for(let j=0; j<ticketCount; j++){
+      const ft = failureTypes[Math.floor(Math.random()*failureTypes.length)];
+      const severity = rnd(['low','low','medium','medium','medium','high','high','critical']);
+      const daysAgo  = rndInt(1, 183); // ~6 hónap
+      const startISO = rndDateTime(daysAgo);
+      const startDate = startISO.slice(0,10);
+
+      // Állásidő: 0–2400 perc (0–40 óra), alacsony súlyosságnál kevesebb
+      const maxDt = {low:60, medium:240, high:720, critical:2400}[severity];
+      const downtimeMin = rndInt(0, maxDt);
+
+      // Vége: ha van állásidő
+      let endISO = '';
+      if(downtimeMin > 0){
+        const endDate = new Date(startISO);
+        endDate.setMinutes(endDate.getMinutes() + downtimeMin);
+        endISO = endDate.toISOString().slice(0,16);
+      }
+
+      // Státusz: régebbi jegyek inkább lezárva
+      const status = daysAgo > 30
+        ? rnd(['closed','closed','closed','in_progress'])
+        : rnd(['open','in_progress','closed']);
+
+      const ticketNum = `TK-${String(ticketCounter).padStart(5,'0')}`;
+      ticketCounter++;
+
+      const t = {
+        id: rUUID(),
+        ticketNumber: ticketNum,
+        equipmentId: eq.id, equipmentName: eq.name,
+        failureTypeId: ft.id, failureTypeName: ft.name,
+        failureTypeCode: ft.code, failureTypeCategory: ft.category||'',
+        shortDesc: ft.name,
+        fullDesc: rnd([
+          '', '', '',
+          `${eq.name} – ${ft.description||ft.name}`,
+          `Helyszín: ${eq.location||''}. ${ft.description||''}`,
+          `Automatikus riasztás alapján rögzítve.`,
+        ]),
+        severity,
+        downtimeStart: startISO, downtimeEnd: endISO,
+        downtimeMinutes: downtimeMin,
+        status,
+        rootCause: status==='closed' ? rnd(['Firmware hiba','Mechanikai kopás','Áramingadozás','Szoftver bug','Felhasználói hiba','Hálózati probléma','Ismeretlen','Feszültségingadozás','Nedvességbehatolás','Gyártási hiba']) : '',
+        resolution: status==='closed' ? rnd(['Firmware frissítés','Alkatrész csere','Reset elvégezve','Konfiguráció javítva','Helyszíni javítás','Távelérés','Csere berendezés']) : '',
+        createdAt: startDate, updatedAt: startDate, closedAt: status==='closed' ? startDate : '',
+        log:[{time:startISO.replace('T',' '), msg:'Hibajegy rögzítve (demo)', type:'create'}],
+        _isDemoData: true
+      };
+      rTickets.push(t);
+      newTickets++;
+      if(window.fbSaveTicket) window.fbSaveTicket(t).catch(e=>console.error(e));
+    }
+  });
+
+  // ── KORREKTÍV AKCIÓK (kb. 40 db) ─────────────────────────────────────────
+  const CA_TITLES = [
+    'Firmware frissítés szükséges','Karbantartási szemle','Alkatrész csere tervezése',
+    'Szoftver audit','Helyszíni ellenőrzés','Megelőző karbantartás','Diagnosztika elvégzése',
+    'Gyártói szerviz megrendelése','Hálózati konfiguráció felülvizsgálata','Csere berendezés telepítése',
+    'Biztosítékcsere','Kábel ellenőrzés','Szenzor kalibráció','UPS akkumulátor csere','Portalanítás',
+  ];
+  let caCounter = correctiveActs.length + 1;
+  const closedTickets = rTickets.filter(t=>t.status==='closed' && newEq.find(e=>e.id===t.equipmentId));
+  const sampleTickets = closedTickets.slice(0, 40);
+
+  sampleTickets.forEach(t => {
+    const resp = rnd([...responsibles]);
+    const dueDate = new Date(t.createdAt);
+    dueDate.setDate(dueDate.getDate() + rndInt(3,30));
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+    const caStatus2 = rnd(['closed','closed','in_progress','in_progress','open']);
+    const ca = {
+      id: rUUID(),
+      caNumber: `CA-${String(caCounter).padStart(4,'0')}`,
+      ticketId: t.id,
+      title: rnd(CA_TITLES),
+      description: `Kapcsolódó hibajegy: ${t.ticketNumber}`,
+      responsibleId: resp.id,
+      responsibleName: resp.lastName + ' ' + resp.firstName,
+      dueDate: dueDateStr,
+      status: caStatus2,
+      closedAt: caStatus2==='closed' ? dueDateStr : '',
+      notes: '',
+      createdAt: t.createdAt,
+      _isDemoData: true
+    };
+    caCounter++;
+    correctiveActs.push(ca);
+    if(window.fbSaveCA) window.fbSaveCA(ca).catch(e=>console.error(e));
+  });
+
+  showToast(`✅ Demo adatok betöltve: ${newEq.length} berendezés, ${newTickets} hibajegy, ${sampleTickets.length} korrektív akció, ${newResps.length} felelős`, 'ok');
+  showView('r-dashboard');
+}
+
+Object.assign(window, { seedDemoData, _doSeedDemoData, removeDemoData,
+  openNewTicketModal, createTicket,
+  seedStandardFailureTypes,
 });
 
 // ── HIBAJEGY RÉSZLAP ─────────────────────────────────────────────────────────
