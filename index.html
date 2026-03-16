@@ -747,6 +747,7 @@
         <div class="sidebar-item" id="nav-r-equipment"  onclick="showView('r-equipment')">  <span>🏭</span> Berendezések</div>
         <div class="sidebar-item" id="nav-r-resp"       onclick="showView('r-resp')">       <span>👤</span> Felelősök</div>
         <div class="sidebar-item" id="nav-r-ftypes"     onclick="showView('r-ftypes')">     <span>📋</span> Hibatípusok</div>
+        <div class="sidebar-item" id="nav-r-ftcats"     onclick="showView('r-ftcats')">     <span>🏷️</span> Kategóriák</div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
@@ -3748,14 +3749,14 @@ function caStatusBadge(ca){
 const _origShowView = showView;
 function _reliabilityShowView(v,x){
   // Reliability views handled separately
-  const rViews=['r-dashboard','r-tickets','r-ticket-detail','r-pareto','r-ca','r-equipment','r-resp','r-ftypes'];
+  const rViews=['r-dashboard','r-tickets','r-ticket-detail','r-pareto','r-ca','r-equipment','r-resp','r-ftypes','r-ftcats'];
   if(rViews.includes(v)){
     currentView=v; closeSidebar();
     document.getElementById('searchInput').value='';
     document.querySelectorAll('.sidebar-item').forEach(e=>e.classList.remove('active'));
     const navMap={'r-dashboard':'nav-r-dashboard','r-tickets':'nav-r-tickets','r-ticket-detail':'nav-r-tickets',
       'r-pareto':'nav-r-pareto','r-ca':'nav-r-ca','r-equipment':'nav-r-equipment',
-      'r-resp':'nav-r-resp','r-ftypes':'nav-r-ftypes'};
+      'r-resp':'nav-r-resp','r-ftypes':'nav-r-ftypes','r-ftcats':'nav-r-ftcats'};
     const navEl=document.getElementById(navMap[v]); if(navEl) navEl.classList.add('active');
     const renders={
       'r-dashboard':  ()=>{ bc([{l:'⚡ Reliability'},{l:'Áttekintés'}]); mc().innerHTML=renderRDashboard(); },
@@ -3766,6 +3767,7 @@ function _reliabilityShowView(v,x){
       'r-equipment':  ()=>{ bc([{l:'⚡ Reliability'},{l:'Berendezések'}]); mc().innerHTML=renderEquipment(x); },
       'r-resp':       ()=>{ bc([{l:'⚡ Reliability'},{l:'Felelősök'}]); mc().innerHTML=renderResponsibles(); },
       'r-ftypes':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibatípusok'}]); mc().innerHTML=renderFailureTypes(); },
+      'r-ftcats':     ()=>{ bc([{l:'⚡ Reliability'},{l:'Hibatípus Kategóriák'}]); mc().innerHTML=renderFTCategories(); },
     };
     if(renders[v]) renders[v]();
     return;
@@ -4293,7 +4295,7 @@ function renderFailureTypes(){
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
     <div>
       <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">Hibatípusok kezelése</div>
-      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${sorted.length} típus · ${categories.length} kategória</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${sorted.length} típus · ${categories.length} kategória · <span style="color:var(--accent2);cursor:pointer;" onclick="showView('r-ftcats')">→ Kategóriák kezelése</span></div>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn btn-secondary" onclick="seedAndRefreshFTypes()" title="Standard hibatípusok betöltése ha hiányoznak">🔄 Standard betöltés</button>
@@ -4301,7 +4303,7 @@ function renderFailureTypes(){
     </div>
   </div>
   <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);line-height:1.7;">
-    💡 <b style="color:var(--text)">Admin tipp:</b> A <span style="font-family:var(--mono);color:var(--accent2)">STD</span> jelölt típusok az előre beépített standard hibakódok. Szerkeszthetők és törölhetők, de az Új hibajegy modalnál mindig ezekből lehet választani. Kategóriák szabadon bővíthetők.
+    💡 <b style="color:var(--text)">Admin tipp:</b> A <span style="font-family:var(--mono);color:var(--accent2)">STD</span> jelölt típusok az előre beépített standard hibakódok. Szerkeszthetők és törölhetők. A <b style="cursor:pointer;color:var(--accent2);" onclick="showView('r-ftcats')">kategóriákat</b> a Kategóriák fülön kezelheted.
   </div>
   ${sorted.length===0
     ? `<div class="empty-state"><div class="em-icon">📋</div><div class="em-title">Még nincs hibatípus</div><div style="font-size:12px;margin-top:6px;color:var(--text-dim)">Kattints a "Standard betöltés" gombra az előre definiált hibatípusok feltöltéséhez</div></div>`
@@ -4310,7 +4312,6 @@ function renderFailureTypes(){
 
 function seedAndRefreshFTypes(){
   const before = failureTypes.length;
-  // Force seed even if already has some
   STANDARD_FAILURE_TYPES.forEach(ft => {
     const exists = failureTypes.some(x=>x.code===ft.code);
     if(!exists){
@@ -4325,12 +4326,197 @@ function seedAndRefreshFTypes(){
 }
 Object.assign(window, {seedAndRefreshFTypes});
 
+// ── HIBATÍPUS KATEGÓRIA KATALÓGUS ─────────────────────────────────────────────
+const FT_CAT_KEY = 'minigo_ft_categories';
+
+// Standard kategóriák (mindig jelen vannak)
+const STANDARD_FT_CATS = [
+  'Elektromos','Mechanikai','Szoftver','Hálózat',
+  'Teljesítmény','Karbantartás','Egyéb'
+];
+
+function loadFTCategories(){
+  try {
+    const saved = localStorage.getItem(FT_CAT_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      // Merge: always include standard ones
+      const merged = [...parsed];
+      STANDARD_FT_CATS.forEach(sc => { if(!merged.find(c=>c.name===sc)) merged.push({name:sc, isStandard:true}); });
+      return merged;
+    }
+  } catch(e){}
+  return STANDARD_FT_CATS.map(name => ({name, isStandard:true}));
+}
+
+function saveFTCategories(cats){
+  try { localStorage.setItem(FT_CAT_KEY, JSON.stringify(cats)); } catch(e){ console.warn(e); }
+}
+
+let _ftCategories = loadFTCategories();
+
+function getFTCategoryNames(){
+  return _ftCategories.map(c=>c.name).sort((a,b)=>a.localeCompare(b,'hu'));
+}
+
+// Auto-sync: ha új kategória neve kerül be hibatípuson keresztül, adja hozzá a katalógushoz
+function _autoAddFTCategory(catName){
+  if(!catName) return;
+  const exists = _ftCategories.find(c=>c.name.toLowerCase()===catName.toLowerCase());
+  if(!exists){
+    _ftCategories.push({name:catName, isStandard:false});
+    saveFTCategories(_ftCategories);
+  }
+}
+
+// ── KATEGÓRIA LISTA NÉZET (r-ftcats) ─────────────────────────────────────────
+function renderFTCategories(){
+  const cats = [..._ftCategories].sort((a,b)=>a.name.localeCompare(b.name,'hu'));
+
+  const rows = cats.map(cat => {
+    const ftCount = failureTypes.filter(f=>f.category===cat.name).length;
+    const ticketCount = rTickets.filter(t=>t.failureTypeCategory===cat.name || failureTypes.find(f=>f.id===t.failureTypeId)?.category===cat.name).length;
+    const canDelete = !cat.isStandard || ftCount === 0;
+    const stdBadge = cat.isStandard
+      ? `<span style="font-family:var(--mono);font-size:9px;color:var(--accent2);background:rgba(45,125,210,0.1);border:1px solid rgba(45,125,210,0.3);padding:2px 6px;border-radius:3px;">STD</span>`
+      : `<span style="font-family:var(--mono);font-size:9px;color:#9b59b6;background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.3);padding:2px 6px;border-radius:3px;">EGYÉNI</span>`;
+    const safeName = cat.name.replace(/'/g,"\\'");
+    return `
+    <div class="project-card" style="cursor:default;" id="ftcat-row-${btoa(unescape(encodeURIComponent(cat.name))).replace(/[^a-zA-Z0-9]/g,'').slice(0,12)}">
+      <div style="font-size:18px;">🏷️</div>
+      <div class="project-info" style="flex:1;">
+        <div class="project-name" id="ftcat-name-display-${btoa(unescape(encodeURIComponent(cat.name))).replace(/[^a-zA-Z0-9]/g,'').slice(0,12)}">${cat.name}</div>
+        <div class="project-company">${ftCount} hibatípus · ${ticketCount} hibajegy</div>
+      </div>
+      ${stdBadge}
+      <div class="row-actions" onclick="event.stopPropagation()">
+        <button class="icon-btn edit" title="Átnevezés" onclick="openRenameFTCat('${safeName}')">✏️</button>
+        ${canDelete
+          ? `<button class="icon-btn del" title="Törlés" onclick="deleteFTCat('${safeName}')">🗑️</button>`
+          : `<button class="icon-btn" title="Nem törölhető: hibatípusok tartoznak hozzá" style="opacity:0.3;cursor:not-allowed;">🗑️</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <div>
+      <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">Hibatípus Kategóriák</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">${cats.length} kategória · ${failureTypes.length} hibatípus összesen</div>
+    </div>
+    <div style="margin-left:auto;">
+      <button class="btn btn-primary" onclick="openAddFTCat()">➕ Új kategória</button>
+    </div>
+  </div>
+
+  <div style="background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--text-dim);line-height:1.7;">
+    💡 <b style="color:var(--text)">Admin tipp:</b>
+    Az <span style="font-family:var(--mono);color:var(--accent2)">STD</span> kategóriák az előre beépített standard csoportok — átnevezhetők, de csak akkor törölhetők, ha nincs hozzájuk rendelt hibatípus.
+    Az <span style="font-family:var(--mono);color:#9b59b6;">EGYÉNI</span> kategóriák szabadon törölhetők és átnevezhetők.
+    <br>A kategória átnevezése <b style="color:var(--text)">automatikusan frissíti</b> az összes érintett hibatípus besorolását.
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    ${rows || '<div class="empty-state"><div class="em-icon">🏷️</div><div class="em-title">Nincs kategória</div></div>'}
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">Gyors hozzáadás</div>
+    <div style="display:flex;gap:8px;">
+      <input class="form-input" id="ftcat-quick-input" placeholder="Új kategória neve..." style="flex:1;"
+        onkeydown="if(event.key==='Enter') quickAddFTCat()">
+      <button class="btn btn-primary" onclick="quickAddFTCat()">➕ Hozzáad</button>
+    </div>
+  </div>`;
+}
+
+function quickAddFTCat(){
+  const inp = document.getElementById('ftcat-quick-input');
+  const val = inp ? inp.value.trim() : '';
+  if(!val){ showToast('⚠️ Írj be egy kategória nevet!','warn'); return; }
+  if(_ftCategories.find(c=>c.name.toLowerCase()===val.toLowerCase())){
+    showToast('⚠️ Ez a kategória már létezik!','warn'); return;
+  }
+  _ftCategories.push({name:val, isStandard:false});
+  saveFTCategories(_ftCategories);
+  showToast(`✅ Kategória hozzáadva: ${val}`, 'ok');
+  showView('r-ftcats');
+}
+
+function openAddFTCat(){
+  const name = prompt('Új kategória neve:');
+  if(!name || !name.trim()) return;
+  const val = name.trim();
+  if(_ftCategories.find(c=>c.name.toLowerCase()===val.toLowerCase())){
+    showToast('⚠️ Ez a kategória már létezik!','warn'); return;
+  }
+  _ftCategories.push({name:val, isStandard:false});
+  saveFTCategories(_ftCategories);
+  showToast(`✅ Kategória hozzáadva: ${val}`, 'ok');
+  showView('r-ftcats');
+}
+
+function openRenameFTCat(oldName){
+  const newName = prompt(`Kategória átnevezése:\n\nJelenlegi: "${oldName}"\n\nÚj neve:`, oldName);
+  if(!newName || !newName.trim() || newName.trim()===oldName) return;
+  const val = newName.trim();
+  if(_ftCategories.find(c=>c.name.toLowerCase()===val.toLowerCase() && c.name!==oldName)){
+    showToast('⚠️ Ez a kategória neve már foglalt!','warn'); return;
+  }
+  // Rename in categories list
+  const cat = _ftCategories.find(c=>c.name===oldName);
+  if(cat) cat.name = val;
+  saveFTCategories(_ftCategories);
+
+  // Update all failureTypes that used this category
+  let updated = 0;
+  failureTypes.forEach(ft => {
+    if(ft.category === oldName){
+      ft.category = val;
+      updated++;
+      if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(e=>console.error(e));
+    }
+  });
+
+  // Update denormalized category in tickets too
+  rTickets.forEach(t => {
+    if(t.failureTypeCategory === oldName){
+      t.failureTypeCategory = val;
+      if(window.fbSaveTicket) window.fbSaveTicket(t).catch(e=>console.error(e));
+    }
+  });
+
+  showToast(`✅ Átnevezve: "${oldName}" → "${val}" (${updated} hibatípus frissítve)`, 'ok');
+  showView('r-ftcats');
+}
+
+function deleteFTCat(name){
+  const cat = _ftCategories.find(c=>c.name===name);
+  if(!cat){ showToast('⚠️ Kategória nem található!','warn'); return; }
+  const ftCount = failureTypes.filter(f=>f.category===name).length;
+  if(ftCount > 0){
+    showToast(`⚠️ Nem törölhető: ${ftCount} hibatípus tartozik ehhez a kategóriához. Előbb rendeld át vagy töröld a hibatípusokat.`,'warn');
+    return;
+  }
+  openDeleteConfirm(
+    `Törlöd a "${name}" kategóriát?${cat.isStandard ? '\n\n⚠️ Ez standard kategória!' : ''}`,
+    () => {
+      _ftCategories = _ftCategories.filter(c=>c.name!==name);
+      saveFTCategories(_ftCategories);
+      showToast(`🗑️ Kategória törölve: ${name}`, 'warn');
+      showView('r-ftcats');
+    }
+  );
+}
+
+Object.assign(window, {
+  renderFTCategories, quickAddFTCat, openAddFTCat,
+  openRenameFTCat, deleteFTCat, getFTCategoryNames
+});
+
 function _ftCategoryOptions(selectedVal){
-  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort();
-  // Ensure standard categories always present
-  const stdCats = ['Elektromos','Mechanikai','Szoftver','Hálózat','Teljesítmény','Karbantartás','Egyéb'];
-  stdCats.forEach(c=>{ if(!cats.includes(c)) cats.push(c); });
-  cats.sort();
+  // Use managed catalog instead of dynamically collecting from failureTypes
+  const cats = getFTCategoryNames();
   return cats.map(c=>`<option value="${c}" ${c===selectedVal?'selected':''}>${c}</option>`).join('') +
     `<option value="__new__" ${'__new__'===selectedVal?'selected':''}>➕ Új kategória megadása...</option>`;
 }
@@ -4403,6 +4589,7 @@ function createFailureType(){
     isStandard: false  // explicitly custom
   };
   failureTypes.push(ft);
+  _autoAddFTCategory(category);  // sync to catalog
   if(window.fbSaveFailureType) window.fbSaveFailureType(ft).catch(err=>console.error(err));
   closeModal('newFTypeModal');
   showToast(`✅ Egyedi hibatípus hozzáadva: [${code}] ${name}`, 'ok');
@@ -4447,6 +4634,7 @@ function saveFailureType(){
   }
   ft.code = code; ft.name = name; ft.category = category;
   ft.description = document.getElementById('eft-desc').value.trim();
+  _autoAddFTCategory(category);  // sync to catalog
   // Update denormalized name in tickets
   rTickets.filter(t=>t.failureTypeId===ft.id).forEach(t=>{
     t.failureTypeName=ft.name; t.failureTypeCode=ft.code;
@@ -4786,28 +4974,37 @@ function _ftGetList(){
 function _ftRenderCatDD(filterVal){
   const dd = document.getElementById('ntk-ftcat-dd');
   if(!dd) return;
-  const cats = [...new Set(failureTypes.map(f=>f.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'hu'));
+  // Use managed catalog
+  const allCats = getFTCategoryNames();
   const q = (filterVal||'').trim().toLowerCase();
-  const filtered = q ? cats.filter(c=>c.toLowerCase().includes(q)) : cats;
+  const filtered = q ? allCats.filter(c=>c.toLowerCase().includes(q)) : allCats;
 
   let html = '';
-  // "Összes" reset item
   html += `<div class="eq-combo-item" onmousedown="ftSelectCat('')" style="color:var(--text-dim);font-style:italic;">
     ✕ Összes kategória (szűrő törlése)
   </div>`;
   if(filtered.length === 0){
-    html += `<div class="eq-combo-empty">Nincs ilyen kategória</div>`;
+    html += `<div class="eq-combo-empty">Nincs ilyen kategória – <span style="color:var(--accent2);cursor:pointer;" onmousedown="event.preventDefault();showView('r-ftcats')">hozzáadás →</span></div>`;
   } else {
     filtered.forEach(c => {
       const cnt = failureTypes.filter(f=>f.category===c).length;
       const isActive = c === _ftActiveCat;
+      const catObj = _ftCategories.find(x=>x.name===c);
+      const stdDot = catObj?.isStandard
+        ? `<span style="font-family:var(--mono);font-size:8px;color:var(--accent2);margin-left:4px;">STD</span>`
+        : '';
       html += `<div class="eq-combo-item" onmousedown="ftSelectCat('${c.replace(/'/g,"\\'")}')"
         style="${isActive ? 'background:rgba(232,160,32,0.12);color:var(--accent);' : ''}">
-        <span style="flex:1">${c}</span>
+        <span style="flex:1">${c}${stdDot}</span>
         <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-left:8px;">${cnt} db</span>
       </div>`;
     });
   }
+  // Link to admin
+  html += `<div style="padding:6px 12px;border-top:1px solid var(--border);font-size:10px;color:var(--text-dim);cursor:pointer;"
+    onmousedown="event.preventDefault();closeModal('newTicketModal');showView('r-ftcats')">
+    ⚙️ Kategóriák kezelése →
+  </div>`;
   dd.innerHTML = html;
   dd.style.display = 'block';
 }
