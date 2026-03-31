@@ -783,6 +783,13 @@
         <div class="sidebar-item" onclick="showView('ml-new-tig')">         <span>➕</span> Új TIG összeállítása</div>
         <div class="sidebar-item" onclick="openCompanySettings()">           <span>⚙️</span> Cégadatok</div>
       </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section" style="padding-bottom:10px;">
+        <div class="sidebar-item" id="nav-ml-trash" onclick="showView('ml-trash')" style="color:var(--danger);opacity:0.7;">
+          <span>🗑️</span> Kuka
+          <span id="trash-count-badge-ml" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;"></span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1890,6 +1897,8 @@ async function loadFromFirestore() {
     try {
       const tigSnap = await getDocs(collection(db, 'tigs'));
       if (!tigSnap.empty) tigStore = tigSnap.docs.map(d => d.data());
+      const tigTrashSnap = await getDocs(collection(db, 'tig_trash'));
+      if (!tigTrashSnap.empty) tigTrashBin = tigTrashSnap.docs.map(d => d.data());
       updateMlLauncherStats();
     } catch(te){ console.warn('TIG betöltési hiba (nem kritikus):', te); }
   } catch(e) {
@@ -2081,6 +2090,16 @@ function showView(v, x){
   else if(v==='ml-tig-detail'){ nav('nav-ml-tigs');
     bc([{l:'Munkalapkészítő',o:"showView('ml-dashboard')"},{l:'TIG-ek',o:"showView('ml-tigs')"},{l:x}]);
     mc().innerHTML=renderMlTigDetail(x);
+  }
+  else if(v==='ml-edit-tig'){ nav('nav-ml-tigs');
+    bc([{l:'Munkalapkészítő',o:"showView('ml-dashboard')"},{l:'TIG-ek',o:"showView('ml-tigs')"},{l:x,o:`showView('ml-tig-detail','${x}')`},{l:'Szerkesztés'}]);
+    _mlEditingId = x;
+    mc().innerHTML=renderMlEditTig(x);
+    setTimeout(()=>{ mlRebuildEditSections(x); }, 0);
+  }
+  else if(v==='ml-trash'){ nav('nav-ml-trash');
+    bc([{l:'Munkalapkészítő',o:"showView('ml-dashboard')"},{l:'TIG Kuka'}]);
+    mc().innerHTML=renderMlTrash(); updateMlTrashBadge();
   }
 }
 
@@ -7369,11 +7388,16 @@ Object.assign(window, { exportProjectsXLS, openExportModal });
 // Firebase helpers
 async function fbSaveTig(t)  { await setDoc(doc(db,'tigs',t.id),t); }
 async function fbDeleteTig(id){ await fbDeleteDocFS(doc(db,'tigs',id)); }
+async function fbSaveTigTrash(item){ await setDoc(doc(db,'tig_trash',item.id),item); }
+async function fbDeleteTigTrash(id){ await fbDeleteDocFS(doc(db,'tig_trash',id)); }
 window.fbSaveTig = fbSaveTig;
 window.fbDeleteTig = fbDeleteTig;
+window.fbSaveTigTrash = fbSaveTigTrash;
+window.fbDeleteTigTrash = fbDeleteTigTrash;
 
 // ── Állapotváltozók ───────────────────────────────────────────────────────────
 let tigStore     = [];   // betöltött TIG-ek (Firestore: 'tigs' collection)
+let tigTrashBin  = [];   // törölt TIG-ek (Firestore: 'tig_trash' collection)
 let _mlSections  = [];   // az aktuálisan szerkesztett TIG szekciói
 let _mlEditingId = null; // ha meglévő TIG-et szerkesztünk
 
@@ -7409,6 +7433,14 @@ function updateMlLauncherStats() {
   const totEl  = document.getElementById('tstat-ml-total');
   if (openEl) openEl.textContent = tigStore.filter(t => t.status !== 'signed').length;
   if (totEl)  totEl.textContent  = tigStore.length;
+  updateMlTrashBadge();
+}
+
+function updateMlTrashBadge() {
+  const el = document.getElementById('trash-count-badge-ml');
+  if (!el) return;
+  if (tigTrashBin.length > 0) { el.textContent=tigTrashBin.length; el.style.display=''; }
+  else el.style.display='none';
 }
 
 function renderMlDashboard() {
@@ -7497,6 +7529,79 @@ function mlRecalc(){
   if(gtEl){if(_mlSections.filter(Boolean).length>0&&grandNet>0){gtEl.style.display='';gtEl.innerHTML=`<div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">📊 VÉGÖSSZEG – minden szekció együtt</div><div style="display:flex;gap:28px;flex-wrap:wrap;align-items:baseline;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó összeg</div><div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--profit);">${grandNet.toLocaleString('hu-HU')} Ft</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA (${Math.round(vatPct*100)}%)</div><div style="font-family:var(--mono);font-size:16px;color:var(--text-dim);">${grandVat.toLocaleString('hu-HU')} Ft</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó összeg (utalandó)</div><div style="font-family:var(--mono);font-size:26px;font-weight:700;color:var(--text-bright);">${grandGross.toLocaleString('hu-HU')} Ft</div></div></div>`;} else gtEl.style.display='none';}
 }
 
+// ── TIG ELŐNÉZET & LETÖLTÉS ───────────────────────────────────────────────────
+let _pendingTigHtml = '';
+let _pendingTigId   = '';
+let _pendingTigDate = '';
+let _pendingTigObj  = null;
+
+function openTigPreview() {
+  // Előnézet modal: iframe-ben mutatja a HTML-t, letöltés csak jóváhagyás után
+  let m = document.getElementById('tigPreviewModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'tigPreviewModal';
+    m.className = 'modal-overlay';
+    m.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;width:92vw;max-width:900px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);">
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);letter-spacing:1px;">👁️ TIG ELŐNÉZET</div>
+          <div id="tig-preview-id" style="font-family:var(--mono);font-size:11px;color:var(--accent2);"></div>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="closeModal('tigPreviewModal')">✕ Mégse</button>
+            <button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="confirmTigDownload()">⬇️ Letöltés & Mentés</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow:hidden;padding:0;">
+          <iframe id="tigPreviewFrame" style="width:100%;height:100%;min-height:70vh;border:none;background:#fff;"></iframe>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click', e => { if(e.target===m) closeModal('tigPreviewModal'); });
+  }
+  document.getElementById('tig-preview-id').textContent = _pendingTigId;
+  m.classList.add('active');
+  // iframe-be töltjük a HTML-t
+  const frame = document.getElementById('tigPreviewFrame');
+  const blob  = new Blob([_pendingTigHtml], {type:'text/html;charset=utf-8'});
+  const url   = URL.createObjectURL(blob);
+  frame.src   = url;
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function confirmTigDownload() {
+  if (!_pendingTigHtml || !_pendingTigId || !_pendingTigObj) return;
+  // Double-click védelem: azonnal töröljük a pending state-et
+  const html   = _pendingTigHtml;
+  const tigId  = _pendingTigId;
+  const tigDate= _pendingTigDate;
+  const t      = _pendingTigObj;
+  _pendingTigHtml=''; _pendingTigId=''; _pendingTigDate=''; _pendingTigObj=null;
+  // Letöltés
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `${tigId}_${tigDate}_unsigned.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  // Mentés Firestore-ba – létrehozási log hozzáadása
+  const creator = auth?.currentUser?.email?.split('@')[0] || 'ismeretlen';
+  t.log = t.log || [];
+  t.log.push({time:nowStr(), msg:`TIG létrehozva`, type:'create', by:creator});
+  tigStore.push(t); await fbSaveTig(t); updateMlLauncherStats();
+  // Log az érintett projektekre
+  (t.projectRefs||[]).forEach(pid => {
+    const p = projects.find(x=>x.id===pid);
+    if(p){ p.log.push({time:nowStr(),msg:`TIG generálva: ${t.id} (${t.date})`,type:'upload',subtype:'tig_generated',folder:'TIG',tigId:t.id}); p.updatedAt=new Date().toISOString().split('T')[0]; if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e)); }
+  });
+  _mlPreselectedProjectId = null;
+  closeModal('tigPreviewModal');
+  showToast(`✅ ${tigId} letöltve és mentve!`);
+  // Email prompt
+  setTimeout(()=>{ document.getElementById('tig-email-addr').value=companySettings.email||''; openModal('tigEmailModal'); }, 400);
+  showView('ml-tig-detail', tigId);
+}
+
 async function mlGenerateTig(){
   const clientId=document.getElementById('ml-client')?.value,tigDate=document.getElementById('ml-date')?.value,vatPct=parseFloat(document.getElementById('ml-vat')?.value||27),desc=document.getElementById('ml-desc')?.value.trim()||'';
   if(!clientId){showToast('⚠️ Válassz megrendelőt!','warn');return;}if(!tigDate){showToast('⚠️ Add meg a TIG dátumát!','warn');return;}if(!companySettings.name){showToast('⚠️ A cégadatok nincsenek beállítva!','warn');openCompanySettings();return;}
@@ -7519,23 +7624,51 @@ async function mlGenerateTig(){
     const secGross=Math.round(sec.secNet*vatMult),secVat=secGross-sec.secNet;
     const rowsHtml=sec.activeRows.map(row=>{const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);return `<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.date||'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.desc}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;white-space:nowrap;">${row.qty} ${row.unit||''}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">${row.rate?Number(row.rate).toLocaleString('hu-HU')+' Ft':'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:600;white-space:nowrap;">${ln>0?ln.toLocaleString('hu-HU')+' Ft':'–'}</td></tr>`;}).join('');
     const unitSummary=Object.entries(sec.unitTotals).map(([u,q])=>`${q} ${u}`).join(', ');
-    return `<div style="margin-bottom:${si<arr.length-1?'28':'0'}px;"><div style="background:#f0f4ff;border-left:4px solid #1a1a2e;padding:8px 14px;border-radius:0 4px 4px 0;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:2px;">SZEKCIÓ ${si+1} · ${sec.typeLabel}</div>${sec.projObj?`<div style="font-size:12px;font-weight:600;color:#1a1a2e;">${sec.projObj.id}${sec.projObj.desc?' – '+sec.projObj.desc:''}</div>`:''}</div><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#1a1a2e;color:#fff;"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Dátum</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Leírás</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Menny.</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Egységár</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Nettó</th></tr></thead><tbody>${rowsHtml}</tbody></table><table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none;border-radius:0 0 4px 4px;">${unitSummary?`<tr><td style="padding:5px 10px;font-size:11px;color:#888;" colspan="2">Összesen: ${unitSummary}</td></tr>`:''}<tr><td style="padding:6px 10px;font-size:12px;color:#555;">Szekció nettó</td><td style="padding:6px 10px;text-align:right;font-weight:600;">${sec.secNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td style="padding:6px 10px;font-size:12px;color:#888;">ÁFA (${vatPct}%)</td><td style="padding:6px 10px;text-align:right;color:#888;">${secVat.toLocaleString('hu-HU')} Ft</td></tr><tr style="background:#f8f8f8;"><td style="padding:8px 10px;font-size:13px;font-weight:600;">Szekció bruttó</td><td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:700;">${secGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>`;
+    // Szekció fejléc: csak típus + leírás – belső projekt azonosító NEM szerepel
+    const secDesc = sec.projObj?.desc || '';
+    return `<div style="margin-bottom:${si<arr.length-1?'28':'0'}px;"><div style="background:#f0f4ff;border-left:4px solid #1a1a2e;padding:8px 14px;border-radius:0 4px 4px 0;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:2px;">SZEKCIÓ ${si+1} · ${sec.typeLabel}</div>${secDesc?`<div style="font-size:12px;font-weight:600;color:#1a1a2e;">${secDesc}</div>`:''}</div><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#1a1a2e;color:#fff;"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Dátum</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Leírás</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Menny.</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Egységár</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Nettó</th></tr></thead><tbody>${rowsHtml}</tbody></table><table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none;border-radius:0 0 4px 4px;">${unitSummary?`<tr><td style="padding:5px 10px;font-size:11px;color:#888;" colspan="2">Összesen: ${unitSummary}</td></tr>`:''}<tr><td style="padding:6px 10px;font-size:12px;color:#555;">Szekció nettó</td><td style="padding:6px 10px;text-align:right;font-weight:600;">${sec.secNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td style="padding:6px 10px;font-size:12px;color:#888;">ÁFA (${vatPct}%)</td><td style="padding:6px 10px;text-align:right;color:#888;">${secVat.toLocaleString('hu-HU')} Ft</td></tr><tr style="background:#f8f8f8;"><td style="padding:8px 10px;font-size:13px;font-weight:600;">Szekció bruttó</td><td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:700;">${secGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>`;
   };
 
   const sectionsHtml=sectionsData.map((s,i,a)=>buildSecHtml(s,i,a)).join('');
-  const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .sub{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;} .grand table{width:100%;border-collapse:collapse;} .grand td{padding:8px 14px;} .gl{color:#555;font-size:12px;} .gv{text-align:right;font-weight:600;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:14px;font-size:18px;font-weight:700;} .sigs{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
-  const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Teljesítési Igazolás – ${tigId}</title><style>${CSS}</style></head><body><div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1><div class="sub">Munkavégzési igazolás · Aláírás előtti példány</div></div><div class="meta"><div class="tid">${tigId}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div></div><div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>${desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${desc}</div>`:''}${sectionsHtml}<div class="grand"><table><tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr><tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr></table></div><div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div><div><div class="sr">Szolgáltató / Vállalkozó</div><div class="sn">${companySettings.name}</div><div class="sl">Aláírás és dátum</div></div></div><footer><span>${tigId} · Generálva: ${new Date().toLocaleString('hu-HU')} · MiniGo</span><span>Aláírás előtti példány – jogerős aláírással válik érvényessé</span></footer></body></html>`;
 
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=`${tigId}_${tigDate}_unsigned.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),3000);
+  // Jogi záradék – automatikusan kitöltve a TIG adataiból
+  const legalClause=`${companySettings.name} mint Megbízott a fenti tárgyban jelölt, egyedi árajánlat keretében végzett projektfeladatot teljesítette. ${co?.name||'Megrendelő'} a teljesítést elfogadta. ${companySettings.name} az árajánlatban szereplő összesen ${grandNet.toLocaleString('hu-HU')} Ft + ÁFA összegű számlát kiállíthatja és ${co?.name||'Megrendelő'} részére benyújthatja.`;
 
-  const projectRefs=[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))];
-  const tigObj={id:tigId,clientId,clientName:co?.name||'',date:tigDate,desc,vatPct,netTotal:grandNet,grossTotal:grandGross,sections:sectionsData.map(s=>({type:s.type,typeLabel:s.typeLabel,projectId:s.projectId||'',projectLabel:s.projObj?(s.projObj.id+(s.projObj.desc?' – '+s.projObj.desc:'')):'' ,rows:s.activeRows,secNet:s.secNet})),projectRefs,status:'unsigned',createdAt:new Date().toISOString()};
-  tigStore.push(tigObj);await fbSaveTig(tigObj);updateMlLauncherStats();
-  projectRefs.forEach(pid=>{const p=projects.find(x=>x.id===pid);if(p){p.log.push({time:nowStr(),msg:`TIG generálva: ${tigId} (${tigDate})`,type:'upload',subtype:'tig_generated',folder:'TIG',tigId});p.updatedAt=new Date().toISOString().split('T')[0];if(window.fbSaveProject)window.fbSaveProject(p).catch(e=>console.error(e));}});
-  _mlPreselectedProjectId=null;showToast(`✅ ${tigId} generálva és letöltve!`);
-  setTimeout(()=>{document.getElementById('tig-email-addr').value=companySettings.email||'';openModal('tigEmailModal');},400);
-  showView('ml-tig-detail',tigId);
+  const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;} .grand table{width:100%;border-collapse:collapse;} .grand td{padding:8px 14px;} .gl{color:#555;font-size:12px;} .gv{text-align:right;font-weight:600;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:14px;font-size:18px;font-weight:700;} .legal{margin-top:24px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px;padding:14px 16px;font-size:12px;color:#444;line-height:1.7;} .sigs{margin-top:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;max-width:280px;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
+
+  const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Teljesítési Igazolás – ${tigId}</title><style>${CSS}</style></head><body>
+<div class="hdr">
+  <div><h1>TELJESÍTÉSI IGAZOLÁS</h1></div>
+  <div class="meta"><div class="tid">${tigId}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div>
+</div>
+<div class="parties">
+  <div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div>
+  <div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div>
+</div>
+${desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${desc}</div>`:''}
+${sectionsHtml}
+<div class="grand"><table>
+  <tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr>
+  <tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr>
+  <tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr>
+</table></div>
+<div class="legal">${legalClause}</div>
+<div class="sigs">
+  <div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div>
+</div>
+<footer><span>${tigId} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
+</body></html>`;
+
+  // Előnézet modal – letöltés csak jóváhagyás után
+  _pendingTigHtml   = html;
+  _pendingTigId     = tigId;
+  _pendingTigDate   = tigDate;
+  _pendingTigObj    = {id:tigId,clientId,clientName:co?.name||'',date:tigDate,desc,vatPct,netTotal:grandNet,grossTotal:grandGross,
+    sections:sectionsData.map(s=>({type:s.type,typeLabel:s.typeLabel,projectId:s.projectId||'',
+      projectLabel:s.projObj?.desc||'',rows:s.activeRows,secNet:s.secNet})),
+    projectRefs:[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))],
+    status:'unsigned',createdAt:new Date().toISOString()};
+  openTigPreview();
 }
 
 function renderMlTigDetail(tigId){
@@ -7543,11 +7676,30 @@ function renderMlTigDetail(tigId){
   const sc=t.status==='signed'?'var(--success)':'var(--accent)',sl=t.status==='signed'?'✅ Aláírt':'⏳ Aláírás alatt';
   const sectionsHtml=(t.sections||[]).map((sec,si)=>{const secGross=Math.round((sec.secNet||0)*(1+(t.vatPct||27)/100));const rowsHtml=(sec.rows||[]).map(row=>{const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);return`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">${row.date?`<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:80px;">${row.date}</span>`:''}<span style="flex:1;color:var(--text);">${row.desc}</span><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">${row.qty} ${row.unit||''}</span><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">${row.rate?Number(row.rate).toLocaleString('hu-HU')+' Ft':'–'}</span><span style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;white-space:nowrap;min-width:100px;text-align:right;">${ln>0?ln.toLocaleString('hu-HU')+' Ft':'–'}</span></div>`;}).join('');return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px 14px;margin-bottom:8px;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent2);">SZEKCIÓ ${si+1}</span><span style="font-size:12px;color:var(--text);">${sec.typeLabel||sec.type}</span>${sec.projectLabel?`<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">· ${sec.projectLabel}</span>`:''}</div>${rowsHtml}<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;"><span style="color:var(--text-dim);">Nettó: <b style="color:var(--text);">${(sec.secNet||0).toLocaleString('hu-HU')} Ft</b></span><span style="color:var(--profit);font-weight:600;">Bruttó: ${secGross.toLocaleString('hu-HU')} Ft</span></div></div>`;}).join('');
   const linkedProjects=(t.projectRefs||[]).map(pid=>{const p=projects.find(x=>x.id===pid);if(!p)return'';return`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;margin-top:4px;cursor:pointer;" onclick="enterModule('proj');showView('project-detail','${pid}')"><span style="font-family:var(--mono);font-size:11px;color:var(--accent2);">${pid}</span><span style="font-size:12px;color:var(--text);flex:1;">${p.desc||''}</span><span style="font-size:11px;color:var(--text-dim);">Megnyitás →</span></div>`;}).join('');
-  return`<div style="max-width:820px;"><div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;"><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent2);">${t.id}</div><span style="font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:3px;border:1px solid ${sc};color:${sc};">${sl}</span><div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">${t.status!=='signed'?`<button class="btn btn-advance" onclick="mlMarkSigned('${t.id}')">✅ Aláírtnak jelölés</button>`:''}<button class="btn btn-secondary" onclick="mlRedownload('${t.id}')">⬇️ Újraletöltés</button><button class="btn btn-danger" style="padding:7px 10px;" onclick="mlDeleteTig('${t.id}')">🗑️</button></div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;"><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">MEGRENDELŐ</div><div style="font-size:13px;font-weight:600;">${t.clientName}</div></div><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">DÁTUM</div><div style="font-family:var(--mono);font-size:13px;">${t.date}</div></div><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">ÁFA KULCS</div><div style="font-family:var(--mono);font-size:13px;">${t.vatPct}%</div></div></div>${t.desc?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:13px;color:var(--text-dim);">${t.desc}</div>`:''}</div><div class="panel-title">Szekciók</div>${sectionsHtml}<div style="background:var(--surface);border:2px solid var(--accent2);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">VÉGÖSSZEG</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--profit);">${fmt(t.netTotal||0)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA</div><div style="font-family:var(--mono);font-size:14px;color:var(--text-dim);">${fmt((t.grossTotal||0)-(t.netTotal||0))}</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó (utalandó)</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text-bright);">${fmt(t.grossTotal||0)}</div></div></div></div>${linkedProjects?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div class="panel-title">Kapcsolódó projektek</div>${linkedProjects}</div>`:''}</div>`;
+  // Eseménynapló (log)
+  const logHtml=(t.log||[]).length ? (t.log).slice().reverse().map(l=>{
+    const typeColor=l.type==='edit'?'var(--accent)':l.type==='restore'?'var(--accent2)':l.type==='advance'?'var(--success)':'var(--border)';
+    const typeIcon=l.type==='edit'?'✏️':l.type==='restore'?'↩️':l.type==='advance'?'✅':'📋';
+    const extra=l.type==='edit'?` · Nettó: ${(l.prevNetTotal||0).toLocaleString('hu-HU')} → ${(l.newNetTotal||0).toLocaleString('hu-HU')} Ft`:'';
+    return`<div style="display:flex;gap:10px;padding:7px 10px;background:var(--surface);border-radius:4px;border-left:3px solid ${typeColor};margin-bottom:5px;">
+      <span style="font-size:12px;">${typeIcon}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;color:var(--text);">${l.msg}${extra}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;">${l.time}${l.by?' · '+l.by:''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div style="font-size:12px;color:var(--text-dim);">Nincs esemény.</div>`;
+
+  return`<div style="max-width:820px;"><div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;"><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent2);">${t.id}</div><span style="font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:3px;border:1px solid ${sc};color:${sc};">${sl}</span><div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">${t.status!=='signed'?`<button class="btn btn-advance" onclick="mlMarkSigned('${t.id}')">✅ Aláírtnak jelölés</button>`:''}<button class="btn btn-secondary" onclick="showView('ml-edit-tig','${t.id}')">✏️ Szerkesztés</button><button class="btn btn-secondary" onclick="mlRedownload('${t.id}')">⬇️ Újraletöltés</button><button class="btn btn-danger" style="padding:7px 10px;" onclick="mlDeleteTig('${t.id}')">🗑️</button></div></div><div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;"><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">MEGRENDELŐ</div><div style="font-size:13px;font-weight:600;">${t.clientName}</div></div><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">DÁTUM</div><div style="font-family:var(--mono);font-size:13px;">${t.date}</div></div><div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">ÁFA KULCS</div><div style="font-family:var(--mono);font-size:13px;">${t.vatPct}%</div></div></div>${t.desc?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:13px;color:var(--text-dim);">${t.desc}</div>`:''}</div><div class="panel-title">Szekciók</div>${sectionsHtml}<div style="background:var(--surface);border:2px solid var(--accent2);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">VÉGÖSSZEG</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--profit);">${fmt(t.netTotal||0)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA</div><div style="font-family:var(--mono);font-size:14px;color:var(--text-dim);">${fmt((t.grossTotal||0)-(t.netTotal||0))}</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó (utalandó)</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--text-bright);">${fmt(t.grossTotal||0)}</div></div></div></div>${linkedProjects?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div class="panel-title">Kapcsolódó projektek</div>${linkedProjects}</div>`:''}<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:14px;"><div class="panel-title">Eseménynapló</div>${logHtml}</div></div>`;
 }
 
 function mlMarkSigned(tigId){
-  const t=tigStore.find(x=>x.id===tigId);if(!t)return;t.status='signed';fbSaveTig(t).catch(e=>console.error(e));
+  const t=tigStore.find(x=>x.id===tigId);if(!t)return;
+  const user=auth?.currentUser?.email?.split('@')[0]||'ismeretlen';
+  t.status='signed';
+  t.log=t.log||[];
+  t.log.push({time:nowStr(),msg:`TIG aláírtnak jelölve`,type:'advance',by:user});
+  fbSaveTig(t).catch(e=>console.error(e));
   (t.sections||[]).forEach(sec=>{if(!sec.projectId||!sec.secNet)return;const p=projects.find(x=>x.id===sec.projectId);if(!p)return;const secGross=Math.round(sec.secNet*(1+(t.vatPct||27)/100));(p.incomeInvoices=p.incomeInvoices||[]).push({ref:tigId,amount:sec.secNet,date:t.date,note:`TIG alapján (${sec.typeLabel||sec.type}) – bruttó: ${secGross.toLocaleString('hu-HU')} Ft`,tigId,_fromTig:true});p.log.push({time:nowStr(),msg:`TIG aláírva, bevétel rögzítve: ${tigId} – ${sec.secNet.toLocaleString('hu-HU')} Ft nettó`,type:'invoice',subtype:'income_add',ref:tigId,amount:sec.secNet,tigId});p.updatedAt=new Date().toISOString().split('T')[0];if(window.fbSaveProject)window.fbSaveProject(p).catch(e=>console.error(e));});
   updateMlLauncherStats();showToast(`✅ ${tigId} aláírtnak jelölve – bevételek rögzítve!`);showView('ml-tig-detail',tigId);
 }
@@ -7556,16 +7708,332 @@ async function mlRedownloadDirect(t){
   const co=clients.find(c=>c.id===t.clientId),vatPct=t.vatPct||27,vatMult=1+vatPct/100;
   const[y,m,d]=(t.date||'--').split('-'),tigDateDisplay=y&&m&&d?`${y}. ${m}. ${d}.`:t.date||'';
   const grandNet=t.netTotal||0,grandGross=t.grossTotal||0,grandVat=grandGross-grandNet;
-  const sectionsHtml=(t.sections||[]).map((sec,si,arr)=>{const secGross=Math.round((sec.secNet||0)*vatMult),secVat=secGross-(sec.secNet||0);const rowsHtml=(sec.rows||[]).map(row=>{const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);return`<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.date||'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.desc}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;">${row.qty} ${row.unit||''}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;">${row.rate?Number(row.rate).toLocaleString('hu-HU')+' Ft':'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${ln>0?ln.toLocaleString('hu-HU')+' Ft':'–'}</td></tr>`;}).join('');return`<div style="margin-bottom:${si<arr.length-1?'28':'0'}px;"><div style="background:#f0f4ff;border-left:4px solid #1a1a2e;padding:8px 14px;border-radius:0 4px 4px 0;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:2px;">SZEKCIÓ ${si+1} · ${sec.typeLabel||sec.type}</div>${sec.projectLabel?`<div style="font-size:12px;font-weight:600;color:#1a1a2e;">${sec.projectLabel}</div>`:''}</div><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#1a1a2e;color:#fff;"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;">Dátum</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;">Leírás</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;">Menny.</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;">Egységár</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;">Nettó</th></tr></thead><tbody>${rowsHtml}</tbody></table><table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none;"><tr><td style="padding:6px 10px;font-size:12px;color:#555;">Szekció nettó</td><td style="padding:6px 10px;text-align:right;font-weight:600;">${(sec.secNet||0).toLocaleString('hu-HU')} Ft</td></tr><tr><td style="padding:6px 10px;font-size:12px;color:#888;">ÁFA (${vatPct}%)</td><td style="padding:6px 10px;text-align:right;color:#888;">${secVat.toLocaleString('hu-HU')} Ft</td></tr><tr style="background:#f8f8f8;"><td style="padding:8px 10px;font-size:13px;font-weight:600;">Szekció bruttó</td><td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:700;">${secGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>`;}).join('');
-  const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .sub{font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;} .grand table{width:100%;border-collapse:collapse;} .grand td{padding:8px 14px;} .gl{color:#555;font-size:12px;} .gv{text-align:right;font-weight:600;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:14px;font-size:18px;font-weight:700;} .sigs{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
-  const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>TIG – ${t.id}</title><style>${CSS}</style></head><body><div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1><div class="sub">Munkavégzési igazolás · Aláírás előtti példány</div></div><div class="meta"><div class="tid">${t.id}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div></div><div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>${t.desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${t.desc}</div>`:''}${sectionsHtml}<div class="grand"><table><tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr><tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr></table></div><div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div><div><div class="sr">Szolgáltató / Vállalkozó</div><div class="sn">${companySettings.name}</div><div class="sl">Aláírás és dátum</div></div></div><footer><span>${t.id} · MiniGo</span><span>Aláírás előtti példány</span></footer></body></html>`;
+  const legalClause=`${companySettings.name} mint Megbízott a fenti tárgyban jelölt, egyedi árajánlat keretében végzett projektfeladatot teljesítette. ${co?.name||'Megrendelő'} a teljesítést elfogadta. ${companySettings.name} az árajánlatban szereplő összesen ${grandNet.toLocaleString('hu-HU')} Ft + ÁFA összegű számlát kiállíthatja és ${co?.name||'Megrendelő'} részére benyújthatja.`;
+  const sectionsHtml=(t.sections||[]).map((sec,si,arr)=>{
+    const secGross=Math.round((sec.secNet||0)*vatMult),secVat=secGross-(sec.secNet||0);
+    const rowsHtml=(sec.rows||[]).map(row=>{const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);return`<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.date||'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;">${row.desc}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:center;">${row.qty} ${row.unit||''}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;">${row.rate?Number(row.rate).toLocaleString('hu-HU')+' Ft':'–'}</td><td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${ln>0?ln.toLocaleString('hu-HU')+' Ft':'–'}</td></tr>`;}).join('');
+    // Csak leírás jelenik meg, belső projektazonosító nem
+    const secDesc=sec.projectLabel||'';
+    return`<div style="margin-bottom:${si<arr.length-1?'28':'0'}px;"><div style="background:#f0f4ff;border-left:4px solid #1a1a2e;padding:8px 14px;border-radius:0 4px 4px 0;margin-bottom:10px;"><div style="font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:2px;">SZEKCIÓ ${si+1} · ${sec.typeLabel||sec.type}</div>${secDesc?`<div style="font-size:12px;font-weight:600;color:#1a1a2e;">${secDesc}</div>`:''}</div><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#1a1a2e;color:#fff;"><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;">Dátum</th><th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;">Leírás</th><th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;">Menny.</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;">Egységár</th><th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;">Nettó</th></tr></thead><tbody>${rowsHtml}</tbody></table><table style="width:100%;border-collapse:collapse;border:1px solid #ddd;border-top:none;"><tr><td style="padding:6px 10px;font-size:12px;color:#555;">Szekció nettó</td><td style="padding:6px 10px;text-align:right;font-weight:600;">${(sec.secNet||0).toLocaleString('hu-HU')} Ft</td></tr><tr><td style="padding:6px 10px;font-size:12px;color:#888;">ÁFA (${vatPct}%)</td><td style="padding:6px 10px;text-align:right;color:#888;">${secVat.toLocaleString('hu-HU')} Ft</td></tr><tr style="background:#f8f8f8;"><td style="padding:8px 10px;font-size:13px;font-weight:600;">Szekció bruttó</td><td style="padding:8px 10px;text-align:right;font-size:14px;font-weight:700;">${secGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>`;
+  }).join('');
+  const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;} .grand table{width:100%;border-collapse:collapse;} .grand td{padding:8px 14px;} .gl{color:#555;font-size:12px;} .gv{text-align:right;font-weight:600;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:14px;font-size:18px;font-weight:700;} .legal{margin-top:24px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px;padding:14px 16px;font-size:12px;color:#444;line-height:1.7;} .sigs{margin-top:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;max-width:280px;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
+  const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>TIG – ${t.id}</title><style>${CSS}</style></head><body>
+<div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1></div><div class="meta"><div class="tid">${t.id}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div></div>
+<div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>
+${t.desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${t.desc}</div>`:''}
+${sectionsHtml}
+<div class="grand"><table><tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr><tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>
+<div class="legal">${legalClause}</div>
+<div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div></div>
+<footer><span>${t.id} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
+</body></html>`;
   const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`${t.id}_${t.date}_unsigned.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),3000);showToast(`⬇️ ${t.id} újraletöltve!`);
 }
 
-function mlDeleteTig(tigId){const t=tigStore.find(x=>x.id===tigId);if(!t)return;openDeleteConfirm(`Törlöd a(z) "${tigId}" TIG-et?`,()=>{tigStore=tigStore.filter(x=>x.id!==tigId);fbDeleteTig(tigId).catch(e=>console.error(e));updateMlLauncherStats();showToast(`🗑️ ${tigId} törölve.`,'warn');showView('ml-tigs');});}
+// ── TIG TÖRLÉS (soft delete → kuka) ──────────────────────────────────────────
+function mlDeleteTig(tigId){
+  const t=tigStore.find(x=>x.id===tigId);
+  if(!t)return;
+  openDeleteConfirm(`Kukába kerül: "${tigId}". Visszaállítható a TIG kukából.`, ()=>{
+    const trashItem={
+      id:'tigtrash_'+tigId+'_'+Date.now(),
+      originalId:tigId, data:JSON.parse(JSON.stringify(t)),
+      deletedAt:new Date().toISOString(),
+      deletedBy:auth?.currentUser?.email?.split('@')[0]||'ismeretlen'
+    };
+    tigTrashBin.push(trashItem);
+    fbSaveTigTrash(trashItem).catch(e=>console.error(e));
+    tigStore=tigStore.filter(x=>x.id!==tigId);
+    fbDeleteTig(tigId).catch(e=>console.error(e));
+    updateMlLauncherStats();
+    showToast(`🗑️ ${tigId} a kukába került.`,'warn');
+    showView('ml-tigs');
+  });
+}
 
-Object.assign(window,{generateTigId,loadTigsFromFirestore,updateMlLauncherStats,renderMlDashboard,renderMlTigList,renderMlNewTig,renderMlTigDetail,mlOnClientChange,mlAddSection,mlSecChange,mlRebuildSectionProjectDropdown,mlRemoveSection,mlAddRow,mlRowChange,mlRemoveRow,mlRecalc,mlGenerateTig,mlMarkSigned,mlRedownload,mlDeleteTig});
+// ── TIG KUKA ─────────────────────────────────────────────────────────────────
+function renderMlTrash(){
+  if(!tigTrashBin.length) return `<div class="empty-state"><div class="em-icon">🗑️</div><div class="em-title">A TIG kuka üres</div></div>`;
+  const rows=tigTrashBin.slice().sort((a,b)=>(b.deletedAt||'').localeCompare(a.deletedAt||'')).map(item=>{
+    const t=item.data||{};
+    const del=item.deletedAt?new Date(item.deletedAt).toLocaleString('hu-HU').replace(',',''):'–';
+    return`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent2);">${item.originalId}</div>
+        <div style="font-size:12px;color:var(--text);margin-top:2px;">${t.clientName||'–'} · ${t.date||''}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Törölve: ${del}${item.deletedBy?' · '+item.deletedBy:''}</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${fmt(t.grossTotal||0)}</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="mlRestoreFromTrash('${item.id}')">↩ Visszaállít</button>
+        <button class="btn btn-danger"    style="font-size:10px;padding:5px 10px;" onclick="mlPermanentDelete('${item.id}')">🗑️ Végleges</button>
+      </div>
+    </div>`;
+  }).join('');
+  return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <span style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">TIG Kuka (${tigTrashBin.length})</span>
+    <button class="btn btn-danger" style="margin-left:auto;font-size:10px;" onclick="mlEmptyTrash()">🗑️ Kuka ürítése</button>
+  </div>${rows}`;
+}
+
+function mlRestoreFromTrash(trashId){
+  const item=tigTrashBin.find(x=>x.id===trashId);
+  if(!item)return;
+  const t=item.data;
+  if(tigStore.find(x=>x.id===t.id)){showToast(`⚠️ Nem állítható vissza: "${t.id}" már létezik.`,'warn');return;}
+  // Log visszaállítást
+  t.log=t.log||[];
+  t.log.push({time:nowStr(),msg:`TIG visszaállítva a kukából`,type:'restore',by:auth?.currentUser?.email?.split('@')[0]||'ismeretlen'});
+  tigStore.push(t);
+  fbSaveTig(t).catch(e=>console.error(e));
+  tigTrashBin=tigTrashBin.filter(x=>x.id!==trashId);
+  fbDeleteTigTrash(trashId).catch(e=>console.error(e));
+  updateMlLauncherStats();
+  showToast(`↩ ${t.id} visszaállítva!`);
+  showView('ml-tig-detail',t.id);
+}
+
+function mlPermanentDelete(trashId){
+  const item=tigTrashBin.find(x=>x.id===trashId);
+  if(!item)return;
+  openDeleteConfirm(`Véglegesen törlöd: "${item.originalId}"? Ez nem vonható vissza!`,()=>{
+    tigTrashBin=tigTrashBin.filter(x=>x.id!==trashId);
+    fbDeleteTigTrash(trashId).catch(e=>console.error(e));
+    updateMlLauncherStats();
+    showToast(`🗑️ ${item.originalId} véglegesen törölve.`,'warn');
+    showView('ml-trash');
+  });
+}
+
+function mlEmptyTrash(){
+  if(!tigTrashBin.length)return;
+  openDeleteConfirm(`Véglegesen törlöd a TIG kuka összes elemét (${tigTrashBin.length} db)?`,()=>{
+    tigTrashBin.forEach(i=>fbDeleteTigTrash(i.id).catch(e=>console.error(e)));
+    tigTrashBin=[];
+    updateMlLauncherStats();
+    showToast('🗑️ TIG kuka ürítve.','warn');
+    showView('ml-trash');
+  });
+}
+
+// ── TIG SZERKESZTÉS ───────────────────────────────────────────────────────────
+let _mlEditSections = []; // szerkesztés közbeni szekciók
+
+function renderMlEditTig(tigId){
+  const t=tigStore.find(x=>x.id===tigId);
+  if(!t)return`<div class="empty-state"><div class="em-title">TIG nem található</div></div>`;
+  const today=new Date().toISOString().split('T')[0];
+  _mlEditSections=[];
+  return`<div style="max-width:820px;">
+    <div style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.3);border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:var(--accent);">
+      ✏️ Szerkesztés módban – ${tigId} · Csak a tételek módosíthatók. Minden változás naplózásra kerül.
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;margin-bottom:16px;">
+      <div class="panel-title">Fejléc (nem szerkeszthető)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;opacity:0.7;">
+        <div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">MEGRENDELŐ</div><div style="font-size:13px;font-weight:600;">${t.clientName}</div></div>
+        <div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">DÁTUM</div><div style="font-family:var(--mono);font-size:13px;">${t.date}</div></div>
+        <div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-bottom:3px;">ÁFA</div><div style="font-family:var(--mono);font-size:13px;">${t.vatPct}%</div></div>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;margin-bottom:16px;">
+      <div class="panel-title">Szekciók & Tételek</div>
+      <div id="ml-edit-sections-container"></div>
+      <button class="btn btn-secondary" style="margin-top:8px;font-size:11px;" onclick="mlEditAddSection('${tigId}')">➕ Szekció hozzáadása</button>
+    </div>
+    <div id="ml-edit-grand-total" style="background:var(--surface);border:2px solid var(--accent2);border-radius:6px;padding:14px 20px;margin-bottom:16px;display:none;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-bottom:24px;">
+      <button class="btn btn-secondary" onclick="showView('ml-tig-detail','${tigId}')">✕ Mégse</button>
+      <button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="mlSaveEditTig('${tigId}')">💾 Változtatások mentése</button>
+    </div>
+  </div>`;
+}
+
+function mlRebuildEditSections(tigId){
+  const t=tigStore.find(x=>x.id===tigId);
+  if(!t)return;
+  _mlEditSections=[];
+  (t.sections||[]).forEach((sec,si)=>{
+    // Szekció feltöltése szerkeszthető állapotba
+    const editSec={id:si,projectId:sec.projectId||'',type:sec.type,rows:[]};
+    _mlEditSections.push(editSec);
+    // DOM elem létrehozása
+    mlEditAddSectionDom(si,sec.typeLabel||sec.type,sec.projectId||'',sec.projectLabel||'');
+    // Sorok feltöltése
+    (sec.rows||[]).forEach(row=>{
+      editSec.rows.push({...row,rowIdx:editSec.rows.length});
+      mlEditAddRowDom(si,editSec.rows.length-1,row);
+    });
+    mlEditRecalc();
+  });
+}
+
+function mlEditAddSection(tigId){
+  const t=tigStore.find(x=>x.id===tigId);
+  if(!t)return;
+  const si=_mlEditSections.length;
+  _mlEditSections.push({id:si,projectId:'',type:'',rows:[]});
+  const cid=t.clientId;
+  const ps=cid?projects.filter(p=>p.clientId===cid):[];
+  const projOpts='<option value="">-- nincs --</option>'+ps.map(p=>`<option value="${p.id}">${p.id}${p.desc?' · '+p.desc:''}</option>`).join('');
+  const typeOpts=TIG_TYPES.map(t=>`<option value="${t.key}">${t.label}</option>`).join('');
+  const container=document.getElementById('ml-edit-sections-container');
+  if(!container)return;
+  const div=document.createElement('div');
+  div.id=`ml-edit-sec-${si}`;
+  div.style.cssText='background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:10px;';
+  div.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent2);">SZEKCIÓ #${si+1}</span>
+    <select class="form-input" style="width:auto;padding:4px 8px;font-size:11px;" onchange="mlEditSecChange(${si},'type',this.value)"><option value="">-- típus --</option>${typeOpts}</select>
+    <select id="ml-edit-sec-proj-${si}" class="form-input" style="width:auto;padding:4px 8px;font-size:11px;" onchange="mlEditSecChange(${si},'projectId',this.value)">${projOpts}</select>
+    <button class="icon-btn del" style="margin-left:auto;" onclick="mlEditRemoveSection(${si})" title="Szekció törlése">🗑️</button>
+  </div>
+  <div id="ml-edit-rows-${si}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'general')">➕ Általános</button>
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'hourly')">⏱️ Óradíjas</button>
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'daily')">📅 Napidíjas</button>
+  </div>
+  <div id="ml-edit-sec-sub-${si}" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-height:16px;"></div>`;
+  container.appendChild(div);
+  mlEditAddRow(si,'general');
+}
+
+function mlEditAddSectionDom(si,typeLabel,projectId,projectLabel){
+  // DOM szekció létrehozása meglévő adatokból (szerkesztés init)
+  const container=document.getElementById('ml-edit-sections-container');
+  if(!container)return;
+  const div=document.createElement('div');
+  div.id=`ml-edit-sec-${si}`;
+  div.style.cssText='background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px 16px;margin-bottom:10px;';
+  div.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+    <span style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent2);">SZEKCIÓ #${si+1}</span>
+    <span style="font-size:12px;color:var(--text);">${typeLabel}</span>
+    ${projectLabel?`<span style="font-size:11px;color:var(--text-dim);">· ${projectLabel}</span>`:''}
+    <button class="icon-btn del" style="margin-left:auto;" onclick="mlEditRemoveSection(${si})" title="Szekció törlése">🗑️</button>
+  </div>
+  <div id="ml-edit-rows-${si}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'general')">➕ Általános</button>
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'hourly')">⏱️ Óradíjas</button>
+    <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="mlEditAddRow(${si},'daily')">📅 Napidíjas</button>
+  </div>
+  <div id="ml-edit-sec-sub-${si}" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-height:16px;"></div>`;
+  container.appendChild(div);
+}
+
+function mlEditSecChange(si,field,val){if(_mlEditSections[si])_mlEditSections[si][field]=val;mlEditRecalc();}
+function mlEditRemoveSection(si){_mlEditSections[si]=null;const el=document.getElementById(`ml-edit-sec-${si}`);if(el)el.remove();mlEditRecalc();}
+
+function mlEditAddRow(si,rowType){
+  const sec=_mlEditSections[si];if(!sec)return;
+  const rowIdx=sec.rows.length,today=new Date().toISOString().split('T')[0];
+  sec.rows.push({rowIdx,rowType,date:rowType!=='general'?today:'',desc:'',qty:1,unit:rowType==='hourly'?'óra':rowType==='daily'?'nap':'db',rate:'',note:''});
+  mlEditAddRowDom(si,rowIdx,sec.rows[rowIdx]);
+  mlEditRecalc();
+}
+
+function mlEditAddRowDom(si,rowIdx,row){
+  const container=document.getElementById(`ml-edit-rows-${si}`);if(!container)return;
+  const rowType=row.rowType||'general';
+  const typeColor=rowType==='hourly'?'var(--accent2)':rowType==='daily'?'#9b59b6':'var(--success)';
+  const typeIcon=rowType==='hourly'?'⏱️':rowType==='daily'?'📅':'📦';
+  const unitLabel=rowType==='hourly'?'Óra':rowType==='daily'?'Nap':'Db';
+  const rateLabel=rowType==='hourly'?'Óradíj':rowType==='daily'?'Napidíj':'Egységár';
+  const div=document.createElement('div');
+  div.id=`ml-edit-row-${si}-${rowIdx}`;
+  div.style.cssText=`background:var(--bg);border:1px solid var(--border);border-left:3px solid ${typeColor};border-radius:4px;padding:8px 10px;`;
+  div.innerHTML=`<div style="display:grid;grid-template-columns:${rowType!=='general'?'110px ':''}1fr 60px 130px 100px 26px;gap:6px;align-items:end;">
+    ${rowType!=='general'?`<div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${typeIcon} DÁTUM</label><input class="form-input" type="date" value="${row.date||''}" style="padding:4px 7px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'date',this.value)"></div>`:''}
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">LEÍRÁS *</label><input class="form-input" value="${(row.desc||'').replace(/"/g,'&quot;')}" placeholder="pl. Szervíz munkák" style="padding:4px 7px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'desc',this.value)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${unitLabel.toUpperCase()}</label><input class="form-input" type="number" value="${row.qty||1}" min="0.5" step="0.5" style="padding:4px 7px;font-size:11px;" oninput="mlEditRowChange(${si},${rowIdx},'qty',parseFloat(this.value)||0)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${rateLabel.toUpperCase()} (Ft)</label><input class="form-input" type="number" value="${row.rate||''}" placeholder="pl. 25000" style="padding:4px 7px;font-size:11px;" oninput="mlEditRowChange(${si},${rowIdx},'rate',parseFloat(this.value)||0)"></div>
+    <div id="ml-edit-row-net-${si}-${rowIdx}" style="font-family:var(--mono);font-size:10px;color:var(--profit);padding-bottom:4px;text-align:right;min-width:80px;"></div>
+    <button class="icon-btn del" style="width:22px;height:22px;font-size:10px;" onclick="mlEditRemoveRow(${si},${rowIdx})">✕</button>
+  </div>`;
+  container.appendChild(div);
+  mlEditRecalc();
+}
+
+function mlEditRowChange(si,rowIdx,field,val){const sec=_mlEditSections[si];if(sec&&sec.rows[rowIdx])sec.rows[rowIdx][field]=val;mlEditRecalc();}
+function mlEditRemoveRow(si,rowIdx){const sec=_mlEditSections[si];if(sec)sec.rows[rowIdx]=null;const el=document.getElementById(`ml-edit-row-${si}-${rowIdx}`);if(el)el.remove();mlEditRecalc();}
+
+function mlEditRecalc(){
+  // Get vatPct from current TIG being edited
+  const t=_mlEditingId?tigStore.find(x=>x.id===_mlEditingId):null;
+  const vatPct=(t?.vatPct||27)/100;
+  let grandNet=0;
+  _mlEditSections.filter(Boolean).forEach(sec=>{
+    let secNet=0;const unitTotals={};
+    sec.rows.filter(Boolean).forEach(row=>{
+      const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);secNet+=ln;
+      if(row.unit&&parseFloat(row.qty))unitTotals[row.unit]=(unitTotals[row.unit]||0)+(parseFloat(row.qty)||0);
+      const nel=document.getElementById(`ml-edit-row-net-${sec.id}-${row.rowIdx}`);
+      if(nel)nel.textContent=ln>0?`${ln.toLocaleString('hu-HU')} Ft`:'';
+    });
+    grandNet+=secNet;
+    const secGross=Math.round(secNet*(1+vatPct));
+    const sub=document.getElementById(`ml-edit-sec-sub-${sec.id}`);
+    const unitSummary=Object.entries(unitTotals).map(([u,q])=>`${q} ${u}`).join(', ');
+    if(sub)sub.innerHTML=secNet>0?`${unitSummary?`<span style="color:var(--text-dim)">Összesen: ${unitSummary} &nbsp;·&nbsp;</span>`:''}<span>Nettó: <b>${secNet.toLocaleString('hu-HU')} Ft</b></span> | <span style="color:var(--profit);font-weight:600;">Bruttó: ${secGross.toLocaleString('hu-HU')} Ft</span>`:'';
+  });
+  const grandGross=Math.round(grandNet*(1+vatPct)),grandVat=grandGross-grandNet;
+  const el=document.getElementById('ml-edit-grand-total');
+  if(el){if(grandNet>0){el.style.display='';el.innerHTML=`<div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">VÉGÖSSZEG</div><div style="display:flex;gap:24px;flex-wrap:wrap;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--profit);">${fmt(grandNet)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA (${Math.round(vatPct*100)}%)</div><div style="font-family:var(--mono);font-size:14px;color:var(--text-dim);">${fmt(grandVat)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó (utalandó)</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text-bright);">${fmt(grandGross)}</div></div></div>`;}else el.style.display='none';}
+}
+
+async function mlSaveEditTig(tigId){
+  const t=tigStore.find(x=>x.id===tigId);if(!t)return;
+  const activeSections=_mlEditSections.filter(Boolean);
+  if(!activeSections.length){showToast('⚠️ Legalább egy szekció szükséges!','warn');return;}
+  for(const sec of activeSections){
+    if(!sec.rows.filter(Boolean).filter(r=>r.desc&&(parseFloat(r.rate)||0)>0).length){
+      showToast('⚠️ Minden szekcióban legyen legalább egy kitöltött sor!','warn');return;
+    }
+  }
+  const vatMult=1+(t.vatPct||27)/100;
+  let grandNet=0;
+  const newSections=activeSections.map(sec=>{
+    const activeRows=sec.rows.filter(Boolean).filter(r=>r.desc&&(parseFloat(r.rate)||0)>0);
+    const secNet=activeRows.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.rate)||0),0);
+    grandNet+=secNet;
+    const typeLabel=TIG_TYPES.find(x=>x.key===sec.type)?.label||sec.type||t.sections[sec.id]?.typeLabel||'';
+    const projObj=sec.projectId?projects.find(p=>p.id===sec.projectId):null;
+    return{type:sec.type||t.sections[sec.id]?.type||'',typeLabel,projectId:sec.projectId||'',
+      projectLabel:projObj?.desc||t.sections[sec.id]?.projectLabel||'',rows:activeRows,secNet};
+  });
+  const grandGross=Math.round(grandNet*vatMult);
+
+  // Előző verzió mentése a logba
+  const user=auth?.currentUser?.email?.split('@')[0]||'ismeretlen';
+  const logEntry={time:nowStr(),msg:`TIG tételek módosítva`,type:'edit',by:user,
+    prevNetTotal:t.netTotal,newNetTotal:grandNet,
+    prevGrossTotal:t.grossTotal,newGrossTotal:grandGross,
+    prevSectionCount:(t.sections||[]).length,newSectionCount:newSections.length};
+
+  t.sections=newSections;
+  t.netTotal=grandNet;
+  t.grossTotal=grandGross;
+  t.log=t.log||[];
+  t.log.push(logEntry);
+  t.updatedAt=new Date().toISOString().split('T')[0];
+
+  await fbSaveTig(t);
+  updateMlLauncherStats();
+  showToast(`✅ ${tigId} módosítások mentve!`);
+  showView('ml-tig-detail',tigId);
+}
+
+Object.assign(window,{generateTigId,loadTigsFromFirestore,updateMlLauncherStats,updateMlTrashBadge,
+  renderMlDashboard,renderMlTigList,renderMlNewTig,renderMlTigDetail,
+  mlOnClientChange,mlAddSection,mlSecChange,mlRebuildSectionProjectDropdown,
+  mlRemoveSection,mlAddRow,mlRowChange,mlRemoveRow,mlRecalc,
+  mlGenerateTig,mlMarkSigned,mlRedownload,mlDeleteTig,openTigPreview,confirmTigDownload,
+  renderMlTrash,mlRestoreFromTrash,mlPermanentDelete,mlEmptyTrash,
+  renderMlEditTig,mlRebuildEditSections,mlEditAddSection,mlEditAddSectionDom,
+  mlEditSecChange,mlEditRemoveSection,mlEditAddRow,mlEditAddRowDom,
+  mlEditRowChange,mlEditRemoveRow,mlEditRecalc,mlSaveEditTig});
 
 // ── CÉGADATOK FÜGGVÉNYEK ─────────────────────────────────────────────────────
 async function saveCompanySettingsToDb(data) {
