@@ -8089,12 +8089,13 @@ function sendTigEmail() {
   // A legutóbb létrehozott TIG adatai az email subject/body-hoz
   const lastTig = tigStore.slice().sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''))[0];
   const co = lastTig ? clients.find(c => c.id === lastTig.clientId) : null;
+  const fileName = lastTig ? `${lastTig.id}_${lastTig.date}_unsigned.html` : '';
   const subject = encodeURIComponent(`TIG – ${lastTig ? lastTig.id : ''} – ${co ? co.name : (lastTig?.clientName||'')}`);
   const body    = encodeURIComponent(
-    `Kedves Kollégák!\n\nMellékelten küldöm a generált Teljesítési Igazolást (aláírás előtti példány).\n\nTIG azonosító: ${lastTig ? lastTig.id : ''}\nMegrendelő: ${lastTig?.clientName||''}\n\nKérjük az aláírt TIG visszaküldését.\n\nÜdvözlettel,\n${companySettings.name}`
+    `Kedves Kollégák!\n\nMellékelten küldöm a generált Teljesítési Igazolást (aláírás előtti példány).\n\nTIG azonosító: ${lastTig ? lastTig.id : ''}\nMegrendelő: ${lastTig?.clientName||''}\n\n⚠️ Csatolandó fájl: ${fileName}\n\nKérjük az aláírt TIG visszaküldését.\n\nÜdvözlettel,\n${companySettings.name}`
   );
   window.open(`mailto:${addr}?subject=${subject}&body=${body}`, '_blank');
-  showToast('📧 Email kliens megnyitva!');
+  showToast(`📧 Outlook megnyitva! Ne feledd csatolni: ${fileName}`);
   closeModal('tigEmailModal');
 }
 
