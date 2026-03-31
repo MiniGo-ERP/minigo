@@ -95,7 +95,7 @@
   .wf-arrow { color:var(--border); font-size:13px; margin:0 1px; flex-shrink:0; }
 
   .docs-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(165px, 1fr)); gap:10px; margin-bottom:24px; }
-  .doc-folder { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px; transition:all 0.15s; cursor:pointer; }
+  .doc-folder { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px; transition:all 0.15s; cursor:pointer; overflow:hidden; }
   .doc-folder:hover { border-color:var(--accent2); }
   .doc-folder-icon { font-size:22px; margin-bottom:7px; }
   .doc-folder-name { font-family:var(--mono); font-size:11px; font-weight:600; color:var(--text-bright); margin-bottom:3px; }
@@ -1691,10 +1691,10 @@
 </div>
 
 <!-- MODAL: TIG EMAIL KÜLDÉS -->
-<div class="modal-overlay" id="tigEmailModal">
+<div class="modal-overlay" id="tigEmailModal" style="z-index:300;">
   <div class="modal" style="width:460px;">
     <div class="modal-title">📧 TIG Email Értesítés</div>
-    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">A TIG el lett mentve a projekt TIG mappájába. Kiküldjem az alábbi email címre?</p>
+    <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">A TIG el lett mentve. Kiküldjem az alábbi email címre?</p>
     <div class="form-row">
       <label class="form-label">Email cím *</label>
       <input class="form-input" id="tig-email-addr" type="email" placeholder="pl. istvan.egyed@infragoenergy.com">
@@ -2444,14 +2444,14 @@ function renderProjectDetail(pid){
         ? tigStore.filter(t => (t.projectRefs||[]).includes(pid))
         : [];
       return `
-    <div class="doc-folder" style="border-color:rgba(45,125,210,0.3);">
+    <div class="doc-folder" style="border-color:rgba(45,125,210,0.3);grid-column:1/-1;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <span style="font-size:20px">📋</span>
         <div style="flex:1">
-          <div class="doc-folder-name" style="margin-bottom:0">TIG</div>
+          <div class="doc-folder-name" style="margin-bottom:0">TIG – Teljesítési Igazolás</div>
           <div class="doc-folder-count">${linkedTigs.length} TIG dokumentum</div>
         </div>
-        <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;" onclick="enterMunkalapForProject('${pid}')">
+        <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;white-space:nowrap;" onclick="enterMunkalapForProject('${pid}')">
           📋 Munkalapkészítő →
         </button>
       </div>
@@ -3657,6 +3657,10 @@ function purgeOldTrash(){
   const expiredRel = relTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
   expiredRel.forEach(i => { if(window.fbDeleteRelTrashItem) window.fbDeleteRelTrashItem(i.id).catch(e=>console.error(e)); });
   relTrashBin = relTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) <= FIVE_DAYS);
+  // TIG trash
+  const expiredTig = tigTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) > FIVE_DAYS);
+  expiredTig.forEach(i => { fbDeleteTigTrash(i.id).catch(e=>console.error(e)); });
+  tigTrashBin = tigTrashBin.filter(i => (now - new Date(i.deletedAt).getTime()) <= FIVE_DAYS);
   updateTrashBadge();
 }
 
@@ -7596,6 +7600,9 @@ async function confirmTigDownload() {
   });
   _mlPreselectedProjectId = null;
   closeModal('tigPreviewModal');
+  // tigPreviewModal DOM-ból eltávolítva hogy ne blokkolja a tigEmailModal-t
+  const previewEl = document.getElementById('tigPreviewModal');
+  if (previewEl) previewEl.remove();
   showToast(`✅ ${tigId} letöltve és mentve!`);
   // Email prompt
   setTimeout(()=>{ document.getElementById('tig-email-addr').value=companySettings.email||''; openModal('tigEmailModal'); }, 400);
@@ -7823,9 +7830,12 @@ let _mlEditSections = []; // szerkesztés közbeni szekciók
 function renderMlEditTig(tigId){
   const t=tigStore.find(x=>x.id===tigId);
   if(!t)return`<div class="empty-state"><div class="em-title">TIG nem található</div></div>`;
-  const today=new Date().toISOString().split('T')[0];
-  _mlEditSections=[];
+  const signedWarning = t.status==='signed' ? `
+    <div style="background:rgba(224,82,82,0.08);border:1px solid var(--danger);border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:var(--danger);">
+      ⚠️ <strong>Figyelem: ez a TIG már aláírtnak van jelölve.</strong> A módosítás felülírja a tételeket, de a projektekhez már rögzített bevételi számlákat NEM frissíti automatikusan – azokat kézzel kell javítani.
+    </div>` : '';
   return`<div style="max-width:820px;">
+    ${signedWarning}
     <div style="background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.3);border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:var(--accent);">
       ✏️ Szerkesztés módban – ${tigId} · Csak a tételek módosíthatók. Minden változás naplózásra kerül.
     </div>
@@ -8076,10 +8086,9 @@ function sendTigEmail() {
     companySettings.email = addr;
     saveCompanySettingsToDb(companySettings);
   }
-  const p   = _tigProjectId ? projects.find(x => x.id === _tigProjectId) : null;
-  const co  = p ? clients.find(c => c.id === p.clientId) : null;
-  // Find the most recently created TIG for subject line
+  // A legutóbb létrehozott TIG adatai az email subject/body-hoz
   const lastTig = tigStore.slice().sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''))[0];
+  const co = lastTig ? clients.find(c => c.id === lastTig.clientId) : null;
   const subject = encodeURIComponent(`TIG – ${lastTig ? lastTig.id : ''} – ${co ? co.name : (lastTig?.clientName||'')}`);
   const body    = encodeURIComponent(
     `Kedves Kollégák!\n\nMellékelten küldöm a generált Teljesítési Igazolást (aláírás előtti példány).\n\nTIG azonosító: ${lastTig ? lastTig.id : ''}\nMegrendelő: ${lastTig?.clientName||''}\n\nKérjük az aláírt TIG visszaküldését.\n\nÜdvözlettel,\n${companySettings.name}`
