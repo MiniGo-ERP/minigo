@@ -7581,13 +7581,24 @@ async function confirmTigDownload() {
   const tigDate= _pendingTigDate;
   const t      = _pendingTigObj;
   _pendingTigHtml=''; _pendingTigId=''; _pendingTigDate=''; _pendingTigObj=null;
-  // Letöltés
-  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = `${tigId}_${tigDate}_unsigned.html`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
+
+  // PDF generálás
+  const btn = document.querySelector('#tigPreviewModal .btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ PDF generálás...'; }
+  try {
+    await generateTigPdf(html, `${tigId}_${tigDate}.pdf`);
+  } catch(e) {
+    console.error('PDF hiba:', e);
+    showToast('⚠️ PDF generálás sikertelen – HTML mentés helyett.', 'warn');
+    // Fallback: HTML mentés
+    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download=`${tigId}_${tigDate}.html`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  }
+
   // Mentés Firestore-ba – létrehozási log hozzáadása
   const creator = auth?.currentUser?.email?.split('@')[0] || 'ismeretlen';
   t.log = t.log || [];
@@ -7600,13 +7611,87 @@ async function confirmTigDownload() {
   });
   _mlPreselectedProjectId = null;
   closeModal('tigPreviewModal');
-  // tigPreviewModal DOM-ból eltávolítva hogy ne blokkolja a tigEmailModal-t
   const previewEl = document.getElementById('tigPreviewModal');
   if (previewEl) previewEl.remove();
-  showToast(`✅ ${tigId} letöltve és mentve!`);
-  // Email prompt
+  showToast(`✅ ${tigId} PDF letöltve és mentve!`);
   setTimeout(()=>{ document.getElementById('tig-email-addr').value=companySettings.email||''; openModal('tigEmailModal'); }, 400);
   showView('ml-tig-detail', tigId);
+}
+
+// ── PDF GENERÁLÁS (jsPDF + html2canvas) ──────────────────────────────────────
+async function generateTigPdf(htmlContent, filename) {
+  // Könyvtárak betöltése CDN-ről ha még nem töltődtek be
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
+
+  // CSS és body tartalom kinyerése a teljes HTML stringből
+  // (innerHTML nem parse-olja a <head>/<style> tageket - ezért kézzel kell)
+  const cssMatch   = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const bodyMatch  = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const cssText    = cssMatch  ? cssMatch[1]  : '';
+  const bodyText   = bodyMatch ? bodyMatch[1] : htmlContent;
+
+  // Ideiglenes rejtett container az off-screen rendereléshez
+  const container = document.createElement('div');
+  container.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;';
+
+  // Style injektálása scope-olva hogy ne szennyezze a főoldalt
+  const styleEl = document.createElement('style');
+  styleEl.textContent = cssText;
+  container.appendChild(styleEl);
+
+  // Body tartalom
+  const bodyEl = document.createElement('div');
+  bodyEl.innerHTML = bodyText;
+  container.appendChild(bodyEl);
+
+  document.body.appendChild(container);
+
+  // Várakozás hogy a betűtípusok/képek betöltődjek
+  await new Promise(r => setTimeout(r, 400));
+
+  try {
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      width: 794,
+      windowWidth: 794
+    });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+    const imgW  = pageW;
+    const imgH  = (canvas.height * imgW) / canvas.width;
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+    // Több oldalas kezelés: az image-t offsetelve rendereljük oldalanként
+    let posY = 0;
+    while(posY < imgH) {
+      if(posY > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
+      posY += pageH;
+    }
+
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+function loadScript(src, globalName) {
+  return new Promise((resolve, reject) => {
+    if(window[globalName]) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
 async function mlGenerateTig(){
@@ -7734,8 +7819,18 @@ ${sectionsHtml}
 <div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div></div>
 <footer><span>${t.id} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
 </body></html>`;
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download=`${t.id}_${t.date}_unsigned.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),3000);showToast(`⬇️ ${t.id} újraletöltve!`);
+  showToast(`⏳ ${t.id} PDF generálás...`);
+  try {
+    await generateTigPdf(html, `${t.id}_${t.date}.pdf`);
+    showToast(`⬇️ ${t.id} PDF újraletöltve!`);
+  } catch(e) {
+    console.error('PDF hiba:', e);
+    // Fallback: HTML
+    const blob2 = new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob2),a=document.createElement('a');
+    a.href=url;a.download=`${t.id}_${t.date}.html`;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),3000);
+    showToast(`⬇️ ${t.id} (HTML) újraletöltve!`,'warn');
+  }
 }
 
 // ── TIG TÖRLÉS (soft delete → kuka) ──────────────────────────────────────────
@@ -8040,6 +8135,7 @@ Object.assign(window,{generateTigId,loadTigsFromFirestore,updateMlLauncherStats,
   mlOnClientChange,mlAddSection,mlSecChange,mlRebuildSectionProjectDropdown,
   mlRemoveSection,mlAddRow,mlRowChange,mlRemoveRow,mlRecalc,
   mlGenerateTig,mlMarkSigned,mlRedownload,mlDeleteTig,openTigPreview,confirmTigDownload,
+  generateTigPdf,loadScript,
   renderMlTrash,mlRestoreFromTrash,mlPermanentDelete,mlEmptyTrash,
   renderMlEditTig,mlRebuildEditSections,mlEditAddSection,mlEditAddSectionDom,
   mlEditSecChange,mlEditRemoveSection,mlEditAddRow,mlEditAddRowDom,
@@ -8089,7 +8185,7 @@ function sendTigEmail() {
   // A legutóbb létrehozott TIG adatai az email subject/body-hoz
   const lastTig = tigStore.slice().sort((a,b) => (b.createdAt||'').localeCompare(a.createdAt||''))[0];
   const co = lastTig ? clients.find(c => c.id === lastTig.clientId) : null;
-  const fileName = lastTig ? `${lastTig.id}_${lastTig.date}_unsigned.html` : '';
+  const fileName = lastTig ? `${lastTig.id}_${lastTig.date}.pdf` : '';
   const subject = encodeURIComponent(`TIG – ${lastTig ? lastTig.id : ''} – ${co ? co.name : (lastTig?.clientName||'')}`);
   const body    = encodeURIComponent(
     `Kedves Kollégák!\n\nMellékelten küldöm a generált Teljesítési Igazolást (aláírás előtti példány).\n\nTIG azonosító: ${lastTig ? lastTig.id : ''}\nMegrendelő: ${lastTig?.clientName||''}\n\n⚠️ Csatolandó fájl: ${fileName}\n\nKérjük az aláírt TIG visszaküldését.\n\nÜdvözlettel,\n${companySettings.name}`
