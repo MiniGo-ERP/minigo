@@ -7650,8 +7650,9 @@ async function generateTigPdf(htmlContent, filename) {
 
   // Belső wrapper: ez adja a margót – a * {padding:0} reset NEM érinti
   // mert inline style magasabb prioritású mint a CSS rule
+  // Top/sides: 94px (~25mm), bottom: 40px (~10mm) hogy ne legyen felesleges üres terület
   const wrapper = document.createElement('div');
-  wrapper.setAttribute('style', `padding:${MARGIN_PX}px !important;box-sizing:border-box;width:${A4_PX}px;`);
+  wrapper.setAttribute('style', `padding:${MARGIN_PX}px ${MARGIN_PX}px 40px ${MARGIN_PX}px !important;box-sizing:border-box;width:${A4_PX}px;`);
   wrapper.innerHTML = bodyText;
   container.appendChild(wrapper);
 
@@ -7676,12 +7677,16 @@ async function generateTigPdf(htmlContent, filename) {
     const imgH  = (canvas.height * imgW) / canvas.width;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // Üres oldal elkerülése: csak akkor adunk új oldalt ha még van tartalom
+    // Üres oldal elkerülése: imgH alapján döntünk az oldalszámról
+    // Ha a teljes kép belefér egy oldalba, csak 1 oldal kell
     let posY = 0;
-    while (posY < imgH - 0.5) {
+    while (posY < imgH - 1) {
       if (posY > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
       posY += pageH;
+      // Ha a következő posY már közel van az imgH végéhez (kevesebb mint 5mm maradt),
+      // ne adjunk hozzá több oldalt
+      if (imgH - posY < 5) break;
     }
 
     pdf.save(filename);
