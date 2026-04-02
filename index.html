@@ -7748,7 +7748,7 @@ ${sectionsHtml}
 </table></div>
 <div class="legal">${legalClause}</div>
 <div class="sigs">
-  <div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div>
+  <div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás</div></div>
 </div>
 <footer><span>${tigId} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
 </body></html>`;
@@ -7818,7 +7818,7 @@ ${t.desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:1
 ${sectionsHtml}
 <div class="grand"><table><tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr><tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>
 <div class="legal">${legalClause}</div>
-<div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás és dátum</div></div></div>
+<div class="sigs"><div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás</div></div></div>
 <footer><span>${t.id} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
 </body></html>`;
   showToast(`⏳ ${t.id} PDF generálás...`);
