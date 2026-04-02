@@ -7629,26 +7629,31 @@ async function generateTigPdf(htmlContent, filename) {
   const cssText   = cssMatch  ? cssMatch[1]  : '';
   const bodyText  = bodyMatch ? bodyMatch[1] : htmlContent;
 
-  // A4 @ 96dpi: 794px széles
-  // 25mm margó = 94px → container belső szélessége: 794 - 2*94 = 606px
-  // De egyszerűbb: a container 794px, belső padding 94px mindkét oldalon
-  const A4_PX = 794;
-  const MARGIN_PX = 94; // ~25mm @ 96dpi
+  // A4 @ 96dpi: 794px, ~25mm margó = 94px
+  const A4_PX     = 794;
+  const MARGIN_PX = 94;
 
+  // Külső container: csak pozicionáláshoz, nincs padding
   const container = document.createElement('div');
-  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${A4_PX}px;background:#fff;padding:${MARGIN_PX}px;box-sizing:border-box;`;
+  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${A4_PX}px;background:#fff;`;
 
+  // CSS injektálása – body padding/max-width/margin nullázva (a wrapper adja a margót)
   const styleEl = document.createElement('style');
-  // A body max-width és margin:auto itt nem kell - a container adja a szélességet
-  // A body padding-ot 0-ra állítjuk, a container padding adja a margót
   styleEl.textContent = cssText.replace(/body\s*\{([^}]*)\}/, (match, body) => {
-    return 'body{' + body.replace(/padding:[^;]+;?/g, '').replace(/max-width:[^;]+;?/g, '').replace(/margin:[^;]+;?/g, '') + 'padding:0;margin:0;}';
+    return 'body{' +
+      body.replace(/padding\s*:[^;]+;?/g, '')
+          .replace(/max-width\s*:[^;]+;?/g, '')
+          .replace(/margin\s*:[^;]+;?/g, '') +
+      'padding:0;margin:0;}';
   });
   container.appendChild(styleEl);
 
-  const bodyEl = document.createElement('div');
-  bodyEl.innerHTML = bodyText;
-  container.appendChild(bodyEl);
+  // Belső wrapper: ez adja a margót – a * {padding:0} reset NEM érinti
+  // mert inline style magasabb prioritású mint a CSS rule
+  const wrapper = document.createElement('div');
+  wrapper.setAttribute('style', `padding:${MARGIN_PX}px !important;box-sizing:border-box;width:${A4_PX}px;`);
+  wrapper.innerHTML = bodyText;
+  container.appendChild(wrapper);
 
   document.body.appendChild(container);
   await new Promise(r => setTimeout(r, 400));
@@ -7664,16 +7669,16 @@ async function generateTigPdf(htmlContent, filename) {
     });
 
     const { jsPDF } = window.jspdf;
-    const pdf  = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pdf   = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();   // 210mm
     const pageH = pdf.internal.pageSize.getHeight();  // 297mm
-    // Kép teljes szélességre (margó már a HTML-ben van)
     const imgW  = pageW;
     const imgH  = (canvas.height * imgW) / canvas.width;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
+    // Üres oldal elkerülése: csak akkor adunk új oldalt ha még van tartalom
     let posY = 0;
-    while (posY < imgH) {
+    while (posY < imgH - 0.5) {
       if (posY > 0) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
       posY += pageH;
