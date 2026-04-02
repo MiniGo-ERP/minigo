@@ -7620,40 +7620,37 @@ async function confirmTigDownload() {
 
 // ── PDF GENERÁLÁS (jsPDF + html2canvas) ──────────────────────────────────────
 async function generateTigPdf(htmlContent, filename) {
-  // Könyvtárak betöltése CDN-ről ha még nem töltődtek be
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', 'html2canvas');
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
 
-  // CSS és body tartalom kinyerése a teljes HTML stringből
-  const cssMatch   = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  const bodyMatch  = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  const cssText    = cssMatch  ? cssMatch[1]  : '';
-  const bodyText   = bodyMatch ? bodyMatch[1] : htmlContent;
+  // CSS és body tartalom kinyerése
+  const cssMatch  = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const cssText   = cssMatch  ? cssMatch[1]  : '';
+  const bodyText  = bodyMatch ? bodyMatch[1] : htmlContent;
 
-  // A4 méretek: 210mm × 297mm @ 96dpi
-  // 25mm margó = ~94px, tehát tartalomszélesség: 210mm - 2×25mm = 160mm ≈ 605px
-  const MARGIN_MM  = 25;
-  const PX_PER_MM  = 3.7795;
-  const A4_W_MM    = 210;
-  const contentPxW = Math.round((A4_W_MM - 2 * MARGIN_MM) * PX_PER_MM); // ~605px
+  // A4 @ 96dpi: 794px széles
+  // 25mm margó = 94px → container belső szélessége: 794 - 2*94 = 606px
+  // De egyszerűbb: a container 794px, belső padding 94px mindkét oldalon
+  const A4_PX = 794;
+  const MARGIN_PX = 94; // ~25mm @ 96dpi
 
-  // Ideiglenes rejtett container az off-screen rendereléshez
   const container = document.createElement('div');
-  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${contentPxW}px;background:#fff;`;
+  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${A4_PX}px;background:#fff;padding:${MARGIN_PX}px;box-sizing:border-box;`;
 
-  // Style injektálása
   const styleEl = document.createElement('style');
-  styleEl.textContent = cssText;
+  // A body max-width és margin:auto itt nem kell - a container adja a szélességet
+  // A body padding-ot 0-ra állítjuk, a container padding adja a margót
+  styleEl.textContent = cssText.replace(/body\s*\{([^}]*)\}/, (match, body) => {
+    return 'body{' + body.replace(/padding:[^;]+;?/g, '').replace(/max-width:[^;]+;?/g, '').replace(/margin:[^;]+;?/g, '') + 'padding:0;margin:0;}';
+  });
   container.appendChild(styleEl);
 
-  // Body tartalom
   const bodyEl = document.createElement('div');
   bodyEl.innerHTML = bodyText;
   container.appendChild(bodyEl);
 
   document.body.appendChild(container);
-
-  // Várakozás hogy betűtípusok/képek betöltődjek
   await new Promise(r => setTimeout(r, 400));
 
   try {
@@ -7662,27 +7659,24 @@ async function generateTigPdf(htmlContent, filename) {
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      width: contentPxW,
-      windowWidth: contentPxW
+      width: A4_PX,
+      windowWidth: A4_PX
     });
 
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-
-    const pageW  = pdf.internal.pageSize.getWidth();   // 210mm
-    const pageH  = pdf.internal.pageSize.getHeight();  // 297mm
-    const margin = MARGIN_MM;
-    const imgW   = pageW - 2 * margin;                 // 160mm – tartalomszélesség
-    const imgH   = (canvas.height * imgW) / canvas.width; // arányos magasság
+    const pdf  = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+    // Kép teljes szélességre (margó már a HTML-ben van)
+    const imgW  = pageW;
+    const imgH  = (canvas.height * imgW) / canvas.width;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // Több oldalas kezelés margóval
-    const usableH = pageH - 2 * margin; // 247mm – egy oldalon felhasználható magasság
     let posY = 0;
-    while(posY < imgH) {
-      if(posY > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', margin, margin - posY, imgW, imgH);
-      posY += usableH;
+    while (posY < imgH) {
+      if (posY > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
+      posY += pageH;
     }
 
     pdf.save(filename);
