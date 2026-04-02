@@ -7625,17 +7625,23 @@ async function generateTigPdf(htmlContent, filename) {
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'jspdf');
 
   // CSS és body tartalom kinyerése a teljes HTML stringből
-  // (innerHTML nem parse-olja a <head>/<style> tageket - ezért kézzel kell)
   const cssMatch   = htmlContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
   const bodyMatch  = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
   const cssText    = cssMatch  ? cssMatch[1]  : '';
   const bodyText   = bodyMatch ? bodyMatch[1] : htmlContent;
 
+  // A4 méretek: 210mm × 297mm @ 96dpi
+  // 25mm margó = ~94px, tehát tartalomszélesség: 210mm - 2×25mm = 160mm ≈ 605px
+  const MARGIN_MM  = 25;
+  const PX_PER_MM  = 3.7795;
+  const A4_W_MM    = 210;
+  const contentPxW = Math.round((A4_W_MM - 2 * MARGIN_MM) * PX_PER_MM); // ~605px
+
   // Ideiglenes rejtett container az off-screen rendereléshez
   const container = document.createElement('div');
-  container.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;';
+  container.style.cssText = `position:absolute;left:-9999px;top:0;width:${contentPxW}px;background:#fff;`;
 
-  // Style injektálása scope-olva hogy ne szennyezze a főoldalt
+  // Style injektálása
   const styleEl = document.createElement('style');
   styleEl.textContent = cssText;
   container.appendChild(styleEl);
@@ -7647,7 +7653,7 @@ async function generateTigPdf(htmlContent, filename) {
 
   document.body.appendChild(container);
 
-  // Várakozás hogy a betűtípusok/képek betöltődjek
+  // Várakozás hogy betűtípusok/képek betöltődjek
   await new Promise(r => setTimeout(r, 400));
 
   try {
@@ -7656,25 +7662,27 @@ async function generateTigPdf(htmlContent, filename) {
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff',
-      width: 794,
-      windowWidth: 794
+      width: contentPxW,
+      windowWidth: contentPxW
     });
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
 
-    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
-    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
-    const imgW  = pageW;
-    const imgH  = (canvas.height * imgW) / canvas.width;
+    const pageW  = pdf.internal.pageSize.getWidth();   // 210mm
+    const pageH  = pdf.internal.pageSize.getHeight();  // 297mm
+    const margin = MARGIN_MM;
+    const imgW   = pageW - 2 * margin;                 // 160mm – tartalomszélesség
+    const imgH   = (canvas.height * imgW) / canvas.width; // arányos magasság
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // Több oldalas kezelés: az image-t offsetelve rendereljük oldalanként
+    // Több oldalas kezelés margóval
+    const usableH = pageH - 2 * margin; // 247mm – egy oldalon felhasználható magasság
     let posY = 0;
     while(posY < imgH) {
       if(posY > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
-      posY += pageH;
+      pdf.addImage(imgData, 'JPEG', margin, margin - posY, imgW, imgH);
+      posY += usableH;
     }
 
     pdf.save(filename);
