@@ -7670,24 +7670,17 @@ async function generateTigPdf(htmlContent, filename) {
     });
 
     const { jsPDF } = window.jspdf;
-    const pdf   = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();   // 210mm
-    const pageH = pdf.internal.pageSize.getHeight();  // 297mm
+    const pageW = 210; // mm, A4 szélesség
     const imgW  = pageW;
     const imgH  = (canvas.height * imgW) / canvas.width;
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
 
-    // Üres oldal elkerülése: imgH alapján döntünk az oldalszámról
-    // Ha a teljes kép belefér egy oldalba, csak 1 oldal kell
-    let posY = 0;
-    while (posY < imgH - 1) {
-      if (posY > 0) pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, -posY, imgW, imgH);
-      posY += pageH;
-      // Ha a következő posY már közel van az imgH végéhez (kevesebb mint 5mm maradt),
-      // ne adjunk hozzá több oldalt
-      if (imgH - posY < 5) break;
-    }
+    // PDF magassága = tartalom magassága, de minimum A4 (297mm)
+    // Így soha nem lesz felesleges üres oldal
+    const pdfH = Math.max(imgH, 297);
+    const pdf  = new jsPDF({ orientation:'portrait', unit:'mm', format:[pageW, pdfH] });
+    pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+    pdf.save(filename);
 
     pdf.save(filename);
   } finally {
