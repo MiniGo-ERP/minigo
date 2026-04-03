@@ -8640,6 +8640,8 @@ Object.assign(window, {
 const MINIGO_ADMIN_EMAILS = [
   'istvan.egyed@infrago.hu',
   'egyed.istvan@infrago.hu',
+  'istvan.egyed@infragoenergy.com',
+  'egyed.istvan@infragoenergy.com',
 ];
 
 const IDO_ADMIN_EMAILS = [
@@ -8663,6 +8665,9 @@ function getIdoRole(migoRole) {
 
 // Hívjuk meg auth után – beállítja a launcher tile-ok láthatóságát
 function applyRoleToLauncher(role) {
+  // Mindig frissítjük a role-t ha van auth user
+  const _curEmail = auth?.currentUser?.email || '';
+  if (_curEmail) { role = getMigoUserRole(_curEmail); migoUserRole = role; }
   // Admin-only tile-ok (csak MiniGo admin látja)
   const adminOnlyTiles = ['tile-proj','tile-rel','tile-munkalap','tile-arajanlat','tile-ures'];
   adminOnlyTiles.forEach(id => {
@@ -8801,10 +8806,13 @@ function idoModuleSSO(email, idoRole, displayName) {
 
 // ── WINDOW.SHOWLAUNCHER – role-aware patch ────────────────────────────────────
 window.showLauncher = function() {
+  // Mindig frissítjük a role-t az aktuális auth state-ből
+  const _email = auth?.currentUser?.email || '';
+  if (_email) migoUserRole = getMigoUserRole(_email);
   showLauncher(); // kezeli a topbart, ido-module-t, launcher display-t
   applyRoleToLauncher(migoUserRole);
   // Non-admin userek → időnyilvántartásba irányítjuk
-  if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && auth?.currentUser?.email) {
+  if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && _email) {
     setTimeout(() => enterModule('ido'), 150);
   }
 };
