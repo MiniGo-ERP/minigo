@@ -7819,8 +7819,6 @@ async function generateTigPdf(htmlContent, filename) {
     const pdf  = new jsPDF({ orientation:'portrait', unit:'mm', format:[pageW, pdfH] });
     pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
     pdf.save(filename);
-
-    pdf.save(filename);
   } finally {
     document.body.removeChild(container);
   }
