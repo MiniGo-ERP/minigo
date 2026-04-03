@@ -2120,7 +2120,7 @@ async function loadFromFirestore() {
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
   }
   showLoadingOverlay(false);
-  _origShowLauncher();
+  showLauncher();
   applyRoleToLauncher(migoUserRole);
   updateTrashBadge();
 }
@@ -3336,6 +3336,7 @@ function onCloudFileChange() {
 
 async function confirmUploadNew() {
   const p = projects.find(x => x.id === currentProjectId);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const btn = document.getElementById('uploadConfirmBtn');
   const statusEl = document.getElementById('upload-status');
   const today = new Date().toISOString().split('T')[0];
@@ -3699,6 +3700,7 @@ function confirmIncomeInvoice(){
   const amount=Number(document.getElementById('ii-amount').value);
   if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   (p.incomeInvoices=p.incomeInvoices||[]).push({ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
   p.log.push({time:nowStr(),msg:`Kimenő számla rögzítve: ${ref} – ${fmt(amount)}`,type:'invoice',subtype:'income_add',ref,amount});
   p.updatedAt=new Date().toISOString().split('T')[0];
@@ -3737,6 +3739,7 @@ function confirmCostInvoice(){
   const amount=Number(document.getElementById('ci-amount').value);
   if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   (p.costInvoices=p.costInvoices||[]).push({
     supplierId:sid==='__manual__'?'manual':sid, supplierName, ref, amount,
     date:document.getElementById('ci-date').value, note:document.getElementById('ci-note').value.trim()
@@ -3769,6 +3772,7 @@ function confirmDelete(){
 function openEditClient(id){
   editingClientId = id;
   const c = clients.find(x=>x.id===id);
+  if(!c){ showToast('⚠️ Megrendelő nem található!','warn'); return; }
   document.getElementById('ecl-name').value    = c.name;
   document.getElementById('ecl-taxnr').value   = c.taxnr||'';
   document.getElementById('ecl-contact').value = c.contact||'';
@@ -3782,6 +3786,7 @@ function saveClient(){
   const name = document.getElementById('ecl-name').value.trim();
   if(!name){ showToast('⚠️ Add meg a nevet!','warn'); return; }
   const c = clients.find(x=>x.id===editingClientId);
+  if(!c){ showToast('⚠️ Megrendelő nem található!','warn'); return; }
   const oldName = c.name;
   const isPrivate = document.getElementById('ecl-private').checked;
   c.name    = name;
@@ -3806,6 +3811,7 @@ function saveClient(){
 }
 function deleteClient(id){
   const c = clients.find(x=>x.id===id);
+  if(!c){ showToast('⚠️ Megrendelő nem található!','warn'); return; }
   const linkedProjects = projects.filter(p=>p.clientId===id);
   if(linkedProjects.length > 0){
     const names = linkedProjects.slice(0,3).map(p=>p.id).join(', ');
@@ -3825,6 +3831,7 @@ function deleteClient(id){
 function openEditSupplier(id){
   editingSupplierId = id;
   const s = suppliers.find(x=>x.id===id);
+  if(!s){ showToast('⚠️ Szállító nem található!','warn'); return; }
   document.getElementById('es-name').value    = s.name;
   document.getElementById('es-contact').value = s.contact||'';
   document.getElementById('es-type').value    = s.type||'';
@@ -3834,6 +3841,7 @@ function saveSupplier(){
   const name = document.getElementById('es-name').value.trim();
   if(!name){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   const s = suppliers.find(x=>x.id===editingSupplierId);
+  if(!s){ showToast('⚠️ Szállító nem található!','warn'); return; }
   const oldName = s.name;
   s.name    = name;
   s.contact = document.getElementById('es-contact').value.trim();
@@ -4681,6 +4689,7 @@ function _autoCatalogAdd(listKey, value){
 function openEditEquipment(id){
   editingEqId=id;
   const e=equipment.find(x=>x.id===id);
+  if(!e){ showToast('⚠️ Eszköz nem található!','warn'); return; }
   document.getElementById('eeq-name').value=e.name;
   document.getElementById('eeq-type').value=e.type||'';
   document.getElementById('eeq-manufacturer').value=e.manufacturer||'';
@@ -4897,6 +4906,7 @@ function createResponsible(){
 function openEditResponsible(id){
   editingRespId=id;
   const r=responsibles.find(x=>x.id===id);
+  if(!r){ showToast('⚠️ Felelős nem található!','warn'); return; }
   document.getElementById('eresp-last').value=r.lastName;
   document.getElementById('eresp-first').value=r.firstName;
   document.getElementById('eresp-email').value=r.email||'';
@@ -5299,6 +5309,7 @@ function createFailureType(){
 function openEditFType(id){
   editingFTypeId = id;
   const ft = failureTypes.find(x=>x.id===id);
+  if(!ft){ showToast('⚠️ Hibatípus nem található!','warn'); return; }
   document.getElementById('eft-code').value = ft.code;
   document.getElementById('eft-name').value = ft.name;
   document.getElementById('eft-desc').value = ft.description||'';
@@ -5353,6 +5364,7 @@ function saveFailureType(){
 
 function deleteFType(id){
   const ft = failureTypes.find(x=>x.id===id);
+  if(!ft){ showToast('⚠️ Hibatípus nem található!','warn'); return; }
   if(rTickets.some(t=>t.failureTypeId===id)){
     showToast('⚠️ Nem törölhető: hibajegyek tartoznak hozzá. Előbb zárd le vagy töröld a hibajegyeket.','warn');
     return;
@@ -7191,6 +7203,11 @@ let activeModule = null; // 'proj' | 'rel' | null
 
 function showLauncher(){
   activeModule = null;
+  // Ido modul biztosan el van rejtve, MiniGo topbar látható
+  const _idoM = document.getElementById('ido-module');
+  if (_idoM) _idoM.style.display = 'none';
+  const _mgTop = document.getElementById('minigo-topbar');
+  if (_mgTop) _mgTop.style.display = '';
   // Update launcher stats
   const openProj = projects.filter(p=>p.status!==8).length;
   const curYear  = new Date().getFullYear().toString();
@@ -8735,11 +8752,11 @@ function enterModule(mod) {
 
 // Visszatérés a launcherhez az időnyilvántartás modulból
 function idoModuleLogout() {
-  const idoMod = document.getElementById('ido-module');
-  if (idoMod) idoMod.style.display = 'none';
-  const migoTopbar = document.getElementById('minigo-topbar');
-  if (migoTopbar) migoTopbar.style.display = '';
-  if (typeof window.showLauncher === 'function') window.showLauncher();
+  // showLauncher() az eredeti - kezeli a topbart, ido-module-t, launchert
+  showLauncher();
+  applyRoleToLauncher(migoUserRole);
+  // Non-admin userek maradnak az ido-ban (újra redirect)
+  // Admin userek a launcheren maradnak
 }
 
 // SSO bejelentkezés az időnyilvántartás modulba (MiniGo auth alapján)
@@ -8782,25 +8799,15 @@ function idoModuleSSO(email, idoRole, displayName) {
   if (window.ido_showView) window.ido_showView('dashboard');
 }
 
-// Patcheljük a showLauncher-t hogy alkalmazza a szerepköröket is
-const _origShowLauncher = showLauncher;
+// ── WINDOW.SHOWLAUNCHER – role-aware patch ────────────────────────────────────
 window.showLauncher = function() {
-  // Ido modul elrejtése
-  const idoMod = document.getElementById('ido-module');
-  if (idoMod) idoMod.style.display = 'none';
-  // MiniGo topbar visszahozása
-  const migoTopbar = document.getElementById('minigo-topbar');
-  if (migoTopbar) migoTopbar.style.display = '';
-  // Eredeti launcher megjelenítése
-  _origShowLauncher();
-  // Role alkalmazása (tile-ok mutatása/elrejtése)
+  showLauncher(); // kezeli a topbart, ido-module-t, launcher display-t
   applyRoleToLauncher(migoUserRole);
-  // Nem-admin userek → automatikusan az időnyilvántartásba
-  // DE csak ha a role már be van állítva (nem üres, és nem admin)
+  // Non-admin userek → időnyilvántartásba irányítjuk
   if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && auth?.currentUser?.email) {
     setTimeout(() => enterModule('ido'), 150);
   }
-};// showLauncher is now window.showLauncher
+};
 
 window.enterModule = enterModule;
 window.idoModuleLogout = idoModuleLogout;
