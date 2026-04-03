@@ -2588,6 +2588,7 @@ function renderProjectDetail(pid){
     <div>
       <div class="detail-id">${p.id}</div>
       <div class="detail-company">${co?co.name:''} &nbsp;·&nbsp; Létrehozva: ${p.createdAt}</div>
+      ${p.personName?`<div style="font-size:12px;color:var(--accent2);margin-top:3px;">👤 ${p.personName}${p.personAddress?' · '+p.personAddress:''}</div>`:''}
       ${p.desc?`<div style="font-size:13px;color:var(--text);margin-top:5px">${p.desc}</div>`:''}
     </div>
     <span class="status-badge ${st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start">${st.label}</span>
@@ -2841,12 +2842,13 @@ function showToast(msg, type='info'){
 function openNewProjectModal(pre){
   const sel=document.getElementById('np-company');
   sel.innerHTML='<option value="">-- válassz megrendelőt --</option>'+
+    '<option value="__PRIVATE__">👤 Magánszemély</option>'+
     clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   if(pre) sel.value=pre;
   ['np-type','np-location','np-phase','np-desc','np-person-name','np-person-address'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('np-private-fields').style.display='none';
   document.getElementById('np-date').value = new Date().toISOString().split('T')[0];
-  if(pre) onNewProjClientChange(); // Ha előre van töltve megrendelő, ellenőrizzük
+  if(pre) onNewProjClientChange();
   updateIdPreview(); openModal('newProjectModal');
 }
 function openNewClientModal(){
@@ -2891,6 +2893,7 @@ function updateIdPreview(){
 }
 // Magánszemély megrendelő felismerése projekt modalban
 function isPrivateClient(cid){
+  if(cid === '__PRIVATE__') return true;
   const c = clients.find(x=>x.id===cid);
   return c?.isPrivate || false;
 }
@@ -2913,11 +2916,24 @@ function createProject(){
   const desc=document.getElementById('np-desc').value.trim();
   const projDate=document.getElementById('np-date').value || new Date().toISOString().split('T')[0];
   if(!cid||!typ||!loc||!ph){ showToast('⚠️ Kérlek töltsd ki az összes kötelező mezőt!','warn'); return; }
-  const priv=isPrivateClient(cid);
+  const priv = cid === '__PRIVATE__';
   if(priv && !document.getElementById('np-person-name').value.trim()){ showToast('⚠️ Add meg a magánszemély nevét!','warn'); return; }
+
+  // __PRIVATE__ esetén automatikusan létrehozzuk/megkeressük a Magánszemély klienst
+  let effectiveCid = cid;
+  if(priv){
+    let privClient = clients.find(c=>c.id==='__PRIVATE__');
+    if(!privClient){
+      privClient = {id:'__PRIVATE__',name:'Magánszemély',isPrivate:true,taxnr:'',contact:'',email:'',address:'',counter:0};
+      clients.push(privClient);
+      if(window.fbSaveClient) window.fbSaveClient(privClient).catch(e=>console.error(e));
+    }
+    effectiveCid = '__PRIVATE__';
+  }
+
   const pid = generateSafePid(loc, ph);
   const now=new Date().toISOString().split('T')[0];
-  const newP={id:pid,clientId:cid,projectType:typ,desc,status:0,createdAt:projDate,updatedAt:now,
+  const newP={id:pid,clientId:effectiveCid,projectType:typ,desc,status:0,createdAt:projDate,updatedAt:now,
     personName: priv ? document.getElementById('np-person-name').value.trim() : '',
     personAddress: priv ? document.getElementById('np-person-address').value.trim() : '',
     docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
@@ -2926,7 +2942,6 @@ function createProject(){
   projects.push(newP);
   if(window.fbSaveProject) window.fbSaveProject(newP).catch(e=>console.error(e));
   closeModal('newProjectModal');
-  // Reset magánszemély mezők
   document.getElementById('np-person-name').value='';
   document.getElementById('np-person-address').value='';
   document.getElementById('np-private-fields').style.display='none';
@@ -7556,32 +7571,33 @@ function renderMlNewTig() {
   const today=new Date().toISOString().split('T')[0];
   const preProject=_mlPreselectedProjectId?projects.find(p=>p.id===_mlPreselectedProjectId):null;
   const preClient=preProject?clients.find(c=>c.id===preProject.clientId):null;
-  const clientOptions=clients.map(c=>`<option value="${c.id}" ${preClient&&c.id===preClient.id?'selected':''}>${c.name}</option>`).join('');
-  return `<div style="max-width:820px;">${!companySettings.name?`<div style="background:rgba(224,82,82,0.08);border:1px solid var(--danger);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--danger);margin-bottom:16px;">⚠️ A cégadatok nincsenek beállítva. <span style="cursor:pointer;text-decoration:underline;" onclick="openCompanySettings()">Kattints ide</span> a beállításhoz.</div>`:''}<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;margin-bottom:16px;"><div class="panel-title">TIG fejléc</div><div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:start;"><div class="form-row" style="margin:0"><label class="form-label">Megrendelő *</label><select class="form-input" id="ml-client" onchange="mlOnClientChange()"><option value="">-- válassz megrendelőt --</option>${clientOptions}</select><div id="ml-client-taxnr" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:3px;"></div></div><div class="form-row" style="margin:0"><label class="form-label">TIG dátuma *</label><input class="form-input" type="date" id="ml-date" value="${today}"><div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Csak a PDF-en jelenik meg.</div></div><div class="form-row" style="margin:0"><label class="form-label">ÁFA (%)</label><input class="form-input" type="number" id="ml-vat" value="27" min="0" max="100" oninput="mlRecalc()"></div></div><div id="ml-private-person-row" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;"><label class="form-label" style="margin-bottom:5px;">👤 Magánszemély kiválasztása *</label><select class="form-input" id="ml-private-person-sel"><option value="">-- válassz személyt --</option></select><div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Csak a még nem TIG-elt projektek listája.</div></div><div class="form-row" style="margin-top:12px;"><label class="form-label">Általános leírás (opcionális – TIG fejlécbe kerül)</label><input class="form-input" id="ml-desc" placeholder="pl. EV töltő infrastruktúra munkák – 2026. március"></div></div><div id="ml-sections-container"></div><button class="btn btn-secondary" style="margin-bottom:16px;" onclick="mlAddSection()">➕ Projekt / szekció hozzáadása</button><div id="ml-grand-total" style="background:var(--surface);border:2px solid var(--accent2);border-radius:6px;padding:16px 20px;margin-bottom:16px;display:none;"></div><div style="display:flex;gap:8px;justify-content:flex-end;padding-bottom:24px;"><button class="btn btn-secondary" onclick="showView('ml-dashboard')">✕ Mégse</button><button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="mlGenerateTig()">📄 TIG generálása & Letöltés</button></div></div>`;
+  // __PRIVATE__ mindig szerepel a listában, függetlenül attól hogy van-e már ilyen kliens
+  const privateOpt=`<option value="__PRIVATE__" ${preClient?.id==='__PRIVATE__'?'selected':''}>👤 Magánszemély</option>`;
+  const clientOptions=clients.filter(c=>c.id!=='__PRIVATE__').map(c=>`<option value="${c.id}" ${preClient&&c.id===preClient.id?'selected':''}>${c.name}</option>`).join('');
+  return `<div style="max-width:820px;">${!companySettings.name?`<div style="background:rgba(224,82,82,0.08);border:1px solid var(--danger);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--danger);margin-bottom:16px;">⚠️ A cégadatok nincsenek beállítva. <span style="cursor:pointer;text-decoration:underline;" onclick="openCompanySettings()">Kattints ide</span> a beállításhoz.</div>`:''}<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:18px 20px;margin-bottom:16px;"><div class="panel-title">TIG fejléc</div><div style="display:grid;grid-template-columns:1fr 1fr 120px;gap:12px;align-items:start;"><div class="form-row" style="margin:0"><label class="form-label">Megrendelő *</label><select class="form-input" id="ml-client" onchange="mlOnClientChange()"><option value="">-- válassz megrendelőt --</option>${privateOpt}${clientOptions}</select><div id="ml-client-taxnr" style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:3px;"></div></div><div class="form-row" style="margin:0"><label class="form-label">TIG dátuma *</label><input class="form-input" type="date" id="ml-date" value="${today}"><div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Csak a PDF-en jelenik meg.</div></div><div class="form-row" style="margin:0"><label class="form-label">ÁFA (%)</label><input class="form-input" type="number" id="ml-vat" value="27" min="0" max="100" oninput="mlRecalc()"></div></div><div id="ml-private-person-row" style="display:none;margin-top:10px;padding:10px 12px;background:rgba(45,125,210,0.06);border:1px solid rgba(45,125,210,0.2);border-radius:5px;"><label class="form-label" style="margin-bottom:5px;">👤 Magánszemély kiválasztása *</label><select class="form-input" id="ml-private-person-sel"><option value="">-- válassz személyt --</option></select><div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Csak a még nem TIG-elt projektek listája.</div></div><div class="form-row" style="margin-top:12px;"><label class="form-label">Általános leírás (opcionális – TIG fejlécbe kerül)</label><input class="form-input" id="ml-desc" placeholder="pl. EV töltő infrastruktúra munkák – 2026. március"></div></div><div id="ml-sections-container"></div><button class="btn btn-secondary" style="margin-bottom:16px;" onclick="mlAddSection()">➕ Projekt / szekció hozzáadása</button><div id="ml-grand-total" style="background:var(--surface);border:2px solid var(--accent2);border-radius:6px;padding:16px 20px;margin-bottom:16px;display:none;"></div><div style="display:flex;gap:8px;justify-content:flex-end;padding-bottom:24px;"><button class="btn btn-secondary" onclick="showView('ml-dashboard')">✕ Mégse</button><button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="mlGenerateTig()">📄 TIG generálása & Letöltés</button></div></div>`;
 }
 
 function mlOnClientChange() {
   const cid=document.getElementById('ml-client')?.value;
-  const c=clients.find(x=>x.id===cid);
+  const c=cid==='__PRIVATE__'
+    ? {id:'__PRIVATE__',name:'Magánszemély',isPrivate:true}
+    : clients.find(x=>x.id===cid);
   const el=document.getElementById('ml-client-taxnr');
-  if(el) el.textContent=c&&c.taxnr?`Adószám: ${c.taxnr}`:(c?'':'');
+  if(el) el.textContent=c&&c.taxnr?`Adószám: ${c.taxnr}`:'';
   _mlSections.filter(Boolean).forEach(sec=>mlRebuildSectionProjectDropdown(sec.id));
 
   // Magánszemély: megjelenik a projektek alapján kiválasztható személynév
   const privRow = document.getElementById('ml-private-person-row');
   if(!privRow) return;
   if(c?.isPrivate){
-    // Csak azok a Magánszemély projektek ahol még nincs TIG
     const tiggedPids = new Set(tigStore.flatMap(t=>t.projectRefs||[]));
-    const privProjects = projects.filter(p=>p.clientId===cid && p.personName && !tiggedPids.has(p.id));
+    const privProjects = projects.filter(p=>p.clientId==='__PRIVATE__' && p.personName && !tiggedPids.has(p.id));
+    privRow.style.display='';
+    const sel = document.getElementById('ml-private-person-sel');
     if(privProjects.length > 0){
-      privRow.style.display='';
-      const sel = document.getElementById('ml-private-person-sel');
       sel.innerHTML = '<option value="">-- válassz személyt --</option>' +
         privProjects.map(p=>`<option value="${p.id}">${p.personName}${p.personAddress?' – '+p.personAddress:''}</option>`).join('');
     } else {
-      privRow.style.display='';
-      const sel = document.getElementById('ml-private-person-sel');
       sel.innerHTML = '<option value="">Nincs elérhető magánszemély projekt</option>';
     }
   } else {
@@ -7826,7 +7842,10 @@ async function mlGenerateTig(){
   if(!clientId){showToast('⚠️ Válassz megrendelőt!','warn');return;}if(!tigDate){showToast('⚠️ Add meg a TIG dátumát!','warn');return;}if(!companySettings.name){showToast('⚠️ A cégadatok nincsenek beállítva!','warn');openCompanySettings();return;}
   const activeSections=_mlSections.filter(Boolean);if(!activeSections.length){showToast('⚠️ Adj meg legalább egy szekciót!','warn');return;}
   for(const sec of activeSections){if(!sec.type){showToast('⚠️ Minden szekciónál válassz munkatípust!','warn');return;}if(!sec.rows.filter(Boolean).filter(r=>r.desc&&r.rate).length){showToast('⚠️ Minden szekcióban legyen legalább egy kitöltött sor!','warn');return;}}
-  const co=clients.find(c=>c.id===clientId),vatMult=1+vatPct/100,tigId=generateTigId();
+  const co = clientId==='__PRIVATE__'
+    ? (clients.find(c=>c.id==='__PRIVATE__') || {id:'__PRIVATE__',name:'Magánszemély',isPrivate:true})
+    : clients.find(c=>c.id===clientId);
+  const vatMult=1+vatPct/100,tigId=generateTigId();
 
   // Magánszemély: kiválasztott projekt adatai
   let privatePersonName='', privatePersonAddress='';
