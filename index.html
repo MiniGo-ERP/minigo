@@ -7498,15 +7498,24 @@ function mlRemoveSection(secId){if(_mlSections[secId])_mlSections[secId]=null;co
 function mlAddRow(secId,rowType){
   const sec=_mlSections[secId];if(!sec)return;
   const rowIdx=sec.rows.length,today=new Date().toISOString().split('T')[0];
-  const row={rowIdx,rowType,date:rowType!=='general'?today:'',desc:'',qty:1,unit:rowType==='hourly'?'óra':rowType==='daily'?'nap':'db',rate:'',note:''};
+  const defaultUnit=rowType==='hourly'?'óra':rowType==='daily'?'nap':'db';
+  const row={rowIdx,rowType,date:'',desc:'',qty:1,unit:defaultUnit,rate:'',note:''};
   sec.rows.push(row);
   const container=document.getElementById(`ml-sec-rows-${secId}`);if(!container)return;
   const typeColor=rowType==='hourly'?'var(--accent2)':rowType==='daily'?'#9b59b6':'var(--success)';
   const typeIcon=rowType==='hourly'?'⏱️':rowType==='daily'?'📅':'📦';
-  const unitLabel=rowType==='hourly'?'Óra':rowType==='daily'?'Nap':'Db';
   const rateLabel=rowType==='hourly'?'Óradíj (Ft)':rowType==='daily'?'Napidíj (Ft)':'Egységár (Ft)';
+  const unitOpts=['db','óra','nap','km','alkalom','egyéb'].map(u=>`<option value="${u}" ${u===defaultUnit?'selected':''}>${u}</option>`).join('');
   const div=document.createElement('div');div.id=`ml-row-${secId}-${rowIdx}`;div.style.cssText=`background:var(--bg);border:1px solid var(--border);border-left:3px solid ${typeColor};border-radius:4px;padding:8px 10px;`;
-  div.innerHTML=`<div style="display:grid;grid-template-columns:${rowType!=='general'?'110px ':''}1fr 70px 140px 110px 26px;gap:6px;align-items:end;">${rowType!=='general'?`<div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${typeIcon} DÁTUM</label><input class="form-input" type="date" value="${today}" style="padding:4px 7px;font-size:11px;" onchange="mlRowChange(${secId},${rowIdx},'date',this.value)"></div>`:''}<div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${rowType==='general'?typeIcon+' ':''}LEÍRÁS *</label><input class="form-input" placeholder="${rowType==='hourly'?'pl. Szerz. véleményezése':rowType==='daily'?'pl. Helyszíni nap':'pl. EV töltő telepítés'}" style="padding:4px 7px;font-size:11px;" onchange="mlRowChange(${secId},${rowIdx},'desc',this.value)"></div><div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${unitLabel.toUpperCase()}</label><input class="form-input" type="number" value="1" min="0.5" step="0.5" style="padding:4px 7px;font-size:11px;" oninput="mlRowChange(${secId},${rowIdx},'qty',parseFloat(this.value)||0)"></div><div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${rateLabel.toUpperCase()}</label><input class="form-input" type="number" placeholder="pl. 25000" style="padding:4px 7px;font-size:11px;" oninput="mlRowChange(${secId},${rowIdx},'rate',parseFloat(this.value)||0)"></div><div id="ml-row-net-${secId}-${rowIdx}" style="font-family:var(--mono);font-size:10px;color:var(--profit);text-align:right;padding-bottom:4px;white-space:nowrap;min-width:90px;"></div><button class="icon-btn del" style="width:22px;height:22px;font-size:10px;" onclick="mlRemoveRow(${secId},${rowIdx})">✕</button></div>`;
+  div.innerHTML=`<div style="display:grid;grid-template-columns:110px 1fr 60px 72px 130px 110px 26px;gap:6px;align-items:end;">
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${typeIcon} DÁTUM</label><input class="form-input" type="date" value="" style="padding:4px 7px;font-size:11px;" onchange="mlRowChange(${secId},${rowIdx},'date',this.value)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">LEÍRÁS *</label><input class="form-input" placeholder="${rowType==='hourly'?'pl. Szerz. véleményezése':rowType==='daily'?'pl. Helyszíni nap':'pl. EV töltő telepítés'}" style="padding:4px 7px;font-size:11px;" onchange="mlRowChange(${secId},${rowIdx},'desc',this.value)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">MENNY.</label><input class="form-input" type="number" value="1" min="0.5" step="0.5" style="padding:4px 7px;font-size:11px;" oninput="mlRowChange(${secId},${rowIdx},'qty',parseFloat(this.value)||0)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">EGYSÉG</label><select class="form-input" style="padding:4px 6px;font-size:11px;" onchange="mlRowChange(${secId},${rowIdx},'unit',this.value)">${unitOpts}</select></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${rateLabel.toUpperCase()}</label><input class="form-input" type="number" placeholder="pl. 25000" style="padding:4px 7px;font-size:11px;" oninput="mlRowChange(${secId},${rowIdx},'rate',parseFloat(this.value)||0)"></div>
+    <div id="ml-row-net-${secId}-${rowIdx}" style="font-family:var(--mono);font-size:10px;color:var(--profit);text-align:right;padding-bottom:4px;white-space:nowrap;min-width:80px;"></div>
+    <button class="icon-btn del" style="width:22px;height:22px;font-size:10px;" onclick="mlRemoveRow(${secId},${rowIdx})">✕</button>
+  </div>`;
   container.appendChild(div);mlRecalc();
 }
 function mlRowChange(secId,rowIdx,field,val){const sec=_mlSections[secId];if(sec&&sec.rows[rowIdx])sec.rows[rowIdx][field]=val;mlRecalc();}
@@ -7739,7 +7748,7 @@ async function mlGenerateTig(){
   <div class="meta"><div class="tid">${tigId}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div>
 </div>
 <div class="parties">
-  <div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div>
+  <div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div></div>
   <div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div>
 </div>
 ${desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${desc}</div>`:''}
@@ -7816,7 +7825,7 @@ async function mlRedownloadDirect(t){
   const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;} .grand table{width:100%;border-collapse:collapse;} .grand td{padding:8px 14px;} .gl{color:#555;font-size:12px;} .gv{text-align:right;font-weight:600;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:14px;font-size:18px;font-weight:700;} .legal{margin-top:24px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px;padding:14px 16px;font-size:12px;color:#444;line-height:1.7;} .sigs{margin-top:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;max-width:280px;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
   const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>TIG – ${t.id}</title><style>${CSS}</style></head><body>
 <div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1></div><div class="meta"><div class="tid">${t.id}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div></div>
-<div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div><div class="pt">Adószám: ${co?.taxnr||'–'}</div></div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>
+<div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${co?.name||'–'}</div></div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>
 ${t.desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${t.desc}</div>`:''}
 ${sectionsHtml}
 <div class="grand"><table><tr><td class="gl">Összes nettó összeg</td><td class="gv">${grandNet.toLocaleString('hu-HU')} Ft</td></tr><tr><td class="gl">ÁFA (${vatPct}%)</td><td class="gv">${grandVat.toLocaleString('hu-HU')} Ft</td></tr><tr class="gg"><td>Végösszeg – bruttó (utalandó)</td><td style="text-align:right">${grandGross.toLocaleString('hu-HU')} Ft</td></tr></table></div>
@@ -8049,17 +8058,19 @@ function mlEditAddRowDom(si,rowIdx,row){
   const rowType=row.rowType||'general';
   const typeColor=rowType==='hourly'?'var(--accent2)':rowType==='daily'?'#9b59b6':'var(--success)';
   const typeIcon=rowType==='hourly'?'⏱️':rowType==='daily'?'📅':'📦';
-  const unitLabel=rowType==='hourly'?'Óra':rowType==='daily'?'Nap':'Db';
   const rateLabel=rowType==='hourly'?'Óradíj':rowType==='daily'?'Napidíj':'Egységár';
+  const currentUnit=row.unit||'db';
+  const unitOpts=['db','óra','nap','km','alkalom','egyéb'].map(u=>`<option value="${u}" ${u===currentUnit?'selected':''}>${u}</option>`).join('');
   const div=document.createElement('div');
   div.id=`ml-edit-row-${si}-${rowIdx}`;
   div.style.cssText=`background:var(--bg);border:1px solid var(--border);border-left:3px solid ${typeColor};border-radius:4px;padding:8px 10px;`;
-  div.innerHTML=`<div style="display:grid;grid-template-columns:${rowType!=='general'?'110px ':''}1fr 60px 130px 100px 26px;gap:6px;align-items:end;">
-    ${rowType!=='general'?`<div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${typeIcon} DÁTUM</label><input class="form-input" type="date" value="${row.date||''}" style="padding:4px 7px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'date',this.value)"></div>`:''}
+  div.innerHTML=`<div style="display:grid;grid-template-columns:110px 1fr 60px 72px 110px 90px 26px;gap:6px;align-items:end;">
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${typeIcon} DÁTUM</label><input class="form-input" type="date" value="${row.date||''}" style="padding:4px 7px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'date',this.value)"></div>
     <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">LEÍRÁS *</label><input class="form-input" value="${(row.desc||'').replace(/"/g,'&quot;')}" placeholder="pl. Szervíz munkák" style="padding:4px 7px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'desc',this.value)"></div>
-    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${unitLabel.toUpperCase()}</label><input class="form-input" type="number" value="${row.qty||1}" min="0.5" step="0.5" style="padding:4px 7px;font-size:11px;" oninput="mlEditRowChange(${si},${rowIdx},'qty',parseFloat(this.value)||0)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">MENNY.</label><input class="form-input" type="number" value="${row.qty||1}" min="0.5" step="0.5" style="padding:4px 7px;font-size:11px;" oninput="mlEditRowChange(${si},${rowIdx},'qty',parseFloat(this.value)||0)"></div>
+    <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">EGYSÉG</label><select class="form-input" style="padding:4px 6px;font-size:11px;" onchange="mlEditRowChange(${si},${rowIdx},'unit',this.value)">${unitOpts}</select></div>
     <div><label style="font-family:var(--mono);font-size:9px;color:var(--text-dim);display:block;margin-bottom:2px;">${rateLabel.toUpperCase()} (Ft)</label><input class="form-input" type="number" value="${row.rate||''}" placeholder="pl. 25000" style="padding:4px 7px;font-size:11px;" oninput="mlEditRowChange(${si},${rowIdx},'rate',parseFloat(this.value)||0)"></div>
-    <div id="ml-edit-row-net-${si}-${rowIdx}" style="font-family:var(--mono);font-size:10px;color:var(--profit);padding-bottom:4px;text-align:right;min-width:80px;"></div>
+    <div id="ml-edit-row-net-${si}-${rowIdx}" style="font-family:var(--mono);font-size:10px;color:var(--profit);padding-bottom:4px;text-align:right;min-width:70px;"></div>
     <button class="icon-btn del" style="width:22px;height:22px;font-size:10px;" onclick="mlEditRemoveRow(${si},${rowIdx})">✕</button>
   </div>`;
   container.appendChild(div);
