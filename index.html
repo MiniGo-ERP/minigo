@@ -2120,8 +2120,8 @@ async function loadFromFirestore() {
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
   }
   showLoadingOverlay(false);
-  if (typeof window.showLauncher === 'function') window.showLauncher();
-  else showLauncher();
+  _origShowLauncher();
+  applyRoleToLauncher(migoUserRole);
   updateTrashBadge();
 }
 
@@ -8793,16 +8793,14 @@ window.showLauncher = function() {
   if (migoTopbar) migoTopbar.style.display = '';
   // Eredeti launcher megjelenítése
   _origShowLauncher();
-  // Role meghatározása és alkalmazása
-  const currentEmail = auth?.currentUser?.email || '';
-  migoUserRole = getMigoUserRole(currentEmail);
+  // Role alkalmazása (tile-ok mutatása/elrejtése)
   applyRoleToLauncher(migoUserRole);
   // Nem-admin userek → automatikusan az időnyilvántartásba
-  if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && currentEmail) {
+  // DE csak ha a role már be van állítva (nem üres, és nem admin)
+  if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && auth?.currentUser?.email) {
     setTimeout(() => enterModule('ido'), 150);
   }
-};
-// showLauncher is now window.showLauncher
+};// showLauncher is now window.showLauncher
 
 window.enterModule = enterModule;
 window.idoModuleLogout = idoModuleLogout;
@@ -9783,10 +9781,7 @@ setTimeout(()=>{
 <div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="ido_closeSidebar()"></div>
 <div class="layout">
   <div class="sidebar">
-    <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:6px;">
-      <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);letter-spacing:2px;cursor:pointer;" title="Vissza a főmenübe">MINI<span style="color:var(--text-dim)">GO</span></div>
-      <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:9px;color:var(--accent2);cursor:pointer;padding:3px 8px;border:1px solid var(--accent2);border-radius:3px;" title="Vissza a főmenübe">← Főmenü</div>
-    </div>
+
     <div style="padding:4px 14px 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
     <div class="sidebar-section">
       <div class="sidebar-label">Navigáció</div>
