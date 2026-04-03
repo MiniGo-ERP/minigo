@@ -2001,16 +2001,17 @@ window.addEventListener('DOMContentLoaded', () => {
 // ── AUTH STATE LISTENER ───────────────────────────────────────────────────────
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // Bejelentkezve – frissítjük a user badge-et
     const email = user.email || '';
+    migoUserRole = getMigoUserRole(email);
     const displayName = email.split('@')[0];
     const badge = document.getElementById('userBadge');
-    if(badge) badge.textContent = '👤 ' + displayName;
-    // App betöltése
+    if (badge) {
+      const prefix = migoUserRole === 'admin' ? '★ ' : '👤 ';
+      badge.textContent = prefix + displayName;
+    }
     showAppShell();
     loadFromFirestore();
   } else {
-    // Nincs bejelentkezve
     showLoginScreen();
   }
 });
@@ -2119,7 +2120,8 @@ async function loadFromFirestore() {
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
   }
   showLoadingOverlay(false);
-  showLauncher();
+  if (typeof window.showLauncher === 'function') window.showLauncher();
+  else showLauncher();
   updateTrashBadge();
 }
 
@@ -8613,44 +8615,59 @@ Object.assign(window, {
 // MINIGO SZEREPKÖRÖK ÉS IDŐNYILVÁNTARTÁS MODUL INTEGRÁCIÓ
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Admin emailek – ezek teljes hozzáférést kapnak
-// Bővíthető: Firebase Firestore settings/roles dokumentumból is betölthető
+// ── SZEREPKÖRÖK ──────────────────────────────────────────────────────────────
+// 'admin'     = teljes MiniGo hozzáférés
+// 'ido_admin' = csak időnyilvántartás, mindent lát és módosíthat
+// 'ido_user'  = csak időnyilvántartás, csak saját adatait látja
+
 const MINIGO_ADMIN_EMAILS = [
   'istvan.egyed@infrago.hu',
   'egyed.istvan@infrago.hu',
 ];
 
-// Az aktuálisan bejelentkezett user MiniGo szerepköre
-let migoUserRole = 'ido_only'; // 'admin' | 'ido_only'
+const IDO_ADMIN_EMAILS = [
+  // ide kerülnek az időnyilvántartás-admin emailek (pl. 'vezeto@infrago.hu')
+];
+
+let migoUserRole = 'ido_user'; // 'admin' | 'ido_admin' | 'ido_user'
 
 function getMigoUserRole(email) {
-  if (!email) return 'ido_only';
+  if (!email) return 'ido_user';
   const e = email.toLowerCase().trim();
   if (MINIGO_ADMIN_EMAILS.some(a => a.toLowerCase() === e)) return 'admin';
-  return 'ido_only';
+  if (IDO_ADMIN_EMAILS.some(a => a.toLowerCase() === e)) return 'ido_admin';
+  return 'ido_user';
+}
+
+// Ido modulon belüli szerepkör: 'admin' → ido_admin szint, 'employee' → ido_user szint
+function getIdoRole(migoRole) {
+  return migoRole === 'admin' || migoRole === 'ido_admin' ? 'admin' : 'employee';
 }
 
 // Hívjuk meg auth után – beállítja a launcher tile-ok láthatóságát
 function applyRoleToLauncher(role) {
+  // Admin-only tile-ok (csak MiniGo admin látja)
   const adminOnlyTiles = ['tile-proj','tile-rel','tile-munkalap','tile-arajanlat','tile-ures'];
   adminOnlyTiles.forEach(id => {
     const el = document.getElementById(id);
-    if (!el) return;
-    if (role === 'admin') {
-      el.style.display = '';
-    } else {
-      el.style.display = 'none';
-    }
+    if (el) el.style.display = (role === 'admin') ? '' : 'none';
   });
-  // Role badge
+  // Időnyilvántartás tile – mindenki látja
+  const idoTile = document.getElementById('tile-ido');
+  if (idoTile) idoTile.style.display = '';
+  // Role badge a launcheren
   const badge = document.getElementById('launcher-role-badge');
+  const email = auth?.currentUser?.email || '';
   if (badge) {
     if (role === 'admin') {
-      badge.style.cssText = 'display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;background:rgba(232,160,32,0.15);color:var(--accent);border:1px solid rgba(232,160,32,0.4);';
-      badge.textContent = '★ ADMIN – teljes hozzáférés';
+      badge.style.cssText = 'display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 12px;border-radius:3px;background:rgba(232,160,32,0.15);color:var(--accent);border:1px solid rgba(232,160,32,0.4);';
+      badge.textContent = '★ ADMIN · ' + email;
+    } else if (role === 'ido_admin') {
+      badge.style.cssText = 'display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 12px;border-radius:3px;background:rgba(39,174,96,0.12);color:var(--success);border:1px solid rgba(39,174,96,0.35);';
+      badge.textContent = '⏱ IDO ADMIN · ' + email;
     } else {
-      badge.style.cssText = 'display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;background:rgba(45,125,210,0.12);color:var(--accent2);border:1px solid rgba(45,125,210,0.3);';
-      badge.textContent = 'Időnyilvántartás felhasználó';
+      badge.style.cssText = 'display:inline-block;font-family:var(--mono);font-size:10px;padding:3px 12px;border-radius:3px;background:rgba(45,125,210,0.12);color:var(--accent2);border:1px solid rgba(45,125,210,0.3);';
+      badge.textContent = '👤 ' + email;
     }
   }
 }
@@ -8661,19 +8678,18 @@ function enterModule(mod) {
   activeModule = mod;
 
   if (mod === 'ido') {
-    // Időnyilvántartás modul megnyitása
     document.getElementById('moduleLauncher').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'none';
-    // MiniGo topbar teljes elrejtése – az ido modulnak saját topbarja van
+    // MiniGo topbar elrejtése
     const migoTopbar = document.getElementById('minigo-topbar');
     if (migoTopbar) migoTopbar.style.display = 'none';
     const idoMod = document.getElementById('ido-module');
     if (idoMod) idoMod.style.display = 'flex';
-    // SSO bejelentkezés
+    // SSO: MiniGo role → ido role
     const user = auth?.currentUser;
     if (user) {
-      const role = getMigoUserRole(user.email);
-      const idoRole = role === 'admin' ? 'admin' : 'employee';
+      const mRole = getMigoUserRole(user.email);
+      const idoRole = getIdoRole(mRole); // 'admin' vagy 'employee'
       idoModuleSSO(user.email, idoRole, user.displayName || user.email.split('@')[0]);
     }
     return;
@@ -8721,82 +8737,69 @@ function enterModule(mod) {
 function idoModuleLogout() {
   const idoMod = document.getElementById('ido-module');
   if (idoMod) idoMod.style.display = 'none';
-  // Hamburger visszaállítása eredeti onclick-re
-  const hbtn = document.getElementById('hamburgerBtn');
-  if(hbtn) {
-    hbtn.setAttribute('onclick', 'toggleSidebar()');
-    hbtn.style.display = '';
-  }
-  // Topbar label visszaállítása
-  const lbl = document.getElementById('activeModuleLabel');
-  if(lbl) lbl.textContent = 'FŐMENÜ';
-  // Launcher megnyitása
-  if(window.showLauncher) window.showLauncher();
-  else if(typeof _origShowLauncher === 'function') _origShowLauncher();
+  const migoTopbar = document.getElementById('minigo-topbar');
+  if (migoTopbar) migoTopbar.style.display = '';
+  if (typeof window.showLauncher === 'function') window.showLauncher();
 }
 
 // SSO bejelentkezés az időnyilvántartás modulba (MiniGo auth alapján)
-function idoModuleSSO(email, role, displayName) {
-  // Keressük meg az employees listában
+function idoModuleSSO(email, idoRole, displayName) {
+  // Employee megkeresése vagy létrehozása
   const idoEmps = window._ido_getEmployees ? window._ido_getEmployees() : [];
-  const emp = idoEmps.find(e => e.email.toLowerCase() === email.toLowerCase() && !e.deletedAt);
+  let emp = idoEmps.find(e => e.email && e.email.toLowerCase() === email.toLowerCase() && !e.deletedAt);
   if (emp) {
-    if (role === 'admin') emp.role = 'admin';
+    emp.role = idoRole; // mindig frissítjük a role-t SSO-ból
     if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   } else {
-    const nameParts = displayName || email.split('@')[0];
-    const newEmp = {
-      id: 'sso_' + Date.now(),
-      email: email.toLowerCase(),
-      pass: 'sso',
-      role: role,
-      firstName: nameParts,
-      lastName: '',
-      vacationDays: 20,
-      startDate: new Date().toISOString().slice(0,10),
-      overtimeMinutes: 0,
-      deletedAt: null
+    const namePart = displayName || email.split('@')[0];
+    emp = {
+      id: 'sso_' + Date.now(), email: email.toLowerCase(), pass: 'sso',
+      role: idoRole, firstName: namePart, lastName: '',
+      vacationDays: 20, startDate: new Date().toISOString().slice(0,10),
+      overtimeMinutes: 0, deletedAt: null
     };
-    idoEmps.push(newEmp);
-    if (window._ido_setCurrentUser) window._ido_setCurrentUser(newEmp);
+    idoEmps.push(emp);
+    if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   }
-  
-  // App megjelenítése, login screen elrejtése
+  // Ido app megjelenítése
   const loginEl = document.getElementById('ido-loginScreen');
   if (loginEl) loginEl.style.display = 'none';
   const appEl = document.getElementById('ido-app');
   if (appEl) appEl.style.display = 'flex';
-  
-  // User badge
-  const currentEmp = window._ido_getCurrentUser ? window._ido_getCurrentUser() : null;
-  // Frissítjük a MiniGo topbar userBadge-ét (az ido topbar el lett távolítva)
-  const mainBadge = document.getElementById('userBadge');
-  if (mainBadge && currentEmp) {
-    mainBadge.textContent = '👤 ' + (currentEmp.firstName + ' ' + currentEmp.lastName).trim() + (role === 'admin' ? ' [ADMIN]' : '');
+  // Ido topbar badge
+  const idoBadge = document.getElementById('ido-userBadge');
+  if (idoBadge) {
+    idoBadge.textContent = (idoRole === 'admin' ? '[ADMIN] ' : '') +
+      (emp.firstName + ' ' + emp.lastName).trim() + ' · MiniGo SSO';
   }
-  
-  // Admin-only elemek mutatása/elrejtése
-  const adminEls = document.querySelectorAll('#ido-module .admin-only');
-  adminEls.forEach(el => { el.style.display = role === 'admin' ? '' : 'none'; });
-  
+  // Admin-only elemek az ido modulon belül
+  document.querySelectorAll('#ido-module .admin-only').forEach(el => {
+    el.style.display = idoRole === 'admin' ? '' : 'none';
+  });
+  // calEmpId beállítása (naptár szűrő)
+  if (window._ido_setCalEmpId) window._ido_setCalEmpId(emp.id);
+  // Navigáció
   if (window.ido_showView) window.ido_showView('dashboard');
 }
 
 // Patcheljük a showLauncher-t hogy alkalmazza a szerepköröket is
 const _origShowLauncher = showLauncher;
 window.showLauncher = function() {
+  // Ido modul elrejtése
   const idoMod = document.getElementById('ido-module');
   if (idoMod) idoMod.style.display = 'none';
-  // Mindig állítsuk vissza a MiniGo topbart
+  // MiniGo topbar visszahozása
   const migoTopbar = document.getElementById('minigo-topbar');
   if (migoTopbar) migoTopbar.style.display = '';
+  // Eredeti launcher megjelenítése
   _origShowLauncher();
-  // Role alkalmazása
-  migoUserRole = getMigoUserRole(auth?.currentUser?.email);
+  // Role meghatározása és alkalmazása
+  const currentEmail = auth?.currentUser?.email || '';
+  migoUserRole = getMigoUserRole(currentEmail);
   applyRoleToLauncher(migoUserRole);
-  // Ha csak ido_only user, automatikusan az időnyilvántartásba irányítjuk
-  if (migoUserRole === 'ido_only') {
-    setTimeout(() => enterModule('ido'), 100);
+  // Nem-admin userek → automatikusan az időnyilvántartásba
+  if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && currentEmail) {
+    setTimeout(() => enterModule('ido'), 150);
   }
 };
 // showLauncher is now window.showLauncher
@@ -9746,6 +9749,7 @@ if(cdNote) cdNote.addEventListener('input',function(){
   window._ido_getEmployees = function() { return typeof employees !== 'undefined' ? employees : []; };
   window._ido_getCurrentUser = function() { return ido_currentUser; };
   window._ido_setCurrentUser = function(u) { ido_currentUser = u; calEmpId = u ? u.id : null; };
+  window._ido_setCalEmpId = function(id) { calEmpId = id; };
 
 })();
 
