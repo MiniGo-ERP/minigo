@@ -749,7 +749,7 @@
 
 <div id="appShell" style="display:none;flex-direction:column;height:100vh;">
 
-<div class="topbar">
+<div class="topbar" id="minigo-topbar">
   <div class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
     <span></span><span></span><span></span>
   </div>
@@ -8664,14 +8664,15 @@ function enterModule(mod) {
     // Időnyilvántartás modul megnyitása
     document.getElementById('moduleLauncher').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'none';
+    // MiniGo topbar teljes elrejtése – az ido modulnak saját topbarja van
+    const migoTopbar = document.getElementById('minigo-topbar');
+    if (migoTopbar) migoTopbar.style.display = 'none';
     const idoMod = document.getElementById('ido-module');
     if (idoMod) idoMod.style.display = 'flex';
-    document.getElementById('activeModuleLabel').textContent = 'IDŐNYILVÁNTARTÁS';
-    // SSO bejelentkezés az időnyilvántartás modulba
+    // SSO bejelentkezés
     const user = auth?.currentUser;
     if (user) {
       const role = getMigoUserRole(user.email);
-      // Az időnyilvántartás admin joga = MiniGo admin VAGY ha az ido modulban van admin joga
       const idoRole = role === 'admin' ? 'admin' : 'employee';
       idoModuleSSO(user.email, idoRole, user.displayName || user.email.split('@')[0]);
     }
@@ -8720,7 +8721,18 @@ function enterModule(mod) {
 function idoModuleLogout() {
   const idoMod = document.getElementById('ido-module');
   if (idoMod) idoMod.style.display = 'none';
-  showLauncher();
+  // Hamburger visszaállítása eredeti onclick-re
+  const hbtn = document.getElementById('hamburgerBtn');
+  if(hbtn) {
+    hbtn.setAttribute('onclick', 'toggleSidebar()');
+    hbtn.style.display = '';
+  }
+  // Topbar label visszaállítása
+  const lbl = document.getElementById('activeModuleLabel');
+  if(lbl) lbl.textContent = 'FŐMENÜ';
+  // Launcher megnyitása
+  if(window.showLauncher) window.showLauncher();
+  else if(typeof _origShowLauncher === 'function') _origShowLauncher();
 }
 
 // SSO bejelentkezés az időnyilvántartás modulba (MiniGo auth alapján)
@@ -8757,8 +8769,11 @@ function idoModuleSSO(email, role, displayName) {
   
   // User badge
   const currentEmp = window._ido_getCurrentUser ? window._ido_getCurrentUser() : null;
-  const badge = document.getElementById('ido-userBadge');
-  if (badge && currentEmp) badge.textContent = (role === 'admin' ? '[ADMIN] ' : '') + (currentEmp.firstName + ' ' + currentEmp.lastName).trim() + ' · MiniGo SSO';
+  // Frissítjük a MiniGo topbar userBadge-ét (az ido topbar el lett távolítva)
+  const mainBadge = document.getElementById('userBadge');
+  if (mainBadge && currentEmp) {
+    mainBadge.textContent = '👤 ' + (currentEmp.firstName + ' ' + currentEmp.lastName).trim() + (role === 'admin' ? ' [ADMIN]' : '');
+  }
   
   // Admin-only elemek mutatása/elrejtése
   const adminEls = document.querySelectorAll('#ido-module .admin-only');
@@ -8772,6 +8787,9 @@ const _origShowLauncher = showLauncher;
 window.showLauncher = function() {
   const idoMod = document.getElementById('ido-module');
   if (idoMod) idoMod.style.display = 'none';
+  // Mindig állítsuk vissza a MiniGo topbart
+  const migoTopbar = document.getElementById('minigo-topbar');
+  if (migoTopbar) migoTopbar.style.display = '';
   _origShowLauncher();
   // Role alkalmazása
   migoUserRole = getMigoUserRole(auth?.currentUser?.email);
@@ -8944,7 +8962,7 @@ function ido_doLogout(){
 function ido_showView(v){
   var items=document.querySelectorAll('.nav-item');
   for(var i=0;i<items.length;i++) items[i].classList.remove('active');
-  var ne=document.getElementById('nav-'+v); if(ne) ne.classList.add('active');
+  var ne=document.getElementById('ido-nav-'+v); if(ne) ne.classList.add('active');
   var titles={dashboard:'Áttekintés',calendar:'Naptár',checkin:'Munkaidő rögzítése',employees:'Munkavállalók',reports:'Kimutatások',trash:'Kuka'};
   document.getElementById('ido-bc').innerHTML='<span style="color:var(--text)">'+(titles[v]||v)+'</span>';
   var content='';
@@ -9742,30 +9760,37 @@ setTimeout(()=>{
 
 <!-- IDŐNYILVÁNTARTÁS MODUL TARTALOM -->
 <div id="ido-module" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
-<div id="ido-app" style="display:flex;flex-direction:column;height:100%;flex:1;overflow:hidden;">
-<div class="topbar">
-  <button class="hamburger" onclick="ido_toggleSidebar()" aria-label="Menü">&#9776;</button>
-  <div class="logo">MINI<span>GO</span></div>
+<div id="ido-app" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
+<div style="height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;">
+  <button onclick="ido_toggleSidebar()" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:4px;margin-right:4px;" aria-label="Menü">
+    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
+    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
+    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
+  </button>
+  <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);letter-spacing:2px;cursor:pointer;" title="Vissza a főmenübe">MINI<span style="color:var(--text-dim)">GO</span></div>
   <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
-  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; ID&#336;NYILV&#193;NTAT&#193;S</span>
-  <div class="topbar-right">
-    <span id="ido-clockEl" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);"></span>
-    <div class="user-badge" id="ido-userBadge">&#128100; &ndash;</div>
-    <button onclick="idoModuleLogout()" style="background:transparent;border:1px solid var(--accent2);color:var(--accent2);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-size:11px;cursor:pointer;" title="Vissza a főmenübe">← Főmenü</button>
-    <button onclick="idoModuleLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all .15s;" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">&#9099; Ki</button>
+  <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; IDŐNYILVÁNTARTÁS</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+    <span id="ido-clockEl" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);"></span>
+    <div id="ido-userBadge" style="background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text);">&#128100; –</div>
+    <button onclick="idoModuleLogout()" style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:5px 10px;font-family:var(--mono);font-size:11px;color:var(--text-dim);cursor:pointer;" title="Vissza a főmenübe">← Főmenü</button>
   </div>
 </div>
 <div class="sidebar-overlay" id="ido-sidebarOverlay" onclick="ido_closeSidebar()"></div>
 <div class="layout">
   <div class="sidebar">
-    <div style="padding:14px 0 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
+    <div style="padding:10px 14px 6px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:6px;">
+      <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);letter-spacing:2px;cursor:pointer;" title="Vissza a főmenübe">MINI<span style="color:var(--text-dim)">GO</span></div>
+      <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:9px;color:var(--accent2);cursor:pointer;padding:3px 8px;border:1px solid var(--accent2);border-radius:3px;" title="Vissza a főmenübe">← Főmenü</div>
+    </div>
+    <div style="padding:4px 14px 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
     <div class="sidebar-section">
       <div class="sidebar-label">Navigáció</div>
-      <div class="nav-item active" id="nav-dashboard" onclick="ido_showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
-      <div class="nav-item" id="nav-calendar" onclick="ido_showView('calendar')"><span>&#128197;</span> Naptár</div>
-      <div class="nav-item" id="nav-checkin" onclick="ido_showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
-      <div class="nav-item admin-only" id="nav-employees" onclick="ido_showView('employees')"><span>&#128101;</span> Munkavállalók</div>
-      <div class="nav-item admin-only" id="nav-reports" onclick="ido_showView('reports')"><span>&#128200;</span> Kimutatások</div>
+      <div class="nav-item active" id="ido-nav-dashboard" onclick="ido_showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
+      <div class="nav-item" id="ido-nav-calendar" onclick="ido_showView('calendar')"><span>&#128197;</span> Naptár</div>
+      <div class="nav-item" id="ido-nav-checkin" onclick="ido_showView('checkin')"><span>&#128336;</span> Munkaidő rögzítése</div>
+      <div class="nav-item admin-only" id="ido-nav-employees" onclick="ido_showView('employees')"><span>&#128101;</span> Munkavállalók</div>
+      <div class="nav-item admin-only" id="ido-nav-reports" onclick="ido_showView('reports')"><span>&#128200;</span> Kimutatások</div>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
@@ -9780,7 +9805,7 @@ setTimeout(()=>{
     <div style="flex:1"></div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section" style="padding-bottom:10px;">
-      <div class="nav-item admin-only" id="nav-trash" onclick="ido_showView('trash')" style="color:var(--danger);opacity:.7;"><span>&#128465;</span> Kuka<span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
+      <div class="nav-item admin-only" id="ido-nav-trash" onclick="ido_showView('trash')" style="color:var(--danger);opacity:.7;"><span>&#128465;</span> Kuka<span id="ido-trash-badge" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:10px;"></span></div>
     </div>
   </div>
   <div class="main">
