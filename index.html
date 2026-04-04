@@ -3698,7 +3698,8 @@ function openIncomeInvoiceModal(pid){
 function confirmIncomeInvoice(){
   const ref=document.getElementById('ii-ref').value.trim();
   const amount=Number(document.getElementById('ii-amount').value);
-  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
+  if(!ref) ref = 'N/A';
+  if(!amount && amount !== 0){ showToast('⚠️ Add meg az összeget!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   (p.incomeInvoices=p.incomeInvoices||[]).push({ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
@@ -3740,7 +3741,7 @@ function confirmCostInvoice(){
   const ref=document.getElementById('ci-ref').value.trim();
   const amount=Number(document.getElementById('ci-amount').value);
   // 0 összeg elfogadható (pl. belső munka, 0 Ft-os tétel)
-  if(!ref){ showToast('⚠️ Számlaszám/hivatkozás megadása kötelező!','warn'); return; }
+  if(!ref) ref = 'N/A'; // ha nincs számlaszám, automatikusan N/A kerül
   if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
@@ -4254,7 +4255,7 @@ function saveCostInvoice(){
   }
   const ref    = document.getElementById('eci-ref').value.trim();
   const amount = Number(document.getElementById('eci-amount').value);
-  if(!ref){ showToast('⚠️ Számlaszám/hivatkozás megadása kötelező!','warn'); return; }
+  if(!ref) ref = 'N/A'; // ha nincs számlaszám, automatikusan N/A kerül
   if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p   = projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
