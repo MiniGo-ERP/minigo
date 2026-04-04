@@ -3924,6 +3924,7 @@ function deleteSupplier(id){
 function openEditProject(pid){
   editingProjectId = pid;
   const p = projects.find(x=>x.id===pid);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   document.getElementById('ep-id-display').textContent = pid;
   const cSel = document.getElementById('ep-client');
   cSel.innerHTML = '<option value="__PRIVATE__">👤 Magánszemély</option>' +
@@ -3942,6 +3943,7 @@ function openEditProject(pid){
 }
 function saveProject(){
   const p = projects.find(x=>x.id===editingProjectId);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const newClientId = document.getElementById('ep-client').value;
   const newDesc     = document.getElementById('ep-desc').value.trim();
   const newDate     = document.getElementById('ep-date').value;
@@ -3971,6 +3973,7 @@ function saveProject(){
 }
 function deleteProject(pid){
   const p = projects.find(x=>x.id===pid);
+  if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const parentId = p.clientId;
   openDeleteConfirm(`Kukába kerül: "${pid}" projekt. 5 nap után automatikusan törlődik.`, ()=>{
     moveToTrash('project', pid, p, pid);
@@ -4266,11 +4269,17 @@ function openEditCostInvoice(pid, idx){
   const inv = p?(p.costInvoices||[])[idx]:null;
   if(!inv) return;
   const sel = document.getElementById('eci-supplier');
-  sel.innerHTML = suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+
+  sel.innerHTML = '<option value="__internal__">🏠 Belső munka (nincs szállító, 0 Ft)</option>'+
+    suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+
     '<option value="__manual__">Egyéb / kézi bevitel</option>';
-  const knownSupplier = suppliers.find(s=>s.id===inv.supplierId);
-  if(knownSupplier){ sel.value = inv.supplierId; document.getElementById('eci-manual-row').style.display='none'; }
-  else { sel.value='__manual__'; document.getElementById('eci-manual-row').style.display='block'; document.getElementById('eci-manual-name').value=inv.supplierName||''; }
+  if(inv.supplierId==='internal'){
+    sel.value='__internal__';
+    document.getElementById('eci-manual-row').style.display='none';
+  } else {
+    const knownSupplier = suppliers.find(s=>s.id===inv.supplierId);
+    if(knownSupplier){ sel.value = inv.supplierId; document.getElementById('eci-manual-row').style.display='none'; }
+    else { sel.value='__manual__'; document.getElementById('eci-manual-row').style.display='block'; document.getElementById('eci-manual-name').value=inv.supplierName||''; }
+  }
   document.getElementById('eci-ref').value    = inv.ref;
   document.getElementById('eci-amount').value = inv.amount;
   document.getElementById('eci-date').value   = inv.date||'';
@@ -4279,9 +4288,10 @@ function openEditCostInvoice(pid, idx){
 }
 function saveCostInvoice(){
   const sid = document.getElementById('eci-supplier').value;
-  // Szállító NEM kötelező – belső munkánál nincs szállító
   let supplierName='';
-  if(sid==='__manual__'){
+  if(sid==='__internal__'){
+    supplierName = 'Belső munka';
+  } else if(sid==='__manual__'){
     supplierName = document.getElementById('eci-manual-name').value.trim();
     if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
   } else if(sid) {
@@ -4296,7 +4306,7 @@ function saveCostInvoice(){
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const inv = (p.costInvoices||[])[editingInvoiceIdx];
   if(!inv){ showToast('⚠️ Számla nem található!','warn'); return; }
-  inv.supplierId   = sid==='__manual__'?'manual':sid;
+  inv.supplierId   = sid==='__manual__'?'manual':(sid==='__internal__'?'internal':sid);
   inv.supplierName = supplierName;
   inv.ref    = ref;
   inv.amount = amount;
