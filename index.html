@@ -3712,23 +3712,62 @@ function confirmIncomeInvoice(){
 function ciSupplierChange(){
   const v=document.getElementById('ci-supplier').value;
   document.getElementById('ci-manual-row').style.display=v==='__manual__'?'block':'none';
+  if(v==='__internal__'){
+    // Belső munka: mezők elrejtése/letiltása, értékek automatikusan
+    document.getElementById('ci-ref').value='N/A';
+    document.getElementById('ci-amount').value='0';
+    document.getElementById('ci-note').value='Belső munka – nincs külső költség';
+    // Vizuálisan jelezzük
+    document.getElementById('ci-ref').style.opacity='0.4';
+    document.getElementById('ci-amount').style.opacity='0.4';
+  } else {
+    document.getElementById('ci-ref').style.opacity='';
+    document.getElementById('ci-amount').style.opacity='';
+    // Ha visszaváltunk, töröljük az auto-kitöltött értékeket
+    if(document.getElementById('ci-ref').value==='N/A'){
+      document.getElementById('ci-ref').value='';
+    }
+    if(document.getElementById('ci-amount').value==='0'){
+      document.getElementById('ci-amount').value='0';
+    }
+    if(document.getElementById('ci-note').value==='Belső munka – nincs külső költség'){
+      document.getElementById('ci-note').value='';
+    }
+  }
 }
 function openCostInvoiceModal(pid){
   pendingInvoiceId=pid;
   document.getElementById('ciProjectLabel').textContent=`Projekt: ${pid}`;
   const sel=document.getElementById('ci-supplier');
   sel.innerHTML='<option value="">-- válassz szállítót --</option>'+
+    '<option value="__internal__">🏠 Belső munka (nincs szállító, 0 Ft)</option>'+
     suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')+
     '<option value="__manual__">Egyéb / kézi bevitel</option>';
   document.getElementById('ci-manual-row').style.display='none';
-  ['ci-ref','ci-amount','ci-note','ci-manual-name'].forEach(id=>document.getElementById(id).value='');
+  ['ci-ref','ci-note','ci-manual-name'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ci-amount').value='0';
   document.getElementById('ci-date').value=new Date().toISOString().split('T')[0];
   openModal('costInvoiceModal');
 }
 function confirmCostInvoice(){
   const sid=document.getElementById('ci-supplier').value;
-  // Szállító NEM kötelező – belső munkánál nincs szállító
   let supplierName='';
+  if(sid==='__internal__'){
+    // Belső munka – automatikusan rögzítjük
+    supplierName='Belső munka';
+    const p2=projects.find(x=>x.id===pendingInvoiceId);
+    if(!p2){ showToast('⚠️ Projekt nem található!','warn'); return; }
+    (p2.costInvoices=p2.costInvoices||[]).push({
+      supplierId:'internal', supplierName:'Belső munka', ref:'N/A', amount:0,
+      date:document.getElementById('ci-date').value,
+      note:document.getElementById('ci-note').value.trim()||'Belső munka – nincs külső költség'
+    });
+    p2.log.push({time:nowStr(),msg:'Szállítói számla rögzítve: Belső munka / N/A – 0 Ft',type:'invoice',subtype:'cost_add',ref:'N/A',amount:0,supplierName:'Belső munka'});
+    p2.updatedAt=new Date().toISOString().split('T')[0];
+    if(window.fbSaveProject) window.fbSaveProject(p2).catch(e=>console.error(e));
+    closeModal('costInvoiceModal'); showView('project-detail',pendingInvoiceId);
+    return;
+  }
   if(sid==='__manual__'){
     supplierName=document.getElementById('ci-manual-name').value.trim();
     if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
