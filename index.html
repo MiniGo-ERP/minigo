@@ -3696,9 +3696,8 @@ function openIncomeInvoiceModal(pid){
   openModal('incomeInvoiceModal');
 }
 function confirmIncomeInvoice(){
-  const ref=document.getElementById('ii-ref').value.trim();
+  const ref = document.getElementById('ii-ref').value.trim() || 'N/A';
   const amount=Number(document.getElementById('ii-amount').value);
-  if(!ref) ref = 'N/A';
   if(!amount && amount !== 0){ showToast('⚠️ Add meg az összeget!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
@@ -3738,10 +3737,8 @@ function confirmCostInvoice(){
   } else {
     supplierName='Belső munka';
   }
-  const ref=document.getElementById('ci-ref').value.trim();
+  const ref = document.getElementById('ci-ref').value.trim() || 'N/A';
   const amount=Number(document.getElementById('ci-amount').value);
-  // 0 összeg elfogadható (pl. belső munka, 0 Ft-os tétel)
-  if(!ref) ref = 'N/A'; // ha nincs számlaszám, automatikusan N/A kerül
   if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
@@ -4253,9 +4250,8 @@ function saveCostInvoice(){
   } else {
     supplierName = 'Belső munka';
   }
-  const ref    = document.getElementById('eci-ref').value.trim();
+  const ref    = document.getElementById('eci-ref').value.trim() || 'N/A';
   const amount = Number(document.getElementById('eci-amount').value);
-  if(!ref) ref = 'N/A'; // ha nincs számlaszám, automatikusan N/A kerül
   if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p   = projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
