@@ -3727,17 +3727,21 @@ function openCostInvoiceModal(pid){
 }
 function confirmCostInvoice(){
   const sid=document.getElementById('ci-supplier').value;
-  if(!sid){ showToast('⚠️ Válassz szállítót!','warn'); return; }
+  // Szállító NEM kötelező – belső munkánál nincs szállító
   let supplierName='';
   if(sid==='__manual__'){
     supplierName=document.getElementById('ci-manual-name').value.trim();
     if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
-  } else {
+  } else if(sid) {
     supplierName=(suppliers.find(x=>x.id===sid)||{name:sid}).name;
+  } else {
+    supplierName='Belső munka';
   }
   const ref=document.getElementById('ci-ref').value.trim();
   const amount=Number(document.getElementById('ci-amount').value);
-  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
+  // 0 összeg elfogadható (pl. belső munka, 0 Ft-os tétel)
+  if(!ref){ showToast('⚠️ Számlaszám/hivatkozás megadása kötelező!','warn'); return; }
+  if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   (p.costInvoices=p.costInvoices||[]).push({
@@ -4238,17 +4242,20 @@ function openEditCostInvoice(pid, idx){
 }
 function saveCostInvoice(){
   const sid = document.getElementById('eci-supplier').value;
-  if(!sid){ showToast('⚠️ Válassz szállítót!','warn'); return; }
+  // Szállító NEM kötelező – belső munkánál nincs szállító
   let supplierName='';
   if(sid==='__manual__'){
     supplierName = document.getElementById('eci-manual-name').value.trim();
     if(!supplierName){ showToast('⚠️ Add meg a szállító nevét!','warn'); return; }
-  } else {
+  } else if(sid) {
     supplierName = (suppliers.find(x=>x.id===sid)||{name:sid}).name;
+  } else {
+    supplierName = 'Belső munka';
   }
   const ref    = document.getElementById('eci-ref').value.trim();
   const amount = Number(document.getElementById('eci-amount').value);
-  if(!ref||!amount){ showToast('⚠️ Számlaszám és összeg kötelező!','warn'); return; }
+  if(!ref){ showToast('⚠️ Számlaszám/hivatkozás megadása kötelező!','warn'); return; }
+  if(isNaN(amount)||amount<0){ showToast('⚠️ Az összeg nem lehet negatív!','warn'); return; }
   const p   = projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const inv = (p.costInvoices||[])[editingInvoiceIdx];
@@ -8836,9 +8843,8 @@ let ido_currentUser=null, editingId=null;
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1, calEmpId=null;
 
 let employees=[
-  {id:'admin',email:'admin@minigo.hu',pass:'admin123',role:'admin',firstName:'Admin',lastName:'MiniGo',vacationDays:20,startDate:'2023-01-01',overtimeMinutes:0,deletedAt:null},
-  {id:'emp1',email:'kovacs.janos@minigo.hu',pass:'janos123',role:'employee',firstName:'János',lastName:'Kovács',vacationDays:20,startDate:'2024-03-01',overtimeMinutes:45,deletedAt:null},
-  {id:'emp2',email:'nagy.anna@minigo.hu',pass:'anna123',role:'employee',firstName:'Anna',lastName:'Nagy',vacationDays:25,startDate:'2023-06-01',overtimeMinutes:-90,deletedAt:null},
+  // A munkavállalók listáját az admin tölti fel az Időnyilvántartás → Munkavállalók menüpontban.
+  // Az SSO belépéskor a MiniGo Firebase email alapján azonosítja a felhasználót.
 ];
 let timeLog=[
   {id:'tl1',empId:'emp1',date:'2026-03-10',sh:8,sm:0,eh:17,em:0,worked:540,otDelta:30,note:'Sprint tervezés, kód review, deployment előkészítés'},
@@ -9424,8 +9430,8 @@ function createEmp(){
   var vdays=parseInt(document.getElementById('ne-vdays').value)||20;
   var start=document.getElementById('ne-start').value;
   var role=document.getElementById('ne-role').value;
-  if(!last||!first||!email||!pass){ido_showToast('Töltsd ki a kötelező mezőket!','warn');return;}
-  if(pass.length<6){ido_showToast('A jelszó legalább 6 karakter legyen!','warn');return;}
+  if(!last||!first||!email){ido_showToast('Töltsd ki a kötelező mezőket (Név, Email)!','warn');return;}
+  if(pass && pass.length<6){ido_showToast('Ha megadsz jelszót, az legalább 6 karakter legyen!','warn');return;}
   for(var i=0;i<employees.length;i++){if(employees[i].email===email&&!employees[i].deletedAt){ido_showToast('Ez az e-mail már foglalt!','warn');return;}}
   employees.push({id:'emp'+Date.now(),email:email,pass:pass,role:role,firstName:first,lastName:last,vacationDays:vdays,startDate:start,overtimeMinutes:0,deletedAt:null});
   ido_closeModal('mNewEmp'); ido_showToast('Munkavállaló létrehozva','ok'); ido_showView('employees');
@@ -9776,11 +9782,6 @@ setTimeout(()=>{
 <div id="ido-module" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
 <div id="ido-app" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
 <div style="height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;">
-  <button onclick="ido_toggleSidebar()" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;flex-direction:column;gap:4px;margin-right:4px;" aria-label="Menü">
-    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
-    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
-    <span style="display:block;width:18px;height:2px;background:var(--text-dim);border-radius:1px;"></span>
-  </button>
   <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);letter-spacing:2px;cursor:pointer;" title="Vissza a főmenübe">MINI<span style="color:var(--text-dim)">GO</span></div>
   <span style="color:var(--border);font-family:var(--mono);font-size:11px;">|</span>
   <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">&#9201; IDŐNYILVÁNTARTÁS</span>
@@ -9835,12 +9836,12 @@ setTimeout(()=>{
       <div><label class="form-label">Keresztnév *</label><input class="form-input" id="ne-first" placeholder="János"></div>
     </div>
     <div class="form-row"><label class="form-label">E-mail cím * (bejelentkezési név)</label><input class="form-input" id="ne-email" type="email" placeholder="kovacs.janos@ceg.hu"></div>
-    <div class="form-row"><label class="form-label">Jelszó * (min. 6 karakter)</label><input class="form-input" id="ne-pass" type="password"></div>
+    <div class="form-row"><label class="form-label">Jelszó (opcionális, min. 6 karakter – csak közvetlen ido belépéshez szükséges)</label><input class="form-input" id="ne-pass" type="password" placeholder="Hagyható üresen SSO esetén"></div>
     <div class="form-row-2">
       <div><label class="form-label">Éves szabadnapok száma *</label><input class="form-input" id="ne-vdays" type="number" min="0" max="50" value="20"></div>
       <div><label class="form-label">Belépés dátuma</label><input class="form-input" id="ne-start" type="date"></div>
     </div>
-    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ne-role"><option value="employee">Munkavállaló</option><option value="admin">Admin</option></select></div>
+    <div class="form-row"><label class="form-label">Szerepkör</label><select class="form-input" id="ne-role"><option value="employee">Időnyilvántartás felhasználó (csak saját adatai)</option><option value="admin">Időnyilvántartás admin (minden adatot lát és szerkeszthet)</option></select></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="ido_closeModal('mNewEmp')">Mégse</button>
       <button class="btn btn-primary" onclick="createEmp()">&#10003; Létrehozás</button>
