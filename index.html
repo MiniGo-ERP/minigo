@@ -9846,7 +9846,10 @@ var _rptEmpId=null;
 function openEmpReport(empId){
   _rptEmpId=empId;
   var emp=employees.find(function(e){return e.id===empId;});
-  if(!emp) return;
+  if(!emp){
+    ido_showToast('Munkavállaló nem található! (id: '+empId+')','warn');
+    return;
+  }
   // Fejléc
   var nameEl=document.getElementById('mEmpReportName');
   if(nameEl) nameEl.textContent=emp.lastName+' '+emp.firstName+' · '+emp.email;
@@ -9914,7 +9917,7 @@ function generateEmpReport(){
   if(!mc) return;
   var fromFmt=fmtDate(from), toFmt=fmtDate(to);
   var html='<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">';
-  html+='<button class="btn btn-secondary" onclick="ido_showView(\'employees\')">&#8592; Vissza</button>';
+  html+='<button class="btn btn-secondary" onclick="window.ido_showView(\'employees\')">&#8592; Vissza</button>';
   html+='<div style="font-family:var(--mono);font-weight:700;font-size:15px;">'+emp.lastName+' '+emp.firstName+'</div>';
   html+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">Riport: '+fromFmt+' – '+toFmt+'</div>';
   html+='<button class="btn btn-secondary" style="margin-left:auto;" onclick="openEmpReport(\''+emp.id+'\')">🔄 Új időszak</button>';
