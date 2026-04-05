@@ -2115,6 +2115,21 @@ async function loadFromFirestore() {
       if (!tigTrashSnap.empty) tigTrashBin = tigTrashSnap.docs.map(d => d.data());
       updateMlLauncherStats();
     } catch(te){ console.warn('TIG betöltési hiba (nem kritikus):', te); }
+    // IDO modul adatok betöltése Firestore-ból
+    try {
+      const [idoEmpSnap, idoLogSnap, idoMarkSnap, idoTrashSnap] = await Promise.all([
+        getDocs(collection(db, 'ido_employees')),
+        getDocs(collection(db, 'ido_timelog')),
+        getDocs(collection(db, 'ido_daymarks')),
+        getDocs(collection(db, 'ido_trash')),
+      ]);
+      const idoEmps   = idoEmpSnap.empty   ? [] : idoEmpSnap.docs.map(d=>d.data());
+      const idoLogs   = idoLogSnap.empty   ? [] : idoLogSnap.docs.map(d=>d.data());
+      const idoMarks  = idoMarkSnap.empty  ? [] : idoMarkSnap.docs.map(d=>d.data());
+      const idoTrItems= idoTrashSnap.empty ? [] : idoTrashSnap.docs.map(d=>d.data());
+      // Átadjuk az IDO IIFE-nek bridge-en keresztül
+      if(window._ido_loadData) window._ido_loadData(idoEmps, idoLogs, idoMarks, idoTrItems);
+    } catch(ie){ console.warn('IDO adatok betöltési hiba (nem kritikus):', ie); }
   } catch(e) {
     console.error('Firestore betöltési hiba:', e);
     showToast('⚠️ Felhő kapcsolat sikertelen – offline módban dolgozol', 'warn');
@@ -2131,6 +2146,26 @@ function showLoadingOverlay(show) {
 
 // Globálissá tesszük a Firebase függvényeket
 // ── RELIABILITY FIREBASE HELPERS ──────────────────────────────────────────────
+// ── IDO MODUL FIREBASE HELPERS ──────────────────────────────────────────────
+async function fbSaveIdoEmployee(e)  { await setDoc(doc(db,'ido_employees',e.id),e); }
+async function fbDelIdoEmployee(id)  { await fbDeleteDocFS(doc(db,'ido_employees',id)); }
+async function fbSaveIdoTimeLog(t)   { await setDoc(doc(db,'ido_timelog',t.id),t); }
+async function fbDelIdoTimeLog(id)   { await fbDeleteDocFS(doc(db,'ido_timelog',id)); }
+async function fbSaveIdoDayMark(d)   { await setDoc(doc(db,'ido_daymarks',d.id),d); }
+async function fbDelIdoDayMark(id)   { await fbDeleteDocFS(doc(db,'ido_daymarks',id)); }
+async function fbSaveIdoTrashItem(t) { await setDoc(doc(db,'ido_trash',t.id),t); }
+async function fbDelIdoTrashItem(id) { await fbDeleteDocFS(doc(db,'ido_trash',id)); }
+
+// Export IDO Firebase helpers to window (IDO IIFE használja)
+window.fbSaveIdoEmployee  = fbSaveIdoEmployee;
+window.fbDelIdoEmployee   = fbDelIdoEmployee;
+window.fbSaveIdoTimeLog   = fbSaveIdoTimeLog;
+window.fbDelIdoTimeLog    = fbDelIdoTimeLog;
+window.fbSaveIdoDayMark   = fbSaveIdoDayMark;
+window.fbDelIdoDayMark    = fbDelIdoDayMark;
+window.fbSaveIdoTrashItem = fbSaveIdoTrashItem;
+window.fbDelIdoTrashItem  = fbDelIdoTrashItem;
+
 async function fbSaveEquipment(e)  { await setDoc(doc(db,'equipment',e.id),e); }
 async function fbDelEquipment(id)  { await fbDeleteDocFS(doc(db,'equipment',id)); }
 async function fbSaveFailureType(f){ await setDoc(doc(db,'failureTypes',f.id),f); }
@@ -8821,6 +8856,7 @@ function idoModuleSSO(email, idoRole, displayName) {
   let emp = idoEmps.find(e => e.email && e.email.toLowerCase() === email.toLowerCase() && !e.deletedAt);
   if (emp) {
     emp.role = idoRole; // mindig frissítjük a role-t SSO-ból
+    if (window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(e=>console.error('SSO role frissítés mentési hiba:',e));
     if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   } else {
     const namePart = displayName || email.split('@')[0];
@@ -8831,6 +8867,7 @@ function idoModuleSSO(email, idoRole, displayName) {
       overtimeMinutes: 0, deletedAt: null
     };
     idoEmps.push(emp);
+    if (window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(e=>console.error('SSO új employee mentési hiba:',e));
     if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   }
   // Ido app megjelenítése
@@ -8888,21 +8925,11 @@ const HU_HOL_SPEC = {'2025':['2025-04-18','2025-04-21','2025-06-09'],'2026':['20
 let ido_currentUser=null, editingId=null;
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1, calEmpId=null;
 
-let employees=[
-  // A munkavállalók listáját az admin tölti fel az Időnyilvántartás → Munkavállalók menüpontban.
-  // Az SSO belépéskor a MiniGo Firebase email alapján azonosítja a felhasználót.
-];
-let timeLog=[
-  {id:'tl1',empId:'emp1',date:'2026-03-10',sh:8,sm:0,eh:17,em:0,worked:540,otDelta:30,note:'Sprint tervezés, kód review, deployment előkészítés'},
-  {id:'tl2',empId:'emp1',date:'2026-03-11',sh:8,sm:30,eh:16,em:30,worked:480,otDelta:-30,note:'Hibajavítás, meetingek'},
-  {id:'tl3',empId:'emp2',date:'2026-03-10',sh:9,sm:0,eh:17,em:30,worked:510,otDelta:0,note:''},
-];
-let dayMarks=[
-  {id:'dm1',empId:'emp1',date:'2026-03-16',type:'vacation'},
-  {id:'dm2',empId:'emp1',date:'2026-03-17',type:'vacation'},
-  {id:'dm3',empId:'emp2',date:'2026-03-20',type:'slide'},
-];
-let trash=[];
+let employees=[];  // Firestore: 'ido_employees'
+let timeLog=[];    // Firestore: 'ido_timelog'
+let dayMarks=[];   // Firestore: 'ido_daymarks'
+let trash=[];      // Firestore: 'ido_trash'
+let _idoDataLoaded=false; // jelzi hogy a Firestore adat megérkezett
 
 // ── pending close modal state
 let pendingCloseLogId=null;
@@ -9186,10 +9213,11 @@ function confirmCloseDay(){
   if(worked<0){ido_showToast('A befejezés nem lehet a kezdés előtt!','warn');return;}
   var otDelta=worked-DAILY_MIN;
   log.eh=eh; log.em=em; log.worked=worked; log.otDelta=otDelta; log.note=note;
-  // Fix: csak az employees tömbben frissítjük - ido_currentUser ugyanaz az objektum referencia
   var emp=employees.find(function(e){return e.id===ido_currentUser.id;});
   if(emp) emp.overtimeMinutes+=otDelta;
-  // ido_currentUser IS emp (same reference), do NOT add again
+  // Firestore mentés
+  if(window.fbSaveIdoTimeLog) window.fbSaveIdoTimeLog(log).catch(function(e){console.error('IDO timelog lezárás mentési hiba:',e);});
+  if(emp&&window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(function(e){console.error('IDO employee mentési hiba:',e);});
   ido_closeModal('mCloseDay');
   ido_showToast('Munkanap lezárva!','ok');
   ido_showView('dashboard');
@@ -9347,7 +9375,9 @@ function openDayModal(dateStr,empId){
 }
 
 function markDay(dateStr,empId,type){
+  var removedMark=dayMarks.find(function(d){return d.empId===empId&&d.date===dateStr;});
   dayMarks=dayMarks.filter(function(d){return !(d.empId===empId&&d.date===dateStr);});
+  if(removedMark&&window.fbDelIdoDayMark) window.fbDelIdoDayMark(removedMark.id).catch(function(e){console.error('IDO daymark törlési hiba:',e);});
   if(type==='vacation'){
     var emp=employees.find(function(e){return e.id===empId;});
     var y=dateStr.slice(0,4);
@@ -9358,7 +9388,11 @@ function markDay(dateStr,empId,type){
     var emp=employees.find(function(e){return e.id===empId;});
     if(emp) emp.overtimeMinutes-=DAILY_MIN;
   }
-  dayMarks.push({id:'dm'+Date.now(),empId:empId,date:dateStr,type:type});
+  var newMark={id:'dm'+Date.now(),empId:empId,date:dateStr,type:type};
+  dayMarks.push(newMark);
+  if(window.fbSaveIdoDayMark) window.fbSaveIdoDayMark(newMark).catch(function(e){console.error('IDO daymark mentési hiba:',e);});
+  if(type==='slide'){var empS=employees.find(function(e){return e.id===empId;});if(empS&&window.fbSaveIdoEmployee)window.fbSaveIdoEmployee(empS).catch(function(e){console.error(e);});}
+  if(type==='vacation'){var empV=employees.find(function(e){return e.id===empId;});if(empV&&window.fbSaveIdoEmployee)window.fbSaveIdoEmployee(empV).catch(function(e){console.error(e);});}
   ido_showToast('Jelölés elmentve','ok');
 }
 function removeMark(dateStr,empId){
@@ -9371,6 +9405,7 @@ function delLog(logId,empId){
   var log=timeLog.find(function(t){return t.id===logId;});
   if(log&&log.otDelta){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes-=log.otDelta;}
   timeLog=timeLog.filter(function(t){return t.id!==logId;});
+  if(window.fbDelIdoTimeLog) window.fbDelIdoTimeLog(logId).catch(function(e){console.error('IDO timelog törlési hiba:',e);});
   ido_showToast('Munkaidő törölve','ok');
 }
 
@@ -9461,7 +9496,11 @@ function confirmCheckin(){
     var emp=employees.find(function(e){return e.id===ido_currentUser.id;});
     if(emp) emp.overtimeMinutes+=otDelta;
   }
-  timeLog.push({id:'tl'+Date.now(),empId:ido_currentUser.id,date:dateStr,sh:sh,sm:sm,eh:eh,em:em,worked:worked,otDelta:otDelta,note:''});
+  var newLog={id:'tl'+Date.now(),empId:ido_currentUser.id,date:dateStr,sh:sh,sm:sm,eh:eh,em:em,worked:worked,otDelta:otDelta,note:''};
+  timeLog.push(newLog);
+  if(window.fbSaveIdoTimeLog) window.fbSaveIdoTimeLog(newLog).catch(function(e){console.error('IDO timelog mentési hiba:',e);});
+  // Ha van overtimeDelta, mentsük az employee-t is
+  if(hasEnd){var empToSave=employees.find(function(e){return e.id===ido_currentUser.id;});if(empToSave&&window.fbSaveIdoEmployee)window.fbSaveIdoEmployee(empToSave).catch(function(e){console.error(e);});}
   ido_closeModal('mCheckin');
   ido_showToast('Munkaidő sikeresen rögzítve!','ok');
   // If no end time set, offer to go to dashboard to see live row
@@ -9503,7 +9542,9 @@ function createEmp(){
   if(!last||!first||!email){ido_showToast('Töltsd ki a kötelező mezőket (Név, Email)!','warn');return;}
   if(pass && pass.length<6){ido_showToast('Ha megadsz jelszót, az legalább 6 karakter legyen!','warn');return;}
   for(var i=0;i<employees.length;i++){if(employees[i].email===email&&!employees[i].deletedAt){ido_showToast('Ez az e-mail már foglalt!','warn');return;}}
-  employees.push({id:'emp'+Date.now(),email:email,pass:pass,role:role,firstName:first,lastName:last,vacationDays:vdays,startDate:start,overtimeMinutes:0,deletedAt:null});
+  var newEmp={id:'emp'+Date.now(),email:email,pass:pass,role:role,firstName:first,lastName:last,vacationDays:vdays,startDate:start,overtimeMinutes:0,deletedAt:null};
+  employees.push(newEmp);
+  if(window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(newEmp).catch(function(e){console.error('IDO employee mentési hiba:',e);});
   ido_closeModal('mNewEmp'); ido_showToast('Munkavállaló létrehozva','ok'); ido_showView('employees');
 }
 function openEditEmp(id){
@@ -9528,6 +9569,7 @@ function saveEmp(){
   e.vacationDays=parseInt(document.getElementById('ee-vdays').value)||e.vacationDays;
   e.startDate=document.getElementById('ee-start').value;
   e.role=document.getElementById('ee-role').value;
+  if(window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(e).catch(function(err){console.error('IDO employee szerkesztés mentési hiba:',err);});
   ido_closeModal('mEditEmp'); ido_showToast('Adatok frissítve','ok'); ido_showView('employees');
 }
 function confirmDelEmp(id){
@@ -9540,7 +9582,10 @@ function delEmp(id){
   if(id===ido_currentUser.id){ido_showToast('Saját magad nem törölheted!','warn');return;}
   var e=employees.find(function(x){return x.id===id;});
   e.deletedAt=new Date().toISOString();
-  trash.push({trashId:'tr'+Date.now(),type:'employee',data:JSON.parse(JSON.stringify(e)),deletedAt:e.deletedAt,label:e.lastName+' '+e.firstName+' ('+e.email+')'});
+  var trashItem={trashId:'tr'+Date.now(),type:'employee',data:JSON.parse(JSON.stringify(e)),deletedAt:e.deletedAt,label:e.lastName+' '+e.firstName+' ('+e.email+')'};
+  trash.push(trashItem);
+  if(window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(e).catch(function(err){console.error(err);});
+  if(window.fbSaveIdoTrashItem) window.fbSaveIdoTrashItem(trashItem).catch(function(err){console.error(err);});
   ido_closeModal('mEditEmp'); ido_showToast('Munkavállaló a kukába kerül','ok'); updateTrashBadge(); ido_showView('employees');
 }
 
@@ -9620,9 +9665,15 @@ function restoreTrash(tid){
   if(!item) return;
   if(item.type==='employee'){var ex=employees.find(function(e){return e.id===item.data.id;});if(ex)ex.deletedAt=null;else employees.push(JSON.parse(JSON.stringify(item.data)));}
   trash=trash.filter(function(t){return t.trashId!==tid;});
+  if(window.fbDelIdoTrashItem) window.fbDelIdoTrashItem(tid).catch(function(e){console.error(e);});
+  if(item.type==='employee'){var restoredEmp=employees.find(function(e){return e.id===item.data.id;});if(restoredEmp&&window.fbSaveIdoEmployee)window.fbSaveIdoEmployee(restoredEmp).catch(function(e){console.error(e);});}
   ido_showToast('Visszaállítva','ok'); updateTrashBadge(); ido_showView('trash');
 }
-function permDel(tid){trash=trash.filter(function(t){return t.trashId!==tid;});ido_showToast('Véglegesen törölve','ok');updateTrashBadge();ido_showView('trash');}
+function permDel(tid){
+  trash=trash.filter(function(t){return t.trashId!==tid;});
+  if(window.fbDelIdoTrashItem) window.fbDelIdoTrashItem(tid).catch(function(e){console.error(e);});
+  ido_showToast('Véglegesen törölve','ok');updateTrashBadge();ido_showView('trash');
+}
 function autopurge(){var cut=Date.now()-5*864e5;trash=trash.filter(function(t){return new Date(t.deletedAt).getTime()>cut;});}
 function updateTrashBadge(){
   autopurge();
@@ -9782,6 +9833,18 @@ if(cdNote) cdNote.addEventListener('input',function(){
 });
 
 
+
+// ── FIRESTORE ADATOK FOGADÁSA (MiniGo loadFromFirestore hívja) ─────────────
+function _ido_loadData(emps, logs, marks, trashItems){
+  if(emps.length > 0)   employees = emps;
+  if(logs.length > 0)   timeLog   = logs;
+  if(marks.length > 0)  dayMarks  = marks;
+  if(trashItems.length > 0) trash = trashItems;
+  _idoDataLoaded = true;
+  // Ha már bent van a felhasználó, frissítsük a nézetet
+  if(ido_currentUser && window.ido_showView) window.ido_showView('dashboard');
+}
+window._ido_loadData = _ido_loadData;
 
 // Expose ido functions to window for HTML onclick handlers
 (function() {
