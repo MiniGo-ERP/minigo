@@ -9116,8 +9116,13 @@ function ido_showView(v){
   else if(v==='employees') content=renderEmployees();
   else if(v==='reports') content=renderReports();
   else if(v==='trash') content=renderTrash();
+  else if(v==='help') content=renderHelp();
   document.getElementById('ido-mc').innerHTML=content;
   updateTrashBadge();
+  // Nav highlight
+  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
+  var navEl=document.getElementById('ido-nav-'+v);
+  if(navEl) navEl.classList.add('active');
 }
 
 // ── DASHBOARD ──
@@ -9972,6 +9977,140 @@ function generateEmpReport(){
   mc.innerHTML=html;
 }
 
+// ── SÚGÓ / HASZNÁLATI ÚTMUTATÓ ─────────────────────────────────────────────
+function renderHelp(){
+  var isAdmin=ido_currentUser&&ido_currentUser.role==='admin';
+  var html='';
+  html+='<div style="max-width:780px;margin:0 auto;">';
+
+  // Fejléc
+  html+='<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);letter-spacing:2px;margin-bottom:4px;">MINI<span style="color:var(--text-dim)">GO</span> Időnyilvántartás</div>';
+  html+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:28px;">Használati útmutató – InfraGo Energy Kft.</div>';
+
+  // ── BELÉPÉS ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:12px;">🔑 BELÉPÉS</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>Nyisd meg a MiniGo oldalt a böngészőben</li>';
+  html+='<li>Add meg a céges e-mail címed és jelszavad</li>';
+  html+='<li>Az Időnyilvántartás modul automatikusan megnyílik belépés után</li>';
+  html+='<li style="color:var(--text-dim);font-size:12px;">⚠️ Ha hibát kapsz: ellenőrizd az e-mail/jelszó pontosságát, vagy kérd az admin segítségét</li>';
+  html+='</ul></div>';
+
+  // ── MUNKAKEZDÉS ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#27ae60;letter-spacing:1px;margin-bottom:12px;">▶ MUNKAKEZDÉS RÖGZÍTÉSE</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>Az <b>Áttekintés</b> oldalon kattints a sárga <b>▶ Munkakezdés</b> gombra</li>';
+  html+='<li>A dátum automatikusan a mai nap, az idő az aktuális óra:perc</li>';
+  html+='<li>Szükség esetén módosítsd a kezdési időt</li>';
+  html+='<li>A <b>Munkavégzés vége</b> opcionális – ha most nem tudod, hagyd üresen</li>';
+  html+='<li>Kattints a <b>✓ Megerősítés</b> gombra</li>';
+  html+='<li style="color:#e8a020;font-size:12px;">⚠️ Egyszerre csak egy lezáratlan munkamenet lehet aktív!</li>';
+  html+='<li style="color:var(--text-dim);font-size:12px;">💡 Egy napon belül több munkamenet is rögzíthető (pl. délelőtt + délután)</li>';
+  html+='</ul></div>';
+
+  // ── MUNKANAP LEZÁRÁSA ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#2d7dd2;letter-spacing:1px;margin-bottom:12px;">⏹ MUNKANAP LEZÁRÁSA</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>Ha a munkakezdésnél nem adtad meg a befejezési időt, az Áttekintés oldalon megjelenik a <b>⏹ Munkanap lezárása</b> gomb</li>';
+  html+='<li>Add meg a befejezési időt</li>';
+  html+='<li>A <b>Napi megjegyzés kötelező</b> a lezáráshoz – írd le röviden mit végeztél</li>';
+  html+='<li>Kattints a <b>✓ Lezárás</b> gombra</li>';
+  html+='<li style="color:var(--text-dim);font-size:12px;">💡 A lezárt munkanap megjelenik a naptárban és az Áttekintés táblázatában</li>';
+  html+='</ul></div>';
+
+  // ── NAPTÁR ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#6b7a96;letter-spacing:1px;margin-bottom:12px;">📅 NAPTÁR</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>A <b>Naptár</b> menüpont megmutatja az összes bejegyzésedet havi nézetben</li>';
+  html+='<li>Egy napra kattintva megjelenik az aznapi részlet (munkaidő, jelölések)</li>';
+  html+='<li>A naptárból közvetlenül is indíthatsz munkakezdést vagy zárhatsz le napot</li>';
+  html+='<li style="color:#27ae60;font-size:12px;">🌴 Zöld = szabadnap &nbsp; 🤒 Piros = betegszabadság &nbsp; 🔄 Szürke = csúsztatás</li>';
+  html+='<li style="color:var(--text-dim);font-size:12px;">⚠️ Múltbeli napot (tegnap és korábbi) csak az admin tud módosítani</li>';
+  html+='</ul></div>';
+
+  // ── SZABADSÁG / BETEGSZABI / CSÚSZTATÁS ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#e8a020;letter-spacing:1px;margin-bottom:12px;">🌴 SZABADSÁG · BETEGSZABADSÁG · CSÚSZTATÁS</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>Nyisd meg a <b>Naptárat</b> és kattints a kívánt napra</li>';
+  html+='<li>A megjelenő ablakban válaszd a megfelelő jelölést:<br>';
+  html+='<span style="margin-left:8px;color:#27ae60;">🌴 Szabadnap jelölése</span> – levon a szabadnapkeretből<br>';
+  html+='<span style="margin-left:8px;color:#e05252;">🤒 Betegszabadság jelölése</span> – betegszabadság rögzítése<br>';
+  html+='<span style="margin-left:8px;color:#6b7a96;">🔄 Csúsztatás jelölése</span> – a felhalmozott túlórákból von le</li>';
+  html+='<li style="color:var(--text-dim);font-size:12px;">💡 Jelölést ugyanígy lehet törölni is – kattints a napra, majd a <b>✕ Jelölés törlése</b> gombra</li>';
+  html+='</ul></div>';
+
+  // ── ÁTTEKINTÉS KÁRTYÁK ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">📊 ÁTTEKINTÉS – MIT JELENT A NÉGY KÁRTYA?</div>';
+  html+='<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html+='<tr><td style="padding:6px 12px 6px 0;color:var(--accent);font-family:var(--mono);font-weight:700;white-space:nowrap;">Göngyölített túlóra</td><td style="padding:6px 0;color:var(--text);">Az összes ledolgozott és a napi normaidő (8ó 30p) különbsége összesítve. <span style="color:#27ae60;">Pozitív = több dolgozol</span>, <span style="color:#e05252;">negatív = kevesebbet</span>.</td></tr>';
+  html+='<tr><td style="padding:6px 12px 6px 0;color:#2d7dd2;font-family:var(--mono);font-weight:700;white-space:nowrap;">Maradék szabadnap</td><td style="padding:6px 0;color:var(--text);">Az éves szabadnapkeretből még felhasználható napok száma.</td></tr>';
+  html+='<tr><td style="padding:6px 12px 6px 0;color:var(--text);font-family:var(--mono);font-weight:700;white-space:nowrap;">Felhasznált szabadnap</td><td style="padding:6px 0;color:var(--text);">Idén eddig kivett szabadnapok száma / éves keret.</td></tr>';
+  html+='<tr><td style="padding:6px 12px 6px 0;color:#e8a020;font-family:var(--mono);font-weight:700;white-space:nowrap;">Mai jelenlét</td><td style="padding:6px 0;color:var(--text);"><span style="color:#e8a020;">▶ HH:MM –</span> = munkaidő folyamatban &nbsp;|&nbsp; <span style="color:#27ae60;">8:30</span> = lezárt nap &nbsp;|&nbsp; <span style="color:#2d7dd2;">SZ/BS/CS</span> = jelölés &nbsp;|&nbsp; – = nincs bejegyzés</td></tr>';
+  html+='</table></div>';
+
+  // ── EXPORT ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">📥 EXPORTÁLÁS</div>';
+  html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+  html+='<li>Az <b>Export XLS</b> gombbal letöltheted az adataidat Excel formátumban</li>';
+  html+='<li>Kiválaszthatod a hónapot és az exportálandó adatok körét</li>';
+  html+='</ul></div>';
+
+  // ── ADMIN SZEKCIÓ ──
+  if(isAdmin){
+    html+='<div style="background:rgba(232,160,32,0.05);border:1px solid rgba(232,160,32,0.3);border-radius:8px;padding:20px 24px;margin-bottom:16px;">';
+    html+='<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--accent);letter-spacing:1px;margin-bottom:16px;">⭐ ADMIN FUNKCIÓK</div>';
+
+    html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:8px;margin-top:4px;">MUNKAVÁLLALÓK KEZELÉSE</div>';
+    html+='<ul style="margin:0 0 16px 0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+    html+='<li><b>Munkavállalók</b> menü → <b>+ Új munkavállaló</b> gomb → add meg a nevet, e-mailt, éves szabadnapkeretet</li>';
+    html+='<li>⚠️ Az e-mail pontosan egyezzen a Firebase-ben regisztrált e-maillel!</li>';
+    html+='<li>Csak az admin által felvett munkavállalók tudnak belépni a rendszerbe</li>';
+    html+='<li>Szerkesztés (✏️), törlés (🗑️) a lista sorainál</li>';
+    html+='</ul>';
+
+    html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:8px;">MUNKAVÁLLALÓI ADATOK MEGTEKINTÉSE</div>';
+    html+='<ul style="margin:0 0 16px 0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+    html+='<li>📋 <b>Riport gomb</b> – dátumtartományra szűrt részletes napló (munkaidők + jelölések)</li>';
+    html+='<li>📄 <b>Napló gomb</b> – az összes bejegyzés teljes history-ja</li>';
+    html+='<li>📅 <b>Naptár gomb</b> – naptár az adott személyre szűrve</li>';
+    html+='<li>A naptárban bármely munkavállaló kiválasztható a felső dropdown-ban</li>';
+    html+='</ul>';
+
+    html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:8px;">MÚLTBELI NAPOK MÓDOSÍTÁSA</div>';
+    html+='<ul style="margin:0 0 16px 0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+    html+='<li>Az admin visszamenőleg is rögzíthet, módosíthat vagy törölhet bejegyzéseket</li>';
+    html+='<li>Naptár → kattints a napra → az összes módosítási lehetőség megjelenik</li>';
+    html+='<li>Felhasználóknak múltbeli nap csak olvasható (🔒 jelzés jelenik meg)</li>';
+    html+='</ul>';
+
+    html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:8px;">KIMUTATÁSOK</div>';
+    html+='<ul style="margin:0;padding-left:20px;color:var(--text);font-size:13px;line-height:1.8;">';
+    html+='<li><b>Kimutatások</b> menü → éves összesítő + havi túlóra bontás minden munkavállalóra</li>';
+    html+='<li>Export XLS – az összes adat letölthető Excel formátumban</li>';
+    html+='</ul>';
+    html+='</div>';
+  }
+
+  // ── NORMAIDŐ ──
+  html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 24px;margin-bottom:16px;">';
+  html+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px;">ℹ️ TECHNIKAI INFORMÁCIÓ</div>';
+  html+='<div style="font-size:12px;color:var(--text-dim);line-height:1.8;">';
+  html+='Napi normaidő: <b style="color:var(--text);">8 óra 30 perc</b> – ettől való eltérés kerül a göngyölített túlóra egyenlegre.<br>';
+  html+='Az adatok a felhőben (Firebase) tárolódnak – biztonságos, nem veszik el frissítés után sem.<br>';
+  html+='Kérdés esetén fordulj a rendszergazdához: <b style="color:var(--accent);">istvan.egyed@infragoenergy.com</b>';
+  html+='</div></div>';
+
+  html+='</div>'; // max-width wrapper
+  return html;
+}
+
 // ── TRASH ──
 function renderTrash(){
   if(ido_currentUser.role!=='admin') return '<div style="color:#e05252">Nincs jogosultsága.</div>';
@@ -10208,6 +10347,7 @@ window._ido_loadData = _ido_loadData;
   _idoExp('openEditEmp', typeof openEditEmp !== 'undefined' ? openEditEmp : null);
   _idoExp('permDel', typeof permDel !== 'undefined' ? permDel : null);
   _idoExp('refreshCal', typeof refreshCal !== 'undefined' ? refreshCal : null);
+  _idoExp('renderHelp', typeof renderHelp !== 'undefined' ? renderHelp : null);
   _idoExp('openEmpReport', typeof openEmpReport !== 'undefined' ? openEmpReport : null);
   _idoExp('rptSetMonth', typeof rptSetMonth !== 'undefined' ? rptSetMonth : null);
   _idoExp('rptSetYear', typeof rptSetYear !== 'undefined' ? rptSetYear : null);
@@ -10294,6 +10434,10 @@ setTimeout(()=>{
     <div class="sidebar-section">
       <div class="sidebar-label">Exportálás</div>
       <div class="nav-item" onclick="openExportModal()"><span>&#128202;</span> Export XLS</div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section">
+      <div class="nav-item" id="ido-nav-help" onclick="ido_showView('help')" style="color:var(--accent);"><span>&#10067;</span> Súgó / Használati útmutató</div>
     </div>
     <div style="flex:1"></div>
     <div class="sidebar-divider"></div>
