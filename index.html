@@ -9284,9 +9284,17 @@ function openDayModal(dateStr,empId){
   var log=null; for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===empId&&timeLog[i].date===dateStr){log=timeLog[i];break;}}
   var hol=isHol(dateStr), wknd=isWknd(dateStr);
   var p=dateStr.split('-'); var y=p[0],mo=p[1],d=p[2];
-  var canEdit=ido_currentUser.role==='admin'||ido_currentUser.id===empId;
+  var isAdmin=ido_currentUser.role==='admin';
+  var isOwn=ido_currentUser.id===empId;
+  var todayStr=ido_today();
+  var isPast=dateStr<todayStr; // múltbeli nap (nem ma, nem jövő)
+  // Admin mindent módosíthat; dolgozó csak mai/jövőbeli saját napját
+  var canEdit=isAdmin||(isOwn&&!isPast);
+  var canEditPast=isAdmin; // múltbeli napot csak admin módosíthat
   document.getElementById('mDayTitle').textContent=y+'. '+mo+'. '+d+'. \u2013 '+emp.lastName+' '+emp.firstName;
   var body='';
+  // Ha múltbeli nap és nem admin: jelzés
+  if(isPast&&!isAdmin&&isOwn) body+='<div style="background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.3);border-radius:5px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--accent);font-family:var(--mono);">&#128274; Múltbeli nap – csak az admin módosíthatja</div>';
   if(hol) body+='<div style="background:rgba(45,125,210,.1);border:1px solid #2d7dd2;border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#2d7dd2;">Magyar munkaszüneti nap</div>';
   if(wknd&&!hol) body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-dim);">Hétvége</div>';
   if(log){
@@ -9395,6 +9403,11 @@ function openCheckinModal(){
   ido_openModal('mCheckin');
 }
 function openCheckinForDay(dateStr){
+  // Múltbeli napra csak admin rögzíthet
+  if(dateStr<ido_today()&&ido_currentUser.role!=='admin'){
+    ido_showToast('Múltbeli napra csak az admin rögzíthet munkaidőt!','warn');
+    return;
+  }
   document.getElementById('ci-date').value=dateStr;
   document.getElementById('ci-sh').value='08'; document.getElementById('ci-sm').value='00';
   document.getElementById('ci-eh').value=''; document.getElementById('ci-em').value='';
@@ -9423,7 +9436,18 @@ function confirmCheckin(){
   var sh=parseInt(document.getElementById('ci-sh').value);
   var sm=parseInt(document.getElementById('ci-sm').value);
   if(isNaN(sh)||isNaN(sm)){ido_showToast('Add meg a munkakezdés időpontját!','warn');return;}
-  for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===ido_currentUser.id&&timeLog[i].date===dateStr){ido_showToast('Erre a napra már van bejegyzés!','warn');return;}}
+  // Ellenőrzés: erre a napra már van bejegyzés?
+  for(var i=0;i<timeLog.length;i++){
+    if(timeLog[i].empId===ido_currentUser.id&&timeLog[i].date===dateStr){
+      ido_showToast('Erre a napra már van bejegyzés!','warn');return;
+    }
+  }
+  // Ellenőrzés: van-e lezáratlan (nyitott) munkanap?
+  for(var i=0;i<timeLog.length;i++){
+    if(timeLog[i].empId===ido_currentUser.id&&(timeLog[i].eh===null||timeLog[i].eh===undefined)){
+      ido_showToast('Még van lezáratlan munkanapod ('+timeLog[i].date+')! Előbb zárd le azt.','warn');return;
+    }
+  }
   var ehV=document.getElementById('ci-eh').value;
   var emV=document.getElementById('ci-em').value;
   var hasEnd=ehV!==''&&emV!=='';
@@ -9790,6 +9814,9 @@ if(cdNote) cdNote.addEventListener('input',function(){
   _idoExp('openEditEmp', typeof openEditEmp !== 'undefined' ? openEditEmp : null);
   _idoExp('permDel', typeof permDel !== 'undefined' ? permDel : null);
   _idoExp('refreshCal', typeof refreshCal !== 'undefined' ? refreshCal : null);
+  _idoExp('markDay', typeof markDay !== 'undefined' ? markDay : null);
+  _idoExp('removeMark', typeof removeMark !== 'undefined' ? removeMark : null);
+  _idoExp('delLog', typeof delLog !== 'undefined' ? delLog : null);
   _idoExp('restoreTrash', typeof restoreTrash !== 'undefined' ? restoreTrash : null);
   _idoExp('confirmCheckin', typeof confirmCheckin !== 'undefined' ? confirmCheckin : null);
   _idoExp('saveCloseLog', typeof saveCloseLog !== 'undefined' ? saveCloseLog : null);
