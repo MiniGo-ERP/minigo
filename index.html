@@ -8868,14 +8868,43 @@ function idoModuleLogout() {
 
 // SSO bejelentkezés az időnyilvántartás modulba (MiniGo auth alapján)
 function idoModuleSSO(email, idoRole, displayName) {
-  // Employee megkeresése vagy létrehozása
   const idoEmps = window._ido_getEmployees ? window._ido_getEmployees() : [];
   let emp = idoEmps.find(e => e.email && e.email.toLowerCase() === email.toLowerCase() && !e.deletedAt);
+
+  // ── HOZZÁFÉRÉS ELLENŐRZÉS ──────────────────────────────────────────
+  // Ha az admin belép, átengedjük (MiniGo admin = ido admin automatikusan)
+  // Ha ido_admin emaillistában van, átengedjük
+  // Mindenki más: CSAK akkor engedünk be, ha az admin előre felvette a munkavállalók közé!
+  const isMigoAdmin  = (window.MINIGO_ADMIN_EMAILS || []).includes(email.toLowerCase());
+  const isIdoAdmin   = (window.IDO_ADMIN_EMAILS    || []).includes(email.toLowerCase());
+
+  if (!isMigoAdmin && !isIdoAdmin && !emp) {
+    // Nincs felvéve munkavállalóként → hozzáférés megtagadva
+    // Kijelentkeztetjük és hibaüzenet
+    const errDiv = document.getElementById('ido-access-denied');
+    if (errDiv) {
+      errDiv.style.display = 'flex';
+      errDiv.innerHTML = '<div style="background:#1a1f2e;border:1px solid #e05252;border-radius:10px;padding:32px 28px;max-width:420px;text-align:center;">' +
+        '<div style="font-family:var(--mono);font-size:28px;font-weight:700;color:#e8a020;letter-spacing:3px;margin-bottom:8px;">MINI<span style="color:#6b7a96">GO</span></div>' +
+        '<div style="font-family:var(--mono);font-size:11px;color:#e05252;letter-spacing:2px;margin-bottom:20px;">HOZZÁFÉRÉS MEGTAGADVA</div>' +
+        '<div style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">A(z) <b style="color:var(--text);">' + email + '</b> fiók nincs felvéve az Időnyilvántartás rendszerbe.<br><br>Kérje az adminisztrátortól, hogy vegye fel munkavállalóként.</div>' +
+        '<button onclick="doLogout()" style="background:#e8a020;border:none;border-radius:5px;padding:10px 24px;font-family:var(--mono);font-size:12px;font-weight:600;color:#0f1117;cursor:pointer;">← Kijelentkezés</button>' +
+        '</div>';
+    } else {
+      alert('Hozzáférés megtagadva. A(z) ' + email + ' fiók nincs felvéve az Időnyilvántartásba. Kérje az adminisztrátortól!');
+      if(window.doLogout) window.doLogout();
+    }
+    return;
+  }
+
+  // ── BELÉPÉS ENGEDÉLYEZVE ───────────────────────────────────────────
   if (emp) {
-    emp.role = idoRole; // mindig frissítjük a role-t SSO-ból
+    // Meglévő employee: role frissítés
+    emp.role = idoRole;
     if (window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(e=>console.error('SSO role frissítés mentési hiba:',e));
     if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   } else {
+    // Admin vagy ido_admin: automatikus profil létrehozás (ők nem igényelnek előzetes felvételt)
     const namePart = displayName || email.split('@')[0];
     emp = {
       id: 'sso_' + Date.now(), email: email.toLowerCase(), pass: 'sso',
@@ -8887,9 +8916,12 @@ function idoModuleSSO(email, idoRole, displayName) {
     if (window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(e=>console.error('SSO új employee mentési hiba:',e));
     if (window._ido_setCurrentUser) window._ido_setCurrentUser(emp);
   }
+
   // Ido app megjelenítése
   const loginEl = document.getElementById('ido-loginScreen');
   if (loginEl) loginEl.style.display = 'none';
+  const accDenied = document.getElementById('ido-access-denied');
+  if (accDenied) accDenied.style.display = 'none';
   const appEl = document.getElementById('ido-app');
   if (appEl) appEl.style.display = 'flex';
   // Ido topbar badge
@@ -8898,11 +8930,11 @@ function idoModuleSSO(email, idoRole, displayName) {
     idoBadge.textContent = (idoRole === 'admin' ? '[ADMIN] ' : '') +
       (emp.firstName + ' ' + emp.lastName).trim() + ' · MiniGo SSO';
   }
-  // Admin-only elemek az ido modulon belül
+  // Admin-only elemek
   document.querySelectorAll('#ido-module .admin-only').forEach(el => {
     el.style.display = idoRole === 'admin' ? '' : 'none';
   });
-  // calEmpId beállítása (naptár szűrő)
+  // calEmpId beállítása
   if (window._ido_setCalEmpId) window._ido_setCalEmpId(emp.id);
   // Navigáció
   if (window.ido_showView) window.ido_showView('dashboard');
@@ -8922,6 +8954,9 @@ window.showLauncher = function() {
 };
 
 window.enterModule = enterModule;
+// Email listák elérhetők az IDO SSO számára
+window.MINIGO_ADMIN_EMAILS = MINIGO_ADMIN_EMAILS.map(e=>e.toLowerCase());
+window.IDO_ADMIN_EMAILS    = IDO_ADMIN_EMAILS.map(e=>e.toLowerCase());
 window.idoModuleLogout = idoModuleLogout;
 window.idoModuleSSO = idoModuleSSO;
 window.applyRoleToLauncher = applyRoleToLauncher;
@@ -9996,6 +10031,7 @@ setTimeout(()=>{
 
 <!-- IDŐNYILVÁNTARTÁS MODUL TARTALOM -->
 <div id="ido-module" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+<div id="ido-access-denied" style="display:none;position:absolute;inset:0;background:#0f1117;z-index:100;align-items:center;justify-content:center;padding:20px;"></div>
 <div id="ido-app" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;">
 <div style="height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;">
   <div onclick="idoModuleLogout()" style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);letter-spacing:2px;cursor:pointer;" title="Vissza a főmenübe">MINI<span style="color:var(--text-dim)">GO</span></div>
