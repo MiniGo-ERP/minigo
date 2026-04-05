@@ -9853,11 +9853,7 @@ function openEmpReport(empId){
   // Fejléc
   var nameEl=document.getElementById('mEmpReportName');
   if(nameEl) nameEl.textContent=emp.lastName+' '+emp.firstName+' · '+emp.email;
-  var lbl=document.getElementById('rpt-period-label');
-  if(lbl) lbl.textContent='';
   ido_openModal('mEmpReport');
-  // Dátumok beállítása a modal megnyitása UTÁN (DOM render után)
-  setTimeout(function(){ rptSetMonth(0); }, 50);
 }
 
 function rptSetMonth(offset){
@@ -9866,18 +9862,36 @@ function rptSetMonth(offset){
   var y=d.getFullYear(), m=d.getMonth();
   var from=new Date(y,m,1);
   var to=new Date(y,m+1,0);
-  document.getElementById('rpt-from').value=from.toISOString().slice(0,10);
-  document.getElementById('rpt-to').value=to.toISOString().slice(0,10);
+  var fromStr=from.toISOString().slice(0,10);
+  var toStr=to.toISOString().slice(0,10);
+  var fi=document.getElementById('rpt-from');
+  var ti=document.getElementById('rpt-to');
+  if(fi) fi.value=fromStr;
+  if(ti) ti.value=toStr;
   var lbl=document.getElementById('rpt-period-label');
-  if(lbl) lbl.textContent='✓ Kiválasztva: '+HU_MONTHS[m]+' '+y+' ('+from.toISOString().slice(0,10)+' – '+to.toISOString().slice(0,10)+')';
+  if(lbl) lbl.innerHTML='<span style="color:#27ae60;font-weight:700;">✓ Kiválasztva:</span> '+HU_MONTHS[m]+' '+y+'<br><span style="color:var(--text-dim);font-size:11px;">'+fromStr+' – '+toStr+'</span>';
 }
 
 function rptSetYear(){
   var y=new Date().getFullYear();
-  document.getElementById('rpt-from').value=y+'-01-01';
-  document.getElementById('rpt-to').value=y+'-12-31';
+  var fi=document.getElementById('rpt-from');
+  var ti=document.getElementById('rpt-to');
+  if(fi) fi.value=y+'-01-01';
+  if(ti) ti.value=y+'-12-31';
   var lbl=document.getElementById('rpt-period-label');
-  if(lbl) lbl.textContent='✓ Kiválasztva: '+y+'. év ('+y+'-01-01 – '+y+'-12-31)';
+  if(lbl) lbl.innerHTML='<span style="color:#27ae60;font-weight:700;">✓ Kiválasztva:</span> '+y+'. teljes év<br><span style="color:var(--text-dim);font-size:11px;">'+y+'-01-01 – '+y+'-12-31</span>';
+}
+
+function rptUpdateLabel(){
+  var from=document.getElementById('rpt-from').value;
+  var to=document.getElementById('rpt-to').value;
+  var lbl=document.getElementById('rpt-period-label');
+  if(!lbl) return;
+  if(from && to){
+    lbl.innerHTML='<span style="color:#27ae60;font-weight:700;">✓ Egyedi időszak:</span> '+from+' – '+to;
+  } else {
+    lbl.innerHTML='<span style="color:var(--text-dim);">← Kattints egy időszakra fent, vagy adj meg egyedi dátumokat</span>';
+  }
 }
 
 function generateEmpReport(){
@@ -10361,6 +10375,7 @@ window._ido_loadData = _ido_loadData;
   _idoExp('rptSetMonth', typeof rptSetMonth !== 'undefined' ? rptSetMonth : null);
   _idoExp('rptSetYear', typeof rptSetYear !== 'undefined' ? rptSetYear : null);
   _idoExp('generateEmpReport', typeof generateEmpReport !== 'undefined' ? generateEmpReport : null);
+  _idoExp('rptUpdateLabel', typeof rptUpdateLabel !== 'undefined' ? rptUpdateLabel : null);
   _idoExp('showEmpLog', typeof showEmpLog !== 'undefined' ? showEmpLog : null);
   _idoExp('showEmpCal', typeof showEmpCal !== 'undefined' ? showEmpCal : null);
   _idoExp('markDay', typeof markDay !== 'undefined' ? markDay : null);
@@ -10592,22 +10607,31 @@ setTimeout(()=>{
   <div class="modal" style="max-width:520px;">
     <div class="modal-title">📋 Munkavállalói riport</div>
     <div id="mEmpReportName" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:16px;"></div>
-    <div class="form-row-2">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:10px;">Válassz időszakot:</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-secondary" style="justify-content:flex-start;gap:10px;" onclick="rptSetMonth(0)">
+        <span style="font-size:16px;">📅</span> <span>Aktuális hónap</span>
+      </button>
+      <button class="btn btn-secondary" style="justify-content:flex-start;gap:10px;" onclick="rptSetMonth(-1)">
+        <span style="font-size:16px;">◀</span> <span>Előző hónap</span>
+      </button>
+      <button class="btn btn-secondary" style="justify-content:flex-start;gap:10px;" onclick="rptSetYear()">
+        <span style="font-size:16px;">📆</span> <span>Idei év</span>
+      </button>
+    </div>
+    <div id="rpt-period-label" style="font-family:var(--mono);font-size:12px;color:var(--accent);background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.3);border-radius:6px;padding:10px 14px;margin-bottom:16px;min-height:42px;display:flex;align-items:center;">
+      <span style="color:var(--text-dim);">← Kattints egy időszakra fent, vagy adj meg egyedi dátumokat</span>
+    </div>
+    <div class="form-row-2" style="margin-bottom:4px;">
       <div>
-        <label class="form-label">Időszak kezdete</label>
-        <input class="form-input" type="date" id="rpt-from">
+        <label class="form-label">Egyedi kezdet (ÉÉÉÉ-HH-NN)</label>
+        <input class="form-input" type="text" id="rpt-from" placeholder="pl. 2026-01-01" oninput="rptUpdateLabel()">
       </div>
       <div>
-        <label class="form-label">Időszak vége</label>
-        <input class="form-input" type="date" id="rpt-to">
+        <label class="form-label">Egyedi vég (ÉÉÉÉ-HH-NN)</label>
+        <input class="form-input" type="text" id="rpt-to" placeholder="pl. 2026-04-30" oninput="rptUpdateLabel()">
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin:8px 0 8px 0;flex-wrap:wrap;">
-      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetMonth(0)">Aktuális hónap</button>
-      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetMonth(-1)">Előző hónap</button>
-      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetYear()">Idei év</button>
-    </div>
-    <div id="rpt-period-label" style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;min-height:16px;"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="ido_closeModal('mEmpReport')">Mégse</button>
       <button class="btn btn-primary" onclick="generateEmpReport()">📋 Riport generálása</button>
