@@ -9625,6 +9625,7 @@ function renderEmployees(){
     var ot=e.overtimeMinutes; var otCls=ot>0?'pos':ot<0?'neg':'zero';
     var rolePill=e.role==='admin'?'<span class="pill" style="color:#e8a020;border-color:#e8a020;background:rgba(232,160,32,.1);">Admin</span>':'<span class="pill" style="color:var(--text-dim);border-color:var(--border);">Alkalmazott</span>';
     rows+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td><td>'+rolePill+'</td><td style="font-family:var(--mono);font-size:12px;">'+usedVac(e.id,yr)+'/'+e.vacationDays+'</td><td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+fmtDate(e.startDate)+'</td><td><div class="row-acts">'+
+      '<button class="icon-btn" title="Riport" onclick="openEmpReport(\''+e.id+'\')" style="color:#27ae60;">&#128203;</button>'+
       '<button class="icon-btn" title="Napló" onclick="showEmpLog(\''+e.id+'\')" style="color:#2d7dd2;">&#128196;</button>'+
       '<button class="icon-btn" title="Naptár" onclick="showEmpCal(\''+e.id+'\')" style="color:#6b7a96;">&#128197;</button>'+
       '<button class="icon-btn edit" onclick="openEditEmp(\''+e.id+'\')">&#9999;</button>'+
@@ -9832,6 +9833,143 @@ function showEmpCal(empId){
   // Beállítjuk a naptár szűrőt és megnyitjuk a naptárat
   calEmpId=empId;
   ido_showView('calendar');
+}
+
+// ── MUNKAVÁLLALÓI RIPORT ─────────────────────────────────────────────────────
+var _rptEmpId=null;
+
+function openEmpReport(empId){
+  _rptEmpId=empId;
+  var emp=employees.find(function(e){return e.id===empId;});
+  if(!emp) return;
+  // Fejléc
+  var nameEl=document.getElementById('mEmpReportName');
+  if(nameEl) nameEl.textContent=emp.lastName+' '+emp.firstName+' · '+emp.email;
+  // Alapértelmezett: aktuális hónap
+  rptSetMonth(0);
+  ido_openModal('mEmpReport');
+}
+
+function rptSetMonth(offset){
+  var d=new Date();
+  d.setMonth(d.getMonth()+offset);
+  var y=d.getFullYear(), m=d.getMonth();
+  var from=new Date(y,m,1);
+  var to=new Date(y,m+1,0);
+  document.getElementById('rpt-from').value=from.toISOString().slice(0,10);
+  document.getElementById('rpt-to').value=to.toISOString().slice(0,10);
+}
+
+function rptSetYear(){
+  var y=new Date().getFullYear();
+  document.getElementById('rpt-from').value=y+'-01-01';
+  document.getElementById('rpt-to').value=y+'-12-31';
+}
+
+function generateEmpReport(){
+  var from=document.getElementById('rpt-from').value;
+  var to=document.getElementById('rpt-to').value;
+  if(!from||!to){ ido_showToast('Add meg az időszakot!','warn'); return; }
+  if(from>to){ ido_showToast('A kezdet nem lehet a vége után!','warn'); return; }
+  var emp=employees.find(function(e){return e.id===_rptEmpId;});
+  if(!emp){ ido_showToast('Munkavállaló nem található!','warn'); return; }
+  ido_closeModal('mEmpReport');
+
+  // Adatok szűrése
+  var logs=timeLog.filter(function(t){
+    return t.empId===emp.id && t.date>=from && t.date<=to;
+  }).sort(function(a,b){return a.date.localeCompare(b.date)||(a.sh-b.sh);});
+
+  var marks=dayMarks.filter(function(d){
+    return d.empId===emp.id && d.date>=from && d.date<=to;
+  }).sort(function(a,b){return a.date.localeCompare(b.date);});
+
+  // Összesítők
+  var totalWorked=logs.reduce(function(s,t){return s+(t.worked||0);},0);
+  var totalOtDelta=logs.reduce(function(s,t){return s+(t.otDelta||0);},0);
+  var vacCount=marks.filter(function(d){return d.type==='vacation';}).length;
+  var sickCount=marks.filter(function(d){return d.type==='sick';}).length;
+  var slideCount=marks.filter(function(d){return d.type==='slide';}).length;
+  var openCount=logs.filter(function(t){return t.eh===null||t.eh===undefined;}).length;
+  var markLabels={vacation:'🌴 Szabadnap',sick:'🤒 Betegszabadság',slide:'🔄 Csúsztatás'};
+
+  // Naptár-szerű nézet: minden napot végigmegyünk a tartományban
+  // Összes esemény sorba rendezve dátum szerint
+  var allEvents=[];
+  logs.forEach(function(t){
+    allEvents.push({date:t.date, sort:t.date+'_0_'+pad2(t.sh)+pad2(t.sm), type:'work', data:t});
+  });
+  marks.forEach(function(d){
+    allEvents.push({date:d.date, sort:d.date+'_1', type:'mark', data:d});
+  });
+  allEvents.sort(function(a,b){return a.sort.localeCompare(b.sort);});
+
+  // HTML összeállítása
+  var mc=document.getElementById('ido-mc');
+  if(!mc) return;
+  var fromFmt=fmtDate(from), toFmt=fmtDate(to);
+  var html='<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">';
+  html+='<button class="btn btn-secondary" onclick="ido_showView(\'employees\')">&#8592; Vissza</button>';
+  html+='<div style="font-family:var(--mono);font-weight:700;font-size:15px;">'+emp.lastName+' '+emp.firstName+'</div>';
+  html+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">Riport: '+fromFmt+' – '+toFmt+'</div>';
+  html+='<button class="btn btn-secondary" style="margin-left:auto;" onclick="openEmpReport(\''+emp.id+'\')">🔄 Új időszak</button>';
+  html+='</div>';
+
+  // Összesítő kártyák
+  html+='<div class="stat-row" style="margin-bottom:24px;">';
+  html+='<div class="stat-card"><div class="stat-val">'+(logs.length)+'</div><div class="stat-label">Munkanapok száma</div></div>';
+  html+='<div class="stat-card"><div class="stat-val">'+fmtOT(totalWorked)+'</div><div class="stat-label">Összes ledolgozott</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:'+(totalOtDelta>=0?'#27ae60':'#e05252')+'">'+(totalOtDelta>0?'+':'')+fmtOT(totalOtDelta)+'</div><div class="stat-label">Túlóra egyenleg Δ</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:#27ae60;">'+vacCount+'</div><div class="stat-label">Szabadnap</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:#e05252;">'+sickCount+'</div><div class="stat-label">Betegszabadság</div></div>';
+  if(slideCount>0) html+='<div class="stat-card"><div class="stat-val" style="color:#6b7a96;">'+slideCount+'</div><div class="stat-label">Csúsztatás</div></div>';
+  html+='</div>';
+
+  if(allEvents.length===0){
+    html+='<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:24px 0;text-align:center;">Nincs adat a megadott időszakra.</div>';
+  } else {
+    // Részletes táblázat
+    html+='<div class="panel-title">Részletes napló – '+allEvents.length+' bejegyzés</div>';
+    html+='<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
+    html+='<th>Dátum</th><th>Nap</th><th>Típus</th><th>Kezdés</th><th>Befejezés</th><th>Ledolgozott</th><th>Túlóra Δ</th><th>Megjegyzés</th>';
+    html+='</tr></thead><tbody>';
+
+    var HU_DAYNAMES=['V','H','K','Sze','Cs','P','Szo'];
+    var prevDate='';
+    allEvents.forEach(function(ev){
+      var d=new Date(ev.date+'T00:00:00');
+      var dayName=HU_DAYNAMES[d.getDay()];
+      var isWknd=d.getDay()===0||d.getDay()===6;
+      var isHoliday=isHol(ev.date);
+      var rowBg=isHoliday?'rgba(45,125,210,0.06)':isWknd?'rgba(107,122,150,0.06)':'';
+      var dateCell=ev.date!==prevDate?fmtDate(ev.date):'';
+      prevDate=ev.date;
+
+      html+='<tr style="background:'+rowBg+';">';
+      html+='<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">'+dateCell+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:11px;color:'+(isWknd||isHoliday?'#2d7dd2':'var(--text-dim)')+';">'+dayName+'</td>';
+
+      if(ev.type==='mark'){
+        var ml=markLabels[ev.data.type]||ev.data.type;
+        html+='<td colspan="5"><span style="color:'+(ev.data.type==='vacation'?'#27ae60':ev.data.type==='sick'?'#e05252':'#6b7a96')+';">'+ml+'</span></td>';
+        html+='<td></td>';
+      } else {
+        var t=ev.data;
+        var isOpen=t.eh===null||t.eh===undefined;
+        var otD=t.otDelta||0;
+        var otCol=otD>0?'#27ae60':otD<0?'#e05252':'var(--text-dim)';
+        html+='<td><span style="background:rgba(39,174,96,0.1);color:#27ae60;padding:2px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);">🕐 Munkaidő</span></td>';
+        html+='<td style="font-family:var(--mono);font-size:12px;">'+pad2(t.sh)+':'+pad2(t.sm)+'</td>';
+        html+='<td style="font-family:var(--mono);font-size:12px;">'+(isOpen?'<span style="color:#e8a020;">folyamatban</span>':pad2(t.eh)+':'+pad2(t.em))+'</td>';
+        html+='<td style="font-family:var(--mono);font-size:12px;">'+(t.worked!==null&&t.worked!==undefined?fmtOT(t.worked):'–')+'</td>';
+        html+='<td style="font-family:var(--mono);font-size:11px;color:'+otCol+';">'+(otD!==0?(otD>0?'+':'')+fmtOT(otD):'–')+'</td>';
+        html+='<td style="font-size:11px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(t.note||'–')+'</td>';
+      }
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  mc.innerHTML=html;
 }
 
 // ── TRASH ──
@@ -10070,6 +10208,10 @@ window._ido_loadData = _ido_loadData;
   _idoExp('openEditEmp', typeof openEditEmp !== 'undefined' ? openEditEmp : null);
   _idoExp('permDel', typeof permDel !== 'undefined' ? permDel : null);
   _idoExp('refreshCal', typeof refreshCal !== 'undefined' ? refreshCal : null);
+  _idoExp('openEmpReport', typeof openEmpReport !== 'undefined' ? openEmpReport : null);
+  _idoExp('rptSetMonth', typeof rptSetMonth !== 'undefined' ? rptSetMonth : null);
+  _idoExp('rptSetYear', typeof rptSetYear !== 'undefined' ? rptSetYear : null);
+  _idoExp('generateEmpReport', typeof generateEmpReport !== 'undefined' ? generateEmpReport : null);
   _idoExp('showEmpLog', typeof showEmpLog !== 'undefined' ? showEmpLog : null);
   _idoExp('showEmpCal', typeof showEmpCal !== 'undefined' ? showEmpCal : null);
   _idoExp('markDay', typeof markDay !== 'undefined' ? markDay : null);
@@ -10289,6 +10431,33 @@ setTimeout(()=>{
     </div>
 
     <div class="modal-actions"><button class="btn btn-secondary" onclick="ido_closeModal('mExport')">&#10005; Bezárás</button></div>
+  </div>
+</div>
+
+<!-- MODAL: MUNKAVÁLLALÓI RIPORT -->
+<div class="modal-overlay" id="mEmpReport">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">📋 Munkavállalói riport</div>
+    <div id="mEmpReportName" style="font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-bottom:16px;"></div>
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Időszak kezdete</label>
+        <input class="form-input" type="date" id="rpt-from">
+      </div>
+      <div>
+        <label class="form-label">Időszak vége</label>
+        <input class="form-input" type="date" id="rpt-to">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin:8px 0 16px 0;flex-wrap:wrap;">
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetMonth(0)">Aktuális hónap</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetMonth(-1)">Előző hónap</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="rptSetYear()">Idei év</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="ido_closeModal('mEmpReport')">Mégse</button>
+      <button class="btn btn-primary" onclick="generateEmpReport()">📋 Riport generálása</button>
+    </div>
   </div>
 </div>
 
