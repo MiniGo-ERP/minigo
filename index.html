@@ -9125,15 +9125,36 @@ function renderDashboard(){
   var vLeft=ido_currentUser.vacationDays-vUsed;
   var checkedIn=timeLog.some(function(t){return t.empId===ido_currentUser.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;});
   var openLog=timeLog.find(function(t){return t.empId===ido_currentUser.id&&t.date===td&&(t.eh===null||t.eh===undefined);});
+  // Mai jelenlét értéke:
+  // – ha lezárt nap → ledolgozott idő (pl. 8:30)
+  // – ha nyitott nap → '▶ HH:MM –' (folyamatban)
+  // – ha szabadnap/betegszabi/csúsztatás → SZ / BS / CS
+  // – ha semmi → –
+  var todayMark=dayMarks.find(function(d){return d.empId===ido_currentUser.id&&d.date===td;});
+  var closedLog=timeLog.find(function(t){return t.empId===ido_currentUser.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;});
+  var ciLabel, ciColor;
+  if(closedLog){
+    ciLabel=fmtOT(closedLog.worked);
+    ciColor='#27ae60';
+  } else if(openLog){
+    ciLabel='&#9654; '+pad2(openLog.sh)+':'+pad2(openLog.sm)+' &ndash;';
+    ciColor='#e8a020';
+  } else if(todayMark){
+    var markLabels={'vacation':'SZ','sick':'BS','slide':'CS'};
+    ciLabel=markLabels[todayMark.type]||todayMark.type;
+    ciColor='#2d7dd2';
+  } else {
+    ciLabel='&ndash;';
+    ciColor='var(--text-dim)';
+  }
 
   if(ido_currentUser.role!=='admin'){
     var otColor=ido_currentUser.overtimeMinutes>=0?'#27ae60':'#e05252';
-    var ciColor=checkedIn?'#27ae60':'#e88a20';
     html+='<div class="stat-row" style="margin-bottom:20px;">';
     html+='<div class="stat-card"><div class="stat-val" style="color:'+otColor+'">'+(ido_currentUser.overtimeMinutes>0?'+':'')+fmtOT(ido_currentUser.overtimeMinutes)+'</div><div class="stat-label">Göngyölített túlóra</div></div>';
     html+='<div class="stat-card"><div class="stat-val" style="color:#2d7dd2">'+vLeft+'</div><div class="stat-label">Maradék szabadnap</div></div>';
     html+='<div class="stat-card"><div class="stat-val">'+vUsed+' / '+ido_currentUser.vacationDays+'</div><div class="stat-label">Felhasznált szabadnap</div></div>';
-    html+='<div class="stat-card"><div class="stat-val" style="color:'+ciColor+'">'+(checkedIn?'Bent':'&ndash;')+'</div><div class="stat-label">Mai jelenlét</div></div>';
+    html+='<div class="stat-card"><div class="stat-val" style="color:'+ciColor+'">'+ciLabel+'</div><div class="stat-label">Mai jelenlét</div></div>';
     html+='</div>';
   }
 
@@ -9397,13 +9418,20 @@ function markDay(dateStr,empId,type){
 }
 function removeMark(dateStr,empId){
   var mark=dayMarks.find(function(d){return d.empId===empId&&d.date===dateStr;});
-  if(mark&&mark.type==='slide'){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes+=DAILY_MIN;}
+  if(mark&&mark.type==='slide'){var emp=employees.find(function(e){return e.id===empId;});if(emp){emp.overtimeMinutes+=DAILY_MIN;if(window.fbSaveIdoEmployee)window.fbSaveIdoEmployee(emp).catch(function(e){console.error(e);});}}
   dayMarks=dayMarks.filter(function(d){return !(d.empId===empId&&d.date===dateStr);});
+  if(mark&&window.fbDelIdoDayMark) window.fbDelIdoDayMark(mark.id).catch(function(e){console.error('IDO daymark törlési hiba:',e);});
   ido_showToast('Jelölés törölve','ok');
 }
 function delLog(logId,empId){
   var log=timeLog.find(function(t){return t.id===logId;});
-  if(log&&log.otDelta){var emp=employees.find(function(e){return e.id===empId;});if(emp)emp.overtimeMinutes-=log.otDelta;}
+  if(log&&log.otDelta){
+    var emp=employees.find(function(e){return e.id===empId;});
+    if(emp){
+      emp.overtimeMinutes-=log.otDelta;
+      if(window.fbSaveIdoEmployee) window.fbSaveIdoEmployee(emp).catch(function(e){console.error('IDO employee OT frissítés hiba:',e);});
+    }
+  }
   timeLog=timeLog.filter(function(t){return t.id!==logId;});
   if(window.fbDelIdoTimeLog) window.fbDelIdoTimeLog(logId).catch(function(e){console.error('IDO timelog törlési hiba:',e);});
   ido_showToast('Munkaidő törölve','ok');
