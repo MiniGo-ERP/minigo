@@ -9332,7 +9332,12 @@ function refreshCal(){document.getElementById('ido-mc').innerHTML=renderCalendar
 function openDayModal(dateStr,empId){
   var emp=employees.find(function(e){return e.id===empId;});
   var mark=null; for(var i=0;i<dayMarks.length;i++){if(dayMarks[i].empId===empId&&dayMarks[i].date===dateStr){mark=dayMarks[i];break;}}
-  var log=null; for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===empId&&timeLog[i].date===dateStr){log=timeLog[i];break;}}
+  // Aznapi összes bejegyzés
+  var dayLogs=[]; for(var i=0;i<timeLog.length;i++){if(timeLog[i].empId===empId&&timeLog[i].date===dateStr) dayLogs.push(timeLog[i]);}
+  // Nyitott (folyamatban lévő) bejegyzés ha van
+  var log=null; for(var i=0;i<dayLogs.length;i++){if(dayLogs[i].eh===null||dayLogs[i].eh===undefined){log=dayLogs[i];break;}}
+  // Ha nincs nyitott, az utolsó lezárt legyen a 'log' a megjelenítéshez
+  var lastLog=dayLogs.length>0?dayLogs[dayLogs.length-1]:null;
   var hol=isHol(dateStr), wknd=isWknd(dateStr);
   var p=dateStr.split('-'); var y=p[0],mo=p[1],d=p[2];
   var isAdmin=ido_currentUser.role==='admin';
@@ -9348,27 +9353,36 @@ function openDayModal(dateStr,empId){
   if(isPast&&!isAdmin&&isOwn) body+='<div style="background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.3);border-radius:5px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--accent);font-family:var(--mono);">&#128274; Múltbeli nap – csak az admin módosíthatja</div>';
   if(hol) body+='<div style="background:rgba(45,125,210,.1);border:1px solid #2d7dd2;border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#2d7dd2;">Magyar munkaszüneti nap</div>';
   if(wknd&&!hol) body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text-dim);">Hétvége</div>';
-  if(log){
-    var isOpen=log.eh===null||log.eh===undefined;
+  if(dayLogs.length>0){
     body+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px;margin-bottom:12px;">';
     body+='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Rögzített munkaidő</div>';
-    body+='<div style="font-family:var(--mono);font-size:13px;">Kezdés: '+pad2(log.sh)+':'+pad2(log.sm)+'</div>';
-    if(!isOpen){
-      body+='<div style="font-family:var(--mono);font-size:13px;">Befejezés: '+pad2(log.eh)+':'+pad2(log.em)+'</div>';
-      if(log.worked!==null) body+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:4px;">Ledolgozott: '+fmtOT(log.worked)+' &nbsp;&Delta;: <span style="color:'+(log.otDelta>=0?'#27ae60':'#e05252')+'">'+(log.otDelta>0?'+':'')+fmtOT(log.otDelta)+'</span></div>';
-    } else {
-      body+='<div style="font-family:var(--mono);font-size:12px;color:#e8a020;">&#9201; Folyamatban...</div>';
-    }
-    // Note section with expand
-    if(log.note){
-      var isLong=log.note.length>120;
+    var totalWorked=0;
+    dayLogs.forEach(function(lg){
+      var isOpen=lg.eh===null||lg.eh===undefined;
+      body+='<div style="display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;margin-bottom:4px;">';
+      body+='<span>'+pad2(lg.sh)+':'+pad2(lg.sm)+'</span><span style="color:var(--text-dim);">→</span>';
+      if(!isOpen){
+        body+='<span>'+pad2(lg.eh)+':'+pad2(lg.em)+'</span>';
+        if(lg.worked!==null){totalWorked+=lg.worked;body+='<span style="color:var(--text-dim);margin-left:4px;">('+fmtOT(lg.worked)+')</span>';}
+      } else {
+        body+='<span style="color:#e8a020;">&#9201; folyamatban</span>';
+      }
+      body+='</div>';
+    });
+    if(totalWorked>0) body+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">Összesen: '+fmtOT(totalWorked)+'</div>';
+    var isOpen=log!==null; // van-e nyitott bejegyzés
+    // Note section - az utolsó megjegyzéssel rendelkező bejegyzés
+    var noteSource=null;
+    for(var ni=dayLogs.length-1;ni>=0;ni--){if(dayLogs[ni].note){noteSource=dayLogs[ni];break;}}
+    if(noteSource&&noteSource.note){
+      var isLong=noteSource.note.length>120;
       body+='<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">';
       body+='<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Napi megjegyzés</div>';
       if(isLong){
-        body+='<div id="noteShort" style="font-size:12px;color:var(--text);">'+log.note.slice(0,120)+'&hellip; <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteShort\').style.display=\'none\';document.getElementById(\'noteFull\').style.display=\'block\'">Tovább &#9660;</span></div>';
-        body+='<div id="noteFull" style="display:none;font-size:12px;color:var(--text);white-space:pre-wrap;">'+log.note+' <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteFull\').style.display=\'none\';document.getElementById(\'noteShort\').style.display=\'block\'">&#9650; Kevesebb</span></div>';
+        body+='<div id="noteShort" style="font-size:12px;color:var(--text);">'+noteSource.note.slice(0,120)+'&hellip; <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteShort\').style.display=\'none\';document.getElementById(\'noteFull\').style.display=\'block\'">Tovább &#9660;</span></div>';
+        body+='<div id="noteFull" style="display:none;font-size:12px;color:var(--text);white-space:pre-wrap;">'+noteSource.note+' <span style="color:#2d7dd2;cursor:pointer;" onclick="document.getElementById(\'noteFull\').style.display=\'none\';document.getElementById(\'noteShort\').style.display=\'block\'">&#9650; Kevesebb</span></div>';
       } else {
-        body+='<div style="font-size:12px;color:var(--text);">'+log.note+'</div>';
+        body+='<div style="font-size:12px;color:var(--text);">'+noteSource.note+'</div>';
       }
       body+='</div>';
     }
@@ -9388,9 +9402,12 @@ function openDayModal(dateStr,empId){
       body+='<button class="btn btn-danger" style="justify-content:center;background:rgba(224,82,82,.1);" onclick="markDay(\''+dateStr+'\',\''+empId+'\',\'sick\');ido_closeModal(\'mDay\');refreshCal()">&#129298; Betegszabadság jelölése</button>';
     }
     if(mark) body+='<button class="btn btn-secondary" style="justify-content:center;" onclick="removeMark(\''+dateStr+'\',\''+empId+'\');ido_closeModal(\'mDay\');refreshCal()">&#10005; Jelölés törlése</button>';
+    // Munkaidő rögzítése: ha nincs nyitott bejegyzés (de lehet lezárt aznapi)
     if(!log&&!hol&&!wknd) body+='<button class="btn btn-primary" style="justify-content:center;" onclick="ido_closeModal(\'mDay\');openCheckinForDay(\''+dateStr+'\')">&#9654; Munkaidő rögzítése</button>';
+    // Nyitott bejegyzés lezárása
     if(log&&(log.eh===null||log.eh===undefined)) body+='<button class="btn btn-primary" style="justify-content:center;" onclick="ido_closeModal(\'mDay\');askCloseDay(\''+log.id+'\')">&#9209; Munkanap lezárása</button>';
-    if(log) body+='<button class="btn btn-danger" style="justify-content:center;" onclick="delLog(\''+log.id+'\',\''+empId+'\');ido_closeModal(\'mDay\');refreshCal()">&#128465; Munkaidő törlése</button>';
+    // Utolsó bejegyzés törlése
+    if(lastLog) body+='<button class="btn btn-danger" style="justify-content:center;" onclick="delLog(\''+lastLog.id+'\',\''+empId+'\');ido_closeModal(\'mDay\');refreshCal()">&#128465; Utolsó munkaidő törlése</button>';
     body+='</div>';
   }
   document.getElementById('mDayBody').innerHTML=body;
@@ -9460,7 +9477,7 @@ setInterval(function(){var e=document.getElementById('ciClock');if(e){var n=new 
 
 function openCheckinModal(){
   var n=new Date();
-  document.getElementById('ci-date').value=ido_today();
+  document.getElementById('ido-ci-date').value=ido_today();
   document.getElementById('ci-sh').value=pad2(n.getHours());
   document.getElementById('ci-sm').value=pad2(n.getMinutes());
   document.getElementById('ci-eh').value=''; document.getElementById('ci-em').value='';
@@ -9473,7 +9490,7 @@ function openCheckinForDay(dateStr){
     ido_showToast('Múltbeli napra csak az admin rögzíthet munkaidőt!','warn');
     return;
   }
-  document.getElementById('ci-date').value=dateStr;
+  document.getElementById('ido-ci-date').value=dateStr;
   document.getElementById('ci-sh').value='08'; document.getElementById('ci-sm').value='00';
   document.getElementById('ci-eh').value=''; document.getElementById('ci-em').value='';
   document.getElementById('ci-preview').textContent='';
@@ -9496,21 +9513,30 @@ function updateCiPreview(){
   var el=document.getElementById(id); if(el) el.addEventListener('input',updateCiPreview);
 });
 function confirmCheckin(){
-  var dateStr=document.getElementById('ci-date').value;
+  var dateStr=document.getElementById('ido-ci-date').value;
   if(!dateStr){ido_showToast('Add meg a dátumot!','warn');return;}
   var sh=parseInt(document.getElementById('ci-sh').value);
   var sm=parseInt(document.getElementById('ci-sm').value);
   if(isNaN(sh)||isNaN(sm)){ido_showToast('Add meg a munkakezdés időpontját!','warn');return;}
-  // Ellenőrzés: erre a napra már van bejegyzés?
-  for(var i=0;i<timeLog.length;i++){
-    if(timeLog[i].empId===ido_currentUser.id&&timeLog[i].date===dateStr){
-      ido_showToast('Erre a napra már van bejegyzés!','warn');return;
-    }
-  }
-  // Ellenőrzés: van-e lezáratlan (nyitott) munkanap?
+  // Ellenőrzés: van-e lezáratlan (nyitott) munkanap (bármely napon)?
   for(var i=0;i<timeLog.length;i++){
     if(timeLog[i].empId===ido_currentUser.id&&(timeLog[i].eh===null||timeLog[i].eh===undefined)){
       ido_showToast('Még van lezáratlan munkanapod ('+timeLog[i].date+')! Előbb zárd le azt.','warn');return;
+    }
+  }
+  // Ellenőrzés: az aznapi bejegyzésekkel nincs-e időütközés?
+  // Az új kezdési idő nem lehet korábbi mint az aznapi utolsó befejezési idő
+  var newStart=sh*60+sm;
+  for(var i=0;i<timeLog.length;i++){
+    var t=timeLog[i];
+    if(t.empId===ido_currentUser.id&&t.date===dateStr){
+      // Lezárt bejegyzés: az új kezdés nem lehet a befejezés előtt
+      if(t.eh!==null&&t.eh!==undefined){
+        var prevEnd=t.eh*60+t.em;
+        if(newStart<prevEnd){
+          ido_showToast('Az új munkakezdés ('+pad2(sh)+':'+pad2(sm)+') korábbi mint egy meglévő befejezés ('+pad2(t.eh)+':'+pad2(t.em)+')!','warn');return;
+        }
+      }
     }
   }
   var ehV=document.getElementById('ci-eh').value;
@@ -10050,7 +10076,7 @@ setTimeout(()=>{
   <div class="modal" style="max-width:400px;text-align:center;">
     <div class="modal-title" style="text-align:left;">&#128336; Munkakezdés Rögzítése</div>
     <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Nap:</div>
-    <input class="form-input" id="ci-date" type="date" style="margin-bottom:16px;">
+    <input class="form-input" id="ido-ci-date" type="date" style="margin-bottom:16px;">
     <div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:left;margin-bottom:8px;">Munkakezdés időpontja:</div>
     <div class="time-inp-row">
       <input class="time-inp" id="ci-sh" type="number" min="0" max="23" placeholder="08">
