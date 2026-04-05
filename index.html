@@ -1948,6 +1948,13 @@ function showLoginScreen() {
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loadingOverlay').style.display = 'none';
+  // Login form teljes reset - gomb és hibaüzenet
+  const btn = document.getElementById('login-btn');
+  if(btn){ btn.disabled = false; btn.textContent = '→ Belépés'; }
+  const err = document.getElementById('login-error');
+  if(err) err.textContent = '';
+  const passEl = document.getElementById('login-pass');
+  if(passEl) passEl.value = '';
 }
 
 function showAppShell() {
@@ -1982,7 +1989,14 @@ async function doLogin() {
 }
 
 async function doLogout() {
+  // IDO modul állapot reset kilépés előtt
+  migoUserRole = 'ido_user';
+  if(window._ido_setCurrentUser) window._ido_setCurrentUser(null);
+  if(window._ido_loadData) window._ido_loadData([], [], [], []);
+  // Firebase kijelentkezés
   await signOut(auth);
+  // IDO modul kiléptetése ha bent volt
+  if(window.ido_doLogout) window.ido_doLogout();
 }
 
 window.doLogin   = doLogin;
@@ -2012,6 +2026,9 @@ onAuthStateChanged(auth, (user) => {
     showAppShell();
     loadFromFirestore();
   } else {
+    // Kilépéskor IDO állapot teljes reset
+    migoUserRole = 'ido_user';
+    if(window._ido_setCurrentUser) window._ido_setCurrentUser(null);
     showLoginScreen();
   }
 });
