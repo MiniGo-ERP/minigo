@@ -9624,7 +9624,12 @@ function renderEmployees(){
   list.forEach(function(e){
     var ot=e.overtimeMinutes; var otCls=ot>0?'pos':ot<0?'neg':'zero';
     var rolePill=e.role==='admin'?'<span class="pill" style="color:#e8a020;border-color:#e8a020;background:rgba(232,160,32,.1);">Admin</span>':'<span class="pill" style="color:var(--text-dim);border-color:var(--border);">Alkalmazott</span>';
-    rows+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td><td>'+rolePill+'</td><td style="font-family:var(--mono);font-size:12px;">'+usedVac(e.id,yr)+'/'+e.vacationDays+'</td><td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+fmtDate(e.startDate)+'</td><td><div class="row-acts"><button class="icon-btn edit" onclick="openEditEmp(\''+e.id+'\')">&#9999;</button><button class="icon-btn del" onclick="confirmDelEmp(\''+e.id+'\')">&#128465;</button></div></td></tr>';
+    rows+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td><td>'+rolePill+'</td><td style="font-family:var(--mono);font-size:12px;">'+usedVac(e.id,yr)+'/'+e.vacationDays+'</td><td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+fmtDate(e.startDate)+'</td><td><div class="row-acts">'+
+      '<button class="icon-btn" title="Napló" onclick="showEmpLog(\''+e.id+'\')" style="color:#2d7dd2;">&#128196;</button>'+
+      '<button class="icon-btn" title="Naptár" onclick="showEmpCal(\''+e.id+'\')" style="color:#6b7a96;">&#128197;</button>'+
+      '<button class="icon-btn edit" onclick="openEditEmp(\''+e.id+'\')">&#9999;</button>'+
+      '<button class="icon-btn del" onclick="confirmDelEmp(\''+e.id+'\')">&#128465;</button>'+
+      '</div></td></tr>';
   });
   return '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">'+
     '<button class="btn btn-primary" onclick="openNewEmpModal()">+ Új munkavállaló</button>'+
@@ -9747,6 +9752,86 @@ function renderReports(){
   });
   html+='</tbody></table></div>';
   return html;
+}
+
+// ── ADMIN: MUNKAVÁLLALÓI RÉSZLETES NAPLÓ ────────────────────────────────────
+function showEmpLog(empId){
+  var emp=employees.find(function(e){return e.id===empId;});
+  if(!emp) return;
+  // Átváltunk egy részletes naplóra
+  var mc=document.getElementById('ido-mc');
+  if(!mc) return;
+  var yr=String(new Date().getFullYear());
+  var empLogs=timeLog.filter(function(t){return t.empId===empId;}).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var empMarks=dayMarks.filter(function(d){return d.empId===empId;}).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var markLabels={vacation:'🌴 Szabadnap',sick:'🤒 Betegszabadság',slide:'🔄 Csúsztatás'};
+  var html='<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">';
+  html+='<button class="btn btn-secondary" onclick="ido_showView(\'employees\')">← Vissza</button>';
+  html+='<div style="font-family:var(--mono);font-weight:700;font-size:15px;">'+emp.lastName+' '+emp.firstName+'</div>';
+  html+='<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+emp.email+'</div>';
+  html+='</div>';
+  // Összesítő kártyák
+  var usedV=usedVac(empId,yr);
+  var sickCount=empMarks.filter(function(d){return d.type==='sick'&&d.date.startsWith(yr);}).length;
+  var slideCount=empMarks.filter(function(d){return d.type==='slide'&&d.date.startsWith(yr);}).length;
+  html+='<div class="stat-row" style="margin-bottom:24px;">';
+  html+='<div class="stat-card"><div class="stat-val" style="color:'+(emp.overtimeMinutes>=0?'#27ae60':'#e05252')+'">'+(emp.overtimeMinutes>0?'+':'')+fmtOT(emp.overtimeMinutes)+'</div><div class="stat-label">Göngyölített túlóra</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:#27ae60;">'+usedV+' / '+emp.vacationDays+'</div><div class="stat-label">Szabadnap ('+yr+')</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:#e05252;">'+sickCount+'</div><div class="stat-label">Betegszabadság ('+yr+')</div></div>';
+  html+='<div class="stat-card"><div class="stat-val" style="color:#6b7a96;">'+slideCount+'</div><div class="stat-label">Csúsztatás ('+yr+')</div></div>';
+  html+='</div>';
+  // Jelölések (szabadnap, betegszabi, csúsztatás)
+  if(empMarks.length>0){
+    html+='<div class="panel-title">Jelölések (szabadnap / betegszabi / csúsztatás)</div>';
+    html+='<div style="overflow-x:auto;margin-bottom:24px;"><table class="data-table"><thead><tr><th>Dátum</th><th>Típus</th><th></th></tr></thead><tbody>';
+    empMarks.forEach(function(m){
+      html+='<tr>';
+      html+='<td style="font-family:var(--mono);font-size:12px;">'+fmtDate(m.date)+'</td>';
+      html+='<td>'+(markLabels[m.type]||m.type)+'</td>';
+      html+='<td><button class="icon-btn del" onclick="removeMark(\''+m.date+'\',\''+empId+'\');showEmpLog(\''+empId+'\')" title="Törlés">&#10005;</button></td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  // Munkaidő naplóbejegyzések
+  html+='<div class="panel-title">Munkaidő bejegyzések ('+empLogs.length+' db)</div>';
+  if(empLogs.length===0){
+    html+='<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:16px 0;">Még nincs rögzített munkaidő.</div>';
+  } else {
+    html+='<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
+    html+='<th>Dátum</th><th>Kezdés</th><th>Befejezés</th><th>Ledolgozott</th><th>Túlóra Δ</th><th>Megjegyzés</th><th></th>';
+    html+='</tr></thead><tbody>';
+    var runningOT=0;
+    // Fordított sorrendben számoljuk a göngyölítettet
+    var sortedAsc=empLogs.slice().sort(function(a,b){return a.date.localeCompare(b.date)||(a.sh-b.sh);});
+    var otByLog={};
+    var cumOT=0;
+    sortedAsc.forEach(function(t){ cumOT+=t.otDelta||0; otByLog[t.id]=cumOT; });
+    empLogs.forEach(function(t){
+      var isOpen=t.eh===null||t.eh===undefined;
+      var otD=t.otDelta||0;
+      var otCol=otD>0?'#27ae60':otD<0?'#e05252':'var(--text-dim)';
+      var cumVal=otByLog[t.id]||0;
+      var cumCol=cumVal>0?'#27ae60':cumVal<0?'#e05252':'var(--text-dim)';
+      html+='<tr>';
+      html+='<td style="font-family:var(--mono);font-size:12px;">'+fmtDate(t.date)+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:12px;">'+pad2(t.sh)+':'+pad2(t.sm)+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:12px;">'+(isOpen?'<span style="color:#e8a020;">&#9201; folyamatban</span>':pad2(t.eh)+':'+pad2(t.em))+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:12px;">'+(t.worked!==null&&t.worked!==undefined?fmtOT(t.worked):'&ndash;')+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:11px;"><span style="color:'+otCol+'">'+(otD>0?'+':'')+fmtOT(otD)+'</span></td>';
+      html+='<td style="font-size:11px;color:var(--text-dim);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+( t.note||'&ndash;')+'</td>';
+      html+='<td><button class="icon-btn del" onclick="delLog(\''+t.id+'\',\''+empId+'\');showEmpLog(\''+empId+'\')" title="Törlés">&#128465;</button></td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  mc.innerHTML=html;
+}
+
+function showEmpCal(empId){
+  // Beállítjuk a naptár szűrőt és megnyitjuk a naptárat
+  calEmpId=empId;
+  ido_showView('calendar');
 }
 
 // ── TRASH ──
@@ -9985,6 +10070,8 @@ window._ido_loadData = _ido_loadData;
   _idoExp('openEditEmp', typeof openEditEmp !== 'undefined' ? openEditEmp : null);
   _idoExp('permDel', typeof permDel !== 'undefined' ? permDel : null);
   _idoExp('refreshCal', typeof refreshCal !== 'undefined' ? refreshCal : null);
+  _idoExp('showEmpLog', typeof showEmpLog !== 'undefined' ? showEmpLog : null);
+  _idoExp('showEmpCal', typeof showEmpCal !== 'undefined' ? showEmpCal : null);
   _idoExp('markDay', typeof markDay !== 'undefined' ? markDay : null);
   _idoExp('removeMark', typeof removeMark !== 'undefined' ? removeMark : null);
   _idoExp('delLog', typeof delLog !== 'undefined' ? delLog : null);
