@@ -9081,7 +9081,7 @@ function renderDashboard(){
     activeEmps.forEach(function(e){
       totalOT+=e.overtimeMinutes;
       var vu=usedVac(e.id,yr); totalVacUsed+=vu; totalVacLeft+=(e.vacationDays-vu);
-      if(timeLog.some(function(t){return t.empId===e.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;})) bentCount++;
+      if(timeLog.some(function(t){return t.empId===e.id&&t.date===td&&(t.eh===null||t.eh===undefined);})) bentCount++;
       if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='sick';})) betegCount++;
       if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='slide';})) csusztCount++;
       if(dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='vacation';})) szabCount++;
@@ -9104,13 +9104,15 @@ function renderDashboard(){
     activeEmps.forEach(function(e){
       var ot=e.overtimeMinutes; var otCls=ot>0?'pos':ot<0?'neg':'zero';
       var present=timeLog.some(function(t){return t.empId===e.id&&t.date===td&&t.eh!==null&&t.eh!==undefined;});
+      var inProgress=timeLog.some(function(t){return t.empId===e.id&&t.date===td&&(t.eh===null||t.eh===undefined);});
       var sick=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='sick';});
       var slide=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='slide';});
       var vac=dayMarks.some(function(d){return d.empId===e.id&&d.date===td&&d.type==='vacation';});
       var statusHTML=sick?'<span class="pill" style="color:#e05252;border-color:#e05252;background:rgba(224,82,82,.1);">Beteg</span>':
         slide?'<span class="pill" style="color:#6b7a96;border-color:#6b7a96;background:rgba(107,122,150,.1);">Csúsztat</span>':
         vac?'<span class="pill" style="color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,.1);">Szabadság</span>':
-        present?'<span class="pill" style="color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,.1);">Bent</span>':
+        inProgress?'<span class="pill" style="color:#e8a020;border-color:#e8a020;background:rgba(232,160,32,.1);">&#9654; Folyamatban</span>':
+        present?'<span class="pill" style="color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,.1);">Bent volt</span>':
         '<span class="pill" style="color:var(--text-dim);border-color:var(--border);">Hiányzik</span>';
       html+='<tr><td><div class="emp-name">'+e.lastName+' '+e.firstName+'</div><div class="emp-email">'+e.email+'</div></td>';
       html+='<td><span class="ot-badge '+otCls+'">'+(ot>0?'+':'')+fmtOT(ot)+'</span></td>';
