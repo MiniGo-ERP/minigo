@@ -10120,6 +10120,13 @@ function generateEmpReport(){
     });
     html+='</tbody></table></div>';
   }
+
+  // XLS export gomb a riport alján
+  html+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
+  html+='<button class="btn btn-secondary" onclick="openEmpReport(\''+emp.id+'\')">🔄 Új időszak</button>';
+  html+='<button class="btn btn-primary" onclick="exportEmpReportXls(\''+emp.id+'\',\''+from+'\',\''+to+'\',\''+emp.lastName+' '+emp.firstName+'\')" style="background:#27ae60;border-color:#27ae60;">📥 Export XLS</button>';
+  html+='</div>';
+
   mc.innerHTML=html;
 }
 
