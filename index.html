@@ -9831,6 +9831,13 @@ function showEmpLog(empId){
     });
     html+='</tbody></table></div>';
   }
+
+  // XLS export gomb - mindig megjelenik a riport alján
+  html+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
+  html+='<button class="btn btn-secondary" onclick="openEmpReport(\''+emp.id+'\')" style="gap:8px;">🔄 Új időszak</button>';
+  html+='<button class="btn btn-primary" onclick="exportEmpReportXls(\''+emp.id+'\',\''+from+'\',\''+to+'\',\''+emp.lastName+' '+emp.firstName+'\')" style="gap:8px;background:#27ae60;border-color:#27ae60;">📥 Export XLS</button>';
+  html+='</div>';
+
   mc.innerHTML=html;
 }
 
@@ -9880,6 +9887,122 @@ function rptSetYear(){
   if(ti) ti.value=y+'-12-31';
   var lbl=document.getElementById('rpt-period-label');
   if(lbl) lbl.innerHTML='<span style="color:#27ae60;font-weight:700;">✓ Kiválasztva:</span> '+y+'. teljes év<br><span style="color:var(--text-dim);font-size:11px;">'+y+'-01-01 – '+y+'-12-31</span>';
+}
+
+function exportEmpReportXls(empId, from, to, empName){
+  // Adatok összegyűjtése
+  var emp=employees.find(function(e){return e.id===empId;});
+  if(!emp) return;
+
+  var logs=timeLog.filter(function(t){
+    return t.empId===empId && t.date>=from && t.date<=to;
+  }).sort(function(a,b){return a.date.localeCompare(b.date)||(a.sh-b.sh);});
+
+  var marks=dayMarks.filter(function(d){
+    return d.empId===empId && d.date>=from && d.date<=to;
+  }).sort(function(a,b){return a.date.localeCompare(b.date);});
+
+  var markLabels={vacation:'Szabadnap',sick:'Betegszabadság',slide:'Csúsztatás'};
+  var HU_DAYNAMES=['Vasárnap','Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat'];
+
+  // XLS sorok összeállítása
+  var rows=[];
+
+  // Fejléc infó
+  rows.push(['Munkavállalói riport']);
+  rows.push(['Név:', emp.lastName+' '+emp.firstName]);
+  rows.push(['E-mail:', emp.email]);
+  rows.push(['Időszak:', from+' – '+to]);
+  rows.push([]);
+
+  // Összesítő
+  var totalWorked=logs.reduce(function(s,t){return s+(t.worked||0);},0);
+  var totalOtDelta=logs.reduce(function(s,t){return s+(t.otDelta||0);},0);
+  var vacCount=marks.filter(function(d){return d.type==='vacation';}).length;
+  var sickCount=marks.filter(function(d){return d.type==='sick';}).length;
+  var slideCount=marks.filter(function(d){return d.type==='slide';}).length;
+
+  rows.push(['ÖSSZESÍTŐ']);
+  rows.push(['Munkanapok száma:', logs.length]);
+  rows.push(['Összes ledolgozott:', fmtOT(totalWorked)]);
+  rows.push(['Túlóra egyenleg Δ:', (totalOtDelta>0?'+':'')+fmtOT(totalOtDelta)]);
+  rows.push(['Szabadnapok:', vacCount]);
+  rows.push(['Betegszabadság:', sickCount]);
+  rows.push(['Csúsztatás:', slideCount]);
+  rows.push([]);
+
+  // Részletes fejléc
+  rows.push(['Dátum','Nap','Típus','Kezdés','Befejezés','Ledolgozott (perc)','Ledolgozott (óra)','Túlóra Δ (perc)','Túlóra Δ (óra)','Megjegyzés']);
+
+  // Összes esemény dátum szerint
+  var allEvents=[];
+  logs.forEach(function(t){
+    allEvents.push({date:t.date, sort:t.date+'_0_'+pad2(t.sh)+pad2(t.sm), type:'work', data:t});
+  });
+  marks.forEach(function(d){
+    allEvents.push({date:d.date, sort:d.date+'_1', type:'mark', data:d});
+  });
+  allEvents.sort(function(a,b){return a.sort.localeCompare(b.sort);});
+
+  allEvents.forEach(function(ev){
+    var d=new Date(ev.date+'T00:00:00');
+    var dayName=HU_DAYNAMES[d.getDay()];
+
+    if(ev.type==='mark'){
+      rows.push([
+        ev.date,
+        dayName,
+        markLabels[ev.data.type]||ev.data.type,
+        '','','','','','',''
+      ]);
+    } else {
+      var t=ev.data;
+      var isOpen=t.eh===null||t.eh===undefined;
+      var startStr=pad2(t.sh)+':'+pad2(t.sm);
+      var endStr=isOpen?'folyamatban':pad2(t.eh)+':'+pad2(t.em);
+      var workedMin=t.worked!==null&&t.worked!==undefined?t.worked:'';
+      var workedHr=workedMin!==''?Math.floor(workedMin/60)+':'+(workedMin%60<10?'0':'')+(workedMin%60):'';
+      var otMin=t.otDelta||0;
+      var otHr=Math.floor(Math.abs(otMin)/60)+':'+(Math.abs(otMin)%60<10?'0':'')+(Math.abs(otMin)%60);
+      if(otMin<0) otHr='-'+otHr;
+      rows.push([
+        t.date,
+        dayName,
+        'Munkaidő',
+        startStr,
+        endStr,
+        workedMin,
+        workedHr,
+        otMin,
+        otHr,
+        t.note||''
+      ]);
+    }
+  });
+
+  // XLS generálás (TSV → Excel kompatibilis)
+  var xlsContent=rows.map(function(row){
+    return row.map(function(cell){
+      var s=String(cell===null||cell===undefined?'':cell);
+      // Ha vesszőt vagy idézőjelet tartalmaz, idézőjelbe tesszük
+      if(s.indexOf('	')>=0||s.indexOf('"')>=0){
+        s='"'+s.replace(/"/g,'""')+'"';
+      }
+      return s;
+    }).join('	');
+  }).join('\n');
+
+  // BOM + UTF-16 LE encoding az Excel kompatibilitáshoz
+  var blob=new Blob(['﻿'+xlsContent],{type:'text/tab-separated-values;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='riport_'+emp.lastName+'_'+emp.firstName+'_'+from+'_'+to+'.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  ido_showToast('XLS riport letöltve!','ok');
 }
 
 function rptUpdateLabel(){
@@ -10389,6 +10512,7 @@ window._ido_loadData = _ido_loadData;
   _idoExp('refreshCal', typeof refreshCal !== 'undefined' ? refreshCal : null);
   _idoExp('renderHelp', typeof renderHelp !== 'undefined' ? renderHelp : null);
   _idoExp('openEmpReport', openEmpReport);
+  _idoExp('exportEmpReportXls', exportEmpReportXls);
   _idoExp('rptSetMonth', rptSetMonth);
   _idoExp('rptSetYear', rptSetYear);
   _idoExp('generateEmpReport', generateEmpReport);
