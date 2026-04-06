@@ -9889,7 +9889,7 @@ function rptSetYear(){
   if(lbl) lbl.innerHTML='<span style="color:#27ae60;font-weight:700;">✓ Kiválasztva:</span> '+y+'. teljes év<br><span style="color:var(--text-dim);font-size:11px;">'+y+'-01-01 – '+y+'-12-31</span>';
 }
 
-function exportEmpReportXls(empId, from, to, empName){
+function exportEmpReportXls(empId, from, to){
   // Adatok összegyűjtése
   var emp=employees.find(function(e){return e.id===empId;});
   if(!emp) return;
@@ -10123,8 +10123,8 @@ function generateEmpReport(){
 
   // XLS export gomb a riport alján
   html+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">';
-  html+='<button class="btn btn-secondary" onclick="openEmpReport(\''+emp.id+'\')">🔄 Új időszak</button>';
-  html+='<button class="btn btn-primary" onclick="exportEmpReportXls(\''+emp.id+'\',\''+from+'\',\''+to+'\',\''+emp.lastName+' '+emp.firstName+'\')" style="background:#27ae60;border-color:#27ae60;">📥 Export XLS</button>';
+  html+='<button class="btn btn-secondary" onclick="openEmpReport(\''+emp.id+'\')">&#128260; Új időszak</button>';
+  html+='<button class="btn btn-primary" onclick="exportEmpReportXls(\''+emp.id+'\',\''+from+'\',\''+to+'\')" style="background:#27ae60;border-color:#27ae60;">&#128229; Export XLS</button>';
   html+='</div>';
 
   mc.innerHTML=html;
