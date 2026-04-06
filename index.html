@@ -9927,7 +9927,7 @@ function exportEmpReportXls(empId, from, to){
   rows.push([
     logs.length,
     fmtOT(totalWorked),
-    (totalOtDelta>0?'+':'')+fmtOT(totalOtDelta),
+    (totalOtDelta<0?'"'+(totalOtDelta>0?'+':'')+fmtOT(totalOtDelta)+'"':(totalOtDelta>0?'+':'')+fmtOT(totalOtDelta)),
     vacCount,
     sickCount,
     slideCount
@@ -9976,8 +9976,8 @@ function exportEmpReportXls(empId, from, to){
         endStr,
         workedMin,
         workedHr,
-        otMin,
-        otHr,
+        (otMin<0?'"'+otMin+'"':otMin),
+        (otMin<0?'"'+otHr+'"':otHr),
         t.note||''
       ]);
     }
@@ -9987,11 +9987,7 @@ function exportEmpReportXls(empId, from, to){
   var xlsContent=rows.map(function(row){
     return row.map(function(cell){
       var s=String(cell===null||cell===undefined?'':cell);
-      // Ha vesszőt vagy idézőjelet tartalmaz, idézőjelbe tesszük
-      if(s.indexOf('	')>=0||s.indexOf('"')>=0){
-        s='"'+s.replace(/"/g,'""')+'"';
-      }
-      return s;
+      // Ha vesszőt vagy idézőjelet tartalmaz, idézőjelbe tesszük\n      if(s.indexOf(\'\t\')>=0||s.indexOf('\'"\')>=0){\n        s=\'"\'+s.replace(/"/g,\'""\')+\'"\';\n      }\n      return s;
     }).join('	');
   }).join('\n');
 
