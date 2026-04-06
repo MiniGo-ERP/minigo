@@ -9922,13 +9922,16 @@ function exportEmpReportXls(empId, from, to){
   var sickCount=marks.filter(function(d){return d.type==='sick';}).length;
   var slideCount=marks.filter(function(d){return d.type==='slide';}).length;
 
-  rows.push(['ÖSSZESÍTŐ']);
-  rows.push(['Munkanapok száma:', logs.length]);
-  rows.push(['Összes ledolgozott:', fmtOT(totalWorked)]);
-  rows.push(['Túlóra egyenleg Δ:', (totalOtDelta>0?'+':'')+fmtOT(totalOtDelta)]);
-  rows.push(['Szabadnapok:', vacCount]);
-  rows.push(['Betegszabadság:', sickCount]);
-  rows.push(['Csúsztatás:', slideCount]);
+  // Összesítő - fejléc sor + érték sor egymás mellé oszlopokba
+  rows.push(['Munkanapok száma','Összes ledolgozott','Túlóra egyenleg Δ','Szabadnapok','Betegszabadság','Csúsztatás']);
+  rows.push([
+    logs.length,
+    fmtOT(totalWorked),
+    (totalOtDelta>0?'+':'')+fmtOT(totalOtDelta),
+    vacCount,
+    sickCount,
+    slideCount
+  ]);
   rows.push([]);
 
   // Részletes fejléc
