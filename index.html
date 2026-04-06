@@ -9983,28 +9983,34 @@ function exportEmpReportXls(empId, from, to){
     }
   });
 
-  // XLS generálás (TSV → Excel kompatibilis)
-  var xlsContent=rows.map(function(row){
-    return row.map(function(cell){
+  // CSV generálás (Excel kompatibilis, UTF-8 BOM)
+  var SEP=','; // vesszővel elválasztott
+  var csvLines=[];
+  rows.forEach(function(row){
+    var line=row.map(function(cell){
       var s=String(cell===null||cell===undefined?'':cell);
-      if(s.indexOf('\t')>=0||s.indexOf('"')>=0||s.charAt(0)==='-'){
-        s='"'+s.replace(/"/g,'""')+'"';
-      }
-      return s;
-    }).join('\t');
-  }).join('\n');
+      // Mindig idézőjelbe tesszük a cellát - így biztonságos
+      s=s.replace(/"/g,'""');
+      return '"'+s+'"';
+    }).join(SEP);
+    csvLines.push(line);
+  });
+  var csvStr=csvLines.join('\r\n');
 
-  // BOM + UTF-16 LE encoding az Excel kompatibilitáshoz
-  var blob=new Blob(['﻿'+xlsContent],{type:'text/tab-separated-values;charset=utf-8'});
+  // UTF-8 BOM + CSV letöltés
+  var bom='\uFEFF';
+  var blob=new Blob([bom+csvStr],{type:'text/csv;charset=utf-8'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url;
-  a.download='riport_'+emp.lastName+'_'+emp.firstName+'_'+from+'_'+to+'.xls';
+  a.download='riport_'+emp.lastName+'_'+emp.firstName+'_'+from+'_'+to+'.csv';
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  ido_showToast('XLS riport letöltve!','ok');
+  setTimeout(function(){
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },100);
+  ido_showToast('Riport letöltve (CSV)!','ok');
 }
 
 function rptUpdateLabel(){
