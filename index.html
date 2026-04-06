@@ -9987,8 +9987,11 @@ function exportEmpReportXls(empId, from, to){
   var xlsContent=rows.map(function(row){
     return row.map(function(cell){
       var s=String(cell===null||cell===undefined?'':cell);
-      // Ha vesszőt vagy idézőjelet tartalmaz, idézőjelbe tesszük\n      if(s.indexOf(\'\t\')>=0||s.indexOf('\'"\')>=0){\n        s=\'"\'+s.replace(/"/g,\'""\')+\'"\';\n      }\n      return s;
-    }).join('	');
+      if(s.indexOf('\t')>=0||s.indexOf('"')>=0||s.charAt(0)==='-'){
+        s='"'+s.replace(/"/g,'""')+'"';
+      }
+      return s;
+    }).join('\t');
   }).join('\n');
 
   // BOM + UTF-16 LE encoding az Excel kompatibilitáshoz
