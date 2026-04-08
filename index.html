@@ -2,6 +2,9 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MiniGo – Projekt Nyomkövető</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -10750,10 +10753,14 @@ function renderQDashboard() {
   let html = '<div style="max-width:900px;">';
   html += '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);margin-bottom:20px;">📝 Árajánlatkészítő</div>';
 
-  // KPI kártyák
-  html += '<div class="stat-row" style="margin-bottom:24px;">';
-  html += '<div class="stat-card"><div class="stat-val">' + total + '</div><div class="stat-label">Összes ajánlat</div></div>';
-  html += '<div class="stat-card"><div class="stat-val" style="color:var(--accent2);">' + thisYearQ.length + '</div><div class="stat-label">Idei ajánlatok</div></div>';
+  // KPI kártyák - inline stílussal hogy ne függjenek globális CSS-től
+  html += '<div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">';
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 20px;min-width:150px;">' +
+          '<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--text);">' + total + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Összes ajánlat</div></div>';
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 20px;min-width:150px;">' +
+          '<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#9b59b6;">' + thisYearQ.length + '</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Idei ajánlatok</div></div>';
   html += '</div>';
 
   // Gyors műveletek
