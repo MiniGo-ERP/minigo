@@ -365,6 +365,8 @@
 #ido-module .nav-item {display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text-dim);transition:all .15s;border-left:2px solid transparent;}
 #ido-module .nav-item:hover {background:var(--surface2);color:var(--text);}
 #ido-module .nav-item.active {background:rgba(232,160,32,.1);color:var(--accent);border-left-color:var(--accent);}
+#quote-module .nav-item:hover {background:var(--surface2);color:var(--text);cursor:pointer;}
+#quote-module .nav-item.active {background:rgba(155,89,182,.12);color:#9b59b6;border-left-color:#9b59b6;}
 #ido-module .sidebar-divider {height:1px;background:var(--border);margin:6px 0;}
 #ido-module .module-badge {font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:3px;margin:10px 14px 4px;display:block;background:rgba(232,160,32,.12);color:var(--accent);border:1px solid rgba(232,160,32,.3);}
 #ido-module .main {flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -841,14 +843,18 @@
       </div>
 
       <!-- AJÁNLATKÉSZÍTŐ – admin only -->
-      <div class="module-tile tile-disabled" id="tile-arajanlat" onclick="window.enterQuoteModule()" >
-        <div class="tile-accent" style="background:var(--border)"></div>
+      <div class="module-tile" id="tile-arajanlat" onclick="window.enterQuoteModule()" >
+        <div class="tile-accent" style="background:#9b59b6"></div>
         <div class="tile-icon">📝</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="tile-title" style="color:var(--text-dim)">Ajánlatkészítő</div>
-          <span class="tile-tag soon">Hamarosan</span>
+          <div class="tile-title">Ajánlatkészítő</div>
+          <span class="tile-tag live">Aktív</span>
         </div>
         <div class="tile-desc">Árajánlatok összeállítása, kalkuláció, sablonok és ügyfél-specifikus anyagok generálása.</div>
+        <div class="tile-stats">
+          <div><span class="tile-stat-val" id="tstat-quote-total">–</span><span class="tile-stat-label">összes ajánlat</span></div>
+          <div><span class="tile-stat-val" id="tstat-quote-year">–</span><span class="tile-stat-label">idei ajánlat</span></div>
+        </div>
       </div>
 
       <!-- ÜRES MODUL – admin only -->
@@ -2131,6 +2137,7 @@ async function loadFromFirestore() {
       const tigTrashSnap = await getDocs(collection(db, 'tig_trash'));
       if (!tigTrashSnap.empty) tigTrashBin = tigTrashSnap.docs.map(d => d.data());
       updateMlLauncherStats();
+    updateQuoteLauncherStats();
     } catch(te){ console.warn('TIG betöltési hiba (nem kritikus):', te); }
     // Árajánlatkészítő adatok betöltése
     try {
@@ -7370,6 +7377,8 @@ function showLauncher(){
 
   // Update breadcrumb
   bc([{l:'Főmenü'}]);
+  // Quote launcher stats
+  if(typeof updateQuoteLauncherStats === 'function') updateQuoteLauncherStats();
 }
 
 // enterModule replaced by role-aware version below
@@ -7919,6 +7928,15 @@ async function loadTigsFromFirestore() {
     if (!snap.empty) tigStore = snap.docs.map(d => d.data());
     updateMlLauncherStats();
   } catch(e) { console.warn('TIG betöltési hiba:', e); }
+}
+
+function updateQuoteLauncherStats() {
+  const totalEl = document.getElementById('tstat-quote-total');
+  const yearEl  = document.getElementById('tstat-quote-year');
+  const store   = window._quoteStore || [];
+  const yr      = String(new Date().getFullYear());
+  if(totalEl) totalEl.textContent = store.length;
+  if(yearEl)  yearEl.textContent  = store.filter(q=>q.createdAt&&q.createdAt.startsWith(yr)).length;
 }
 
 function updateMlLauncherStats() {
@@ -8989,15 +9007,22 @@ window.enterModule = enterModule;
 
   // ── ÁRAJÁNLATKÉSZÍTŐ MODUL BELÉPÉS/KILÉPÉS ──────────────────────────────
   window.enterQuoteModule = function() {
+    // Launcher és MiniGo layout elrejtése
     document.getElementById('moduleLauncher').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'none';
+    const idoMod = document.getElementById('ido-module');
+    if(idoMod) idoMod.style.display = 'none';
     const migoTopbar = document.getElementById('minigo-topbar');
     if(migoTopbar) migoTopbar.style.display = 'none';
+    // Quote modul megjelenítése
     const quoteMod = document.getElementById('quote-module');
     if(quoteMod) quoteMod.style.display = 'flex';
     const badge = document.getElementById('quote-userBadge');
     if(badge && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
-    if(window.quoteShowView) window.quoteShowView('dashboard');
+    // Dashboard renderelés rövid késéssel (DOM render után)
+    setTimeout(function() {
+      if(window.quoteShowView) window.quoteShowView('dashboard');
+    }, 30);
   };
 
   function quoteModuleBack() {
@@ -10774,8 +10799,9 @@ function renderQDashboard() {
 
 function calcQNet(q) {
   let net = 0;
+  if(!q || !q.sections) return net;
   ['material','work','travel'].forEach(function(sec) {
-    (q.sections[sec]||[]).forEach(function(row) {
+    ((q.sections||{})[sec]||[]).forEach(function(row) {
       net += (parseFloat(row.qty)||0) * (parseFloat(row.unitPrice)||0);
     });
   });
@@ -10986,7 +11012,7 @@ function qSaveSettings() {
   _qSettings = s;
   window._quoteSettings = s;
   if(window.fbSaveQuoteSettings) window.fbSaveQuoteSettings(s).catch(function(e){console.error(e);});
-  alert('✓ Beállítások elmentve!');
+  if(typeof showToast==='function') showToast('✓ Beállítások elmentve!'); else alert('✓ Beállítások elmentve!');
   quoteShowView('settings');
 }
 
@@ -11315,7 +11341,7 @@ function qSaveDraft() {
   else _qStore.push(q);
   window._quoteStore = _qStore;
   if(window.fbSaveQuote) window.fbSaveQuote(q).catch(function(e){console.error(e);});
-  alert('✓ Ajánlat mentve: ' + q.id);
+  if(typeof showToast==='function') showToast('✓ Ajánlat mentve: ' + q.id); else alert('✓ Ajánlat mentve: ' + q.id);
 }
 
 function qEditQuote(id) {
@@ -11323,8 +11349,10 @@ function qEditQuote(id) {
   if(!q) return;
   _qDraft = JSON.parse(JSON.stringify(q));
   _qEditId = id;
-  quoteShowView('_editor');
-  qmc().innerHTML = renderQEditor();
+  quoteInit();
+  qNav('list'); // nav highlight: lista marad aktív szerkesztés közben
+  const mc = qmc();
+  if(mc) mc.innerHTML = renderQEditor();
 }
 
 function qDelQuote(id) {
@@ -11387,8 +11415,9 @@ function qGeneratePreview() {
 }
 
 function qPreviewQuote(id) {
+  quoteInit(); // friss settings és items betöltése
   const q = _qStore.find(function(x){return x.id===id;});
-  if(!q) return;
+  if(!q) { alert('Ajánlat nem található: ' + id); return; }
   const html = buildQPdfHtml(q);
   openQPreviewModal(q.id, html);
 }
@@ -11450,8 +11479,9 @@ function buildQPdfHtml(q) {
     {key:'work',     title:'Munkadíj'},
     {key:'travel',   title:'Kiszállás / Utazás'},
   ];
+  const qSections = q.sections || {};
   secDefs.forEach(function(sec) {
-    const rows = (q.sections[sec.key]||[]).filter(function(r){return (parseFloat(r.qty)||0)*(parseFloat(r.unitPrice)||0)>0 || r.customName||r.itemId;});
+    const rows = (qSections[sec.key]||[]).filter(function(r){return (parseFloat(r.qty)||0)*(parseFloat(r.unitPrice)||0)>0 || r.customName||r.itemId;});
     if(rows.length===0) return;
     let secNet = 0;
     let rowsHtml = '';
