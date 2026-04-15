@@ -2966,21 +2966,13 @@ function doSearch(val){
     :`<div class="empty-state"><div class="em-icon">🔍</div><div class="em-title">Nincs találat</div><div style="font-size:12px;margin-top:4px;color:var(--text-dim)">„${val}" – próbálj más keresési feltételt</div></div>`;
 }
 function filterByStatus(idx){
-  // Close dropdown if open
   closeStatusDropdown();
-  if(idx===-1){
-    nav('nav-projects');
-    bc([{l:'Projektek'}]);
-    mc().innerHTML=renderProjects(projects, false);
-    return;
+  _filterStatus = idx; // állapot mentése
+  projApplyFilters();
+  // Breadcrumb frissítése
+  if(idx !== -1) {
+    bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
   }
-  const f=projects.filter(p=>p.status===idx);
-  const CLOSED_STATUS = 8; // s-9 cls but index 8
-  const isClosed = idx === CLOSED_STATUS;
-  nav('nav-projects');
-  bc([{l:'Projektek',o:"showView('projects')"},{l:STATUSES[idx]?STATUSES[idx].label:'Státusz'}]);
-  // renderProjects with all items regardless of open/closed when filtering by status
-  mc().innerHTML=renderProjectsFiltered(f, idx);
 }
 
 function renderProjectsFiltered(list, statusIdx){
@@ -3096,36 +3088,19 @@ Object.assign(window, {toggleStatusDropdown,closeStatusDropdown,selectStatusFilt
 function filterByType(typ){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
-
-  // Ha üres -> összes projekt
-  if(!typ){
-    nav('nav-projects');
-    bc([{l:'Projektek'}]);
-    nav('nav-projects'); bc([{l:'Projektek'}]);
-    mc().innerHTML = renderProjects(projects, false);
-    return;
+  // Normalize
+  function toKey(v){ if(!v) return ''; return v.toUpperCase().replace(/\s+/g,'').replace('TELEPÍTÉS','TELEPITES').replace('SZERVÍZ','SZERVIZ').replace('TANÁCSADÁS','TANACSADAS'); }
+  _filterType = typ ? toKey(typ) : ''; // állapot mentése
+  projApplyFilters();
+  // Breadcrumb
+  if(_filterType) {
+    bc([{l:'Projektek', o:"showView('projects')"}, {l: TYPE_LABELS[_filterType]||_filterType, color: TYPE_COLORS[_filterType]}]);
   }
-
-  // Normalize tárolt érték -> kulcs (bármilyen formátum)
-  function toKey(v){
-    if(!v) return '';
-    const u = v.toUpperCase();
-    if(u.includes('TELEP')) return 'TELEPITES';
-    if(u.includes('SZERV')) return 'SZERVIZ';
-    if(u.includes('TANAC') || u.includes('TAN\u00C1C')) return 'TANACSADAS';
-    if(u.includes('OTTHON')) return 'OTTHON';
-    return u;
-  }
-
-  const f = projects.filter(p => toKey(p.projectType) === typ);
-
-  nav('nav-projects');
-  bc([{l:'Projektek', o:"showView('projects')"}, {l: TYPE_LABELS[typ]||typ, color: TYPE_COLORS[typ]}]);
-  mc().innerHTML = renderProjects(f, false, typ);
 }
-
 // ── PROJEKT ÉV SZŰRŐ ────────────────────────────────────────────────────────
-let _activeYears = []; // pl. [2024, 2025]
+let _activeYears  = [];   // aktív évek pl. ['2024', '2025']
+let _filterStatus = -1;   // aktív státusz szűrő (-1 = mind)
+let _filterType   = '';   // aktív típus szűrő ('' = mind)
 
 function projInitYearFilter() {
   // Összeszedjük az összes projektre jellemző évet
@@ -3133,13 +3108,13 @@ function projInitYearFilter() {
   projects.forEach(function(p) {
     const yr = (p.createdAt||'').slice(0,4);
     if(yr && yr > '2020') allYears.add(yr);
-    // incomeInvoices évei is
     (p.incomeInvoices||[]).forEach(function(i){ if(i.date) allYears.add(i.date.slice(0,4)); });
   });
   // Ha nincs aktív szűrő, alapból az idei év
   if(_activeYears.length === 0) {
     _activeYears = [new Date().getFullYear().toString()];
   }
+  // Típus és státusz szűrőket nem reseteljük (user választotta őket)
   projRenderYearFilter([...allYears].sort().reverse());
 }
 
@@ -3176,41 +3151,67 @@ function projToggleYear(yr, checked) {
   } else {
     _activeYears = _activeYears.filter(function(y){ return y !== yr; });
   }
-  projApplyYearFilter();
+  projApplyFilters();
+}
+
+// ── KOMBINÁLT SZŰRŐ ─────────────────────────────────────────────────────────
+function projApplyFilters() {
+  // 1. Év szűrő
+  let filtered = projects.slice();
+  if(_activeYears.length > 0) {
+    filtered = filtered.filter(function(p) {
+      return _activeYears.some(function(yr) {
+        if((p.createdAt||'').startsWith(yr)) return true;
+        if((p.incomeInvoices||[]).some(function(i){ return (i.date||'').startsWith(yr); })) return true;
+        if((p.costInvoices||[]).some(function(i){ return (i.date||'').startsWith(yr); })) return true;
+        return false;
+      });
+    });
+  }
+
+  // 2. Státusz szűrő
+  if(_filterStatus !== -1) {
+    filtered = filtered.filter(function(p){ return p.status === _filterStatus; });
+  } else {
+    // Alapból a nyitott projektek (status !== 8)
+    filtered = filtered.filter(function(p){ return p.status !== 8; });
+  }
+
+  // 3. Típus szűrő
+  if(_filterType) {
+    filtered = filtered.filter(function(p){
+      return (p.projectType||'').toUpperCase() === _filterType.toUpperCase();
+    });
+  }
+
+  // Frissítjük a dashboardDateFrom/To-t az aktív évek alapján
+  if(_activeYears.length > 0) {
+    const sortedYrs = [..._activeYears].sort();
+    dashboardDateFrom = sortedYrs[0] + '-01-01';
+    dashboardDateTo   = sortedYrs[sortedYrs.length-1] + '-12-31';
+  } else {
+    const curYear = new Date().getFullYear().toString();
+    dashboardDateFrom = curYear + '-01-01';
+    dashboardDateTo   = curYear + '-12-31';
+  }
+
+  nav('nav-projects');
+  bc([{l:'Projektek'}]);
+  // Megjelenítés - ha státusz szűrő aktív, renderProjectsFiltered-et használunk
+  if(_filterStatus !== -1) {
+    mc().innerHTML = renderProjectsFiltered(filtered, _filterStatus);
+  } else {
+    mc().innerHTML = renderProjects(filtered, false, _filterType || undefined);
+  }
+  // Év szűrő UI frissítése
+  projRenderYearFilter([...new Set(projects.map(function(p){
+    return (p.createdAt||'').slice(0,4);
+  }).filter(Boolean))].sort().reverse());
 }
 
 function projApplyYearFilter() {
-  if(_activeYears.length === 0) {
-    // Ha nincs kijelölt év, mindent mutasson
-    dashboardDateFrom = null;
-    dashboardDateTo = null;
-    mc().innerHTML = renderProjects(projects, false);
-    return;
-  }
-  // Több év esetén az összes évet lefedő tartomány
-  const sortedYrs = [..._activeYears].sort();
-  dashboardDateFrom = sortedYrs[0] + '-01-01';
-  dashboardDateTo   = sortedYrs[sortedYrs.length-1] + '-12-31';
-
-  // Szűrjük a projekteket: createdAt vagy invoice dátum a kijelölt évekbe esik
-  const filtered = projects.filter(function(p) {
-    return _activeYears.some(function(yr) {
-      // Projekt létrehozási év
-      if((p.createdAt||'').startsWith(yr)) return true;
-      // Bevételi számla dátuma
-      if((p.incomeInvoices||[]).some(function(i){ return (i.date||'').startsWith(yr); })) return true;
-      // Szállítói számla dátuma
-      if((p.costInvoices||[]).some(function(i){ return (i.date||'').startsWith(yr); })) return true;
-      return false;
-    });
-  });
-
-  nav('nav-projects'); bc([{l:'Projektek'}]);
-  mc().innerHTML = renderProjects(filtered, false);
-  // Frissítsük a szűrő UI-t is
-  projRenderYearFilter([...new Set(projects.map(function(p){ return (p.createdAt||'').slice(0,4); }).filter(Boolean))].sort().reverse());
+  projApplyFilters();
 }
-
 // ── MODALS ────────────────────────────────────────────────────────────────────
 const openModal  = id => document.getElementById(id).classList.add('active');
 const closeModal = id => document.getElementById(id).classList.remove('active');
