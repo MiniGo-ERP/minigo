@@ -2658,13 +2658,16 @@ function renderClientProjects(cid){
 }
 
 // ── PROJEKTEK LISTA ───────────────────────────────────────────────────────────
-function renderProjects(list, showClosed, activeType){
+function renderProjects(list, showClosed, activeType, showAll){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
   const CLOSED_STATUS = 8;
 
   let displayList;
-  if(activeType){
+  if(showAll) {
+    // Év szűrő: mindent mutat (nyitott + lezárt)
+    displayList = list;
+  } else if(activeType){
     // Típus szűrésnél: mutasd az összes találatot (nyitott + lezárt vegyesen)
     displayList = list;
   } else {
@@ -3171,11 +3174,13 @@ function projApplyFilters() {
 
   // 2. Státusz szűrő
   if(_filterStatus !== -1) {
+    // Explicit státusz választva: csak azok
     filtered = filtered.filter(function(p){ return p.status === _filterStatus; });
-  } else {
-    // Alapból a nyitott projektek (status !== 8)
+  } else if(_activeYears.length === 0) {
+    // Nincs év szűrő és nincs státusz szűrő: alapból nyitottak
     filtered = filtered.filter(function(p){ return p.status !== 8; });
   }
+  // Ha van év szűrő de nincs státusz szűrő: mindent mutasson (nyitott + lezárt)
 
   // 3. Típus szűrő
   if(_filterType) {
@@ -3197,10 +3202,15 @@ function projApplyFilters() {
 
   nav('nav-projects');
   bc([{l:'Projektek'}]);
-  // Megjelenítés - ha státusz szűrő aktív, renderProjectsFiltered-et használunk
+  // Megjelenítés
   if(_filterStatus !== -1) {
+    // Explicit státusz: renderProjectsFiltered
     mc().innerHTML = renderProjectsFiltered(filtered, _filterStatus);
+  } else if(_activeYears.length > 0) {
+    // Év szűrő aktív: összes érintett projekt (nyitott + lezárt), típus szűrővel
+    mc().innerHTML = renderProjects(filtered, false, _filterType || undefined, true);
   } else {
+    // Alapértelmezett: nyitott projektek
     mc().innerHTML = renderProjects(filtered, false, _filterType || undefined);
   }
   // Év szűrő UI frissítése
