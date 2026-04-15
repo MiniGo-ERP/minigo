@@ -2423,21 +2423,38 @@ function showView(v, x){
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────────────────────
 let dashboardDateFrom = null;
+let dashboardAllTime  = false; // "Összes" mód flag
 let dashboardDateTo = null;
 function applyDashboardFilter(){
+  dashboardAllTime = false;
   dashboardDateFrom = document.getElementById('dash-from').value || null;
   dashboardDateTo   = document.getElementById('dash-to').value   || null;
   mc().innerHTML = renderDashboard();
 }
 function resetDashboardFilter(){
+  dashboardAllTime  = false;
   dashboardDateFrom = null;
-  dashboardDateTo = null;
+  dashboardDateTo   = null;
   const curYear = new Date().getFullYear().toString();
-  document.getElementById('dash-from').value = curYear + '-01-01';
-  document.getElementById('dash-to').value   = curYear + '-12-31';
+  const fromEl = document.getElementById('dash-from');
+  const toEl   = document.getElementById('dash-to');
+  if(fromEl) fromEl.value = curYear + '-01-01';
+  if(toEl)   toEl.value   = curYear + '-12-31';
+  mc().innerHTML = renderDashboard();
+}
+
+function allTimeDashboard(){
+  dashboardAllTime  = true;
+  dashboardDateFrom = null;
+  dashboardDateTo   = null;
+  const fromEl = document.getElementById('dash-from');
+  const toEl   = document.getElementById('dash-to');
+  if(fromEl) fromEl.value = '';
+  if(toEl)   toEl.value   = '';
   mc().innerHTML = renderDashboard();
 }
 function filterInvoicesByDate(invoices){
+  if(dashboardAllTime) return invoices; // "Összes" mód: nincs dátum szűrés
   return invoices.filter(i=>{
     if(!i.date) return true;
     if(dashboardDateFrom && i.date < dashboardDateFrom) return false;
@@ -2458,8 +2475,8 @@ function renderDashboard(){
   const tInc  = projects.reduce((s,p)=>s+pIncomeFiltered(p),0);
   const tCost = projects.reduce((s,p)=>s+pCostFiltered(p),0);
   const tPro  = tInc - tCost;
-  const isCurrentYear = dashboardDateFrom===curYear+'-01-01' && dashboardDateTo===curYear+'-12-31';
-  const periodLabel = isCurrentYear ? curYear+'. év' : (dashboardDateFrom||'?')+' – '+(dashboardDateTo||'?');
+  const isCurrentYear = !dashboardAllTime && dashboardDateFrom===curYear+'-01-01' && dashboardDateTo===curYear+'-12-31';
+  const periodLabel = dashboardAllTime ? 'Összes idő' : isCurrentYear ? curYear+'. év' : (dashboardDateFrom||'?')+' – '+(dashboardDateTo||'?');
   return `
   <div class="stats-row">
     <div class="stat-card"><div class="stat-val">${tot}</div><div class="stat-label">Összes projekt</div></div>
@@ -2478,6 +2495,7 @@ function renderDashboard(){
       <input id="dash-to" type="date" class="form-input" style="width:150px;padding:5px 8px;font-size:11px;" value="${dashboardDateTo||''}">
       <button class="btn btn-primary" style="padding:5px 12px;font-size:10px;" onclick="applyDashboardFilter()">✓ Alkalmaz</button>
       <button class="btn btn-secondary" style="padding:5px 12px;font-size:10px;" onclick="resetDashboardFilter()">↺ Idei év</button>
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:10px;${dashboardAllTime?'background:var(--accent);color:#000;border-color:var(--accent);':''}" onclick="allTimeDashboard()">📊 Összes</button>
     </div>
     <span style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-left:auto;">${periodLabel}</span>
   </div>
@@ -7959,7 +7977,7 @@ function openExportModal(){
   m.classList.add('active');
   m.addEventListener('click', e=>{ if(e.target===m) closeModal('exportModal'); });
 }
-Object.assign(window, { exportProjectsXLS, openExportModal });
+Object.assign(window, { exportProjectsXLS, openExportModal, allTimeDashboard });
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ── MUNKALAPKÉSZÍTŐ MODUL ─────────────────────────────────────────────────────
