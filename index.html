@@ -12126,7 +12126,7 @@ function raktarShowCat(catId) {
     html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:24px 0;">Nincs tétel ebben a kategóriában.</div>';
   } else {
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-    html += '<th>Megnevezés</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Min. készlet</th><th>Projekt</th><th>Megjegyzés</th><th></th>';
+    html += '<th>Megnevezés</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Min. készlet</th><th>Hely</th><th>Komment</th><th></th>';
     html += '</tr></thead><tbody>';
     catItems.forEach(function(it) {
       var qty = rQty(it.id);
@@ -12138,7 +12138,8 @@ function raktarShowCat(catId) {
       html += '<td style="font-family:var(--mono);font-size:13px;color:'+(low?'#e05252':qty>0?'#27ae60':'var(--text-dim)')+'">'+qty+(it.unit?' '+it.unit:'')+'</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+(it.minQty||'–')+'</td>';
       html += '<td style="font-size:11px;color:var(--text-dim);">'+(it.projectId||'–')+'</td>';
-      html += '<td style="font-size:11px;color:var(--text-dim);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(it.note||'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.location||'')+'">'+(it.location?'📍 '+it.location:'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.comment||'')+'">'+(it.comment||'–')+'</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" title="Iktatás" onclick="raktarIktatFor(\''+it.id+'\')" style="color:#27ae60;">📥</button>';
       html += '<button class="icon-btn" title="Kiadás" onclick="raktarKiadFor(\''+it.id+'\')" style="color:#e8a020;">📤</button>';
@@ -12184,7 +12185,7 @@ function renderRItems(filter) {
     html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0;">Nincs tétel. Adj hozzá az "Új tétel" gombbal!</div>';
   } else {
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-    html += '<th>Megnevezés</th><th>Kategória</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Min.</th><th>Projekt</th><th></th>';
+    html += '<th>Megnevezés</th><th>Kategória</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Min.</th><th>Hely</th><th>Komment</th><th></th>';
     html += '</tr></thead><tbody>';
     list.forEach(function(it) {
       var cat = _rCats.find(function(c){return c.id===it.catId;});
@@ -12198,6 +12199,8 @@ function renderRItems(filter) {
       html += '<td style="font-family:var(--mono);color:'+(low?'#e05252':qty>0?'#27ae60':'var(--text-dim)')+'">'+qty+'</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+(it.minQty||'–')+'</td>';
       html += '<td style="font-size:11px;color:var(--text-dim);">'+(it.projectId||'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.location||'')+'">'+(it.location?'📍 '+it.location:'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.comment||'')+'">'+(it.comment||'–')+'</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" style="color:#27ae60;" title="Iktatás" data-rid="'+it.id+'" onclick="raktarIktatFor(this.dataset.rid)">📥</button>';
       html += '<button class="icon-btn" style="color:#e8a020;" title="Kiadás" data-rid="'+it.id+'" onclick="raktarKiadFor(this.dataset.rid)">📤</button>';
@@ -12262,6 +12265,12 @@ function rNewItemForm(preItemId, preCatId) {
   html += '<div class="form-row"><label class="form-label">Kapcsolódó projekt</label>';
   html += '<select class="form-input" id="ri-project">'+projOpts+'</select></div>';
 
+  html += '<div class="form-row"><label class="form-label">Raktári hely / Elhelyezés</label>';
+  html += '<input class="form-input" id="ri-location" value="'+(item?item.location||'':'')+'" placeholder="pl. Garázs, Raktár A1 polc, Budapest XIV. ker., Szerszámoskamra..."></div>';
+
+  html += '<div class="form-row"><label class="form-label">Komment / Egyedi jellemző</label>';
+  html += '<textarea class="form-input" id="ri-comment" rows="2" placeholder="pl. Használt tétel, felújított, garanciális, gyári hibás, csak külsőre...">'+(item?item.comment||'':'')+'</textarea></div>';
+
   html += '<div class="form-row"><label class="form-label">Megjegyzés</label>';
   html += '<textarea class="form-input" id="ri-note" rows="2" placeholder="Opcionális leírás...">'+(item?item.note||'':'')+'</textarea></div>';
 
@@ -12274,13 +12283,15 @@ function rNewItemForm(preItemId, preCatId) {
 }
 
 function rSaveItem(editId) {
-  var name    = (document.getElementById('ri-name')||{}).value||'';
-  var catId   = (document.getElementById('ri-cat')||{}).value||'';
-  var unit    = (document.getElementById('ri-unit')||{}).value||'db';
-  var tipus   = (document.getElementById('ri-tipus')||{}).value||'';
-  var minQty  = (document.getElementById('ri-minqty')||{}).value||'';
-  var projId  = (document.getElementById('ri-project')||{}).value||'';
-  var note    = (document.getElementById('ri-note')||{}).value||'';
+  var name     = (document.getElementById('ri-name')||{}).value||'';
+  var catId    = (document.getElementById('ri-cat')||{}).value||'';
+  var unit     = (document.getElementById('ri-unit')||{}).value||'db';
+  var tipus    = (document.getElementById('ri-tipus')||{}).value||'';
+  var minQty   = (document.getElementById('ri-minqty')||{}).value||'';
+  var projId   = (document.getElementById('ri-project')||{}).value||'';
+  var note     = (document.getElementById('ri-note')||{}).value||'';
+  var location = (document.getElementById('ri-location')||{}).value||'';
+  var comment  = (document.getElementById('ri-comment')||{}).value||'';
   if(!name){ alert('Add meg a megnevezést!'); return; }
   if(!catId){ alert('Válassz kategóriát!'); return; }
 
@@ -12290,10 +12301,12 @@ function rSaveItem(editId) {
     if(!it) return;
     it.name=name; it.catId=catId; it.unit=unit; it.tipus=tipus;
     it.minQty=minQty; it.projectId=projId; it.note=note;
+    it.location=location; it.comment=comment;
     it.updatedAt = rNow();
   } else {
     it = {id:'ri_'+Date.now(), name:name, catId:catId, unit:unit, tipus:tipus,
-          minQty:minQty, projectId:projId, note:note, createdAt:rNow(), updatedAt:rNow()};
+          minQty:minQty, projectId:projId, note:note, location:location, comment:comment,
+          createdAt:rNow(), updatedAt:rNow()};
     _rItems.push(it);
   }
   window._raktarItems = _rItems;
@@ -12712,7 +12725,7 @@ function rGenReport() {
   html += '</div>';
   html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
   html += '<th>Megnevezés</th><th>Kategória</th><th>Típus</th><th>Egység</th><th>Jelenlegi készlet</th>';
-  html += '<th>Mozgások száma</th><th>Összes bevét</th><th>Összes kiadás</th>';
+  html += '<th>Mozgások száma</th><th>Összes bevét</th><th>Összes kiadás</th><th>Hely</th><th>Komment</th>';
   html += '</tr></thead><tbody>';
 
   rows.forEach(function(r) {
@@ -12728,6 +12741,8 @@ function rGenReport() {
     html += '<td style="font-family:var(--mono);">'+r.logs.length+'</td>';
     html += '<td style="font-family:var(--mono);color:#27ae60;">'+inn+'</td>';
     html += '<td style="font-family:var(--mono);color:#e8a020;">'+out+'</td>';
+    html += '<td style="font-size:11px;color:var(--text-dim);">'+(r.item.location?'📍 '+r.item.location:'–')+'</td>';
+    html += '<td style="font-size:11px;color:var(--text-dim);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(r.item.comment||'–')+'</td>';
     html += '</tr>';
   });
   html += '</tbody></table></div>';
@@ -12741,11 +12756,11 @@ function rExportXLS() {
   var rows = window._raktarReportData || [];
   if(!rows.length){ alert('Generálj riportot először!'); return; }
 
-  var lines = [['Megnevezés','Kategória','Típus','Egység','Jelenlegi készlet','Mozgások','Összes bevét','Összes kiadás','Min. készlet','Projekt','Megjegyzés']];
+  var lines = [['Megnevezés','Kategória','Típus','Egység','Jelenlegi készlet','Mozgások','Összes bevét','Összes kiadás','Min. készlet','Hely','Komment','Projekt','Megjegyzés']];
   rows.forEach(function(r) {
     var inn = r.logs.filter(function(l){return l.type==='in';}).reduce(function(s,l){return s+(parseFloat(l.qty)||0);},0);
     var out = r.logs.filter(function(l){return l.type==='out';}).reduce(function(s,l){return s+(parseFloat(l.qty)||0);},0);
-    lines.push([r.item.name, r.cat?r.cat.name:'', r.item.tipus||'', r.item.unit||'', r.qty, r.logs.length, inn, out, r.item.minQty||'', r.item.projectId||'', r.item.note||'']);
+    lines.push([r.item.name, r.cat?r.cat.name:'', r.item.tipus||'', r.item.unit||'', r.qty, r.logs.length, inn, out, r.item.minQty||'', r.item.location||'', r.item.comment||'', r.item.projectId||'', r.item.note||'']);
   });
   var tsv = lines.map(function(row){ return row.join('\t'); }).join('\n');
   var blob = new Blob(['\ufeff'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
