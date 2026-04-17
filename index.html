@@ -12445,6 +12445,106 @@ function raktarIktatFor(id) {
 }
 window.raktarIktatFor = raktarIktatFor;
 
+// ── TÉTEL SZERKESZTÉS / TÖRLÉS ────────────────────────────────────────────────
+function rEditItem(id) {
+  raktarInit();
+  rNewItemForm(id);
+}
+
+function rDelItem(id) {
+  if(!confirm('Biztosan törlöd? A mozgásnapló megmarad.')) return;
+  var it = _rItems.find(function(i){ return i.id === id; });
+  if(!it) return;
+  _rItems = _rItems.filter(function(i){ return i.id !== id; });
+  window._raktarItems = _rItems;
+  var trash = {id:'rt_'+Date.now(), type:'item', data:it, deletedAt:rNow()};
+  _rTrash.push(trash);
+  window._raktarTrash = _rTrash;
+  if(window.fbDelRaktarItem)   window.fbDelRaktarItem(id).catch(function(e){console.error(e);});
+  if(window.fbSaveRaktarTrash) window.fbSaveRaktarTrash(trash).catch(function(e){console.error(e);});
+  if(typeof showToast === 'function') showToast('🗑️ Tétel kukába került.');
+  updateRaktarLauncherStats();
+  raktarShowView('items');
+}
+
+// ── IKTATÁS (BEVÉT) ────────────────────────────────────────────────────────────
+function renderRIktat(preItemId) {
+  var html = '<div style="max-width:600px;">';
+  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#27ae60;margin-bottom:20px;">📥 Iktatás – Bevét</div>';
+  html += '<div style="background:rgba(39,174,96,0.05);border:1px solid rgba(39,174,96,0.2);border-radius:8px;padding:20px;">';
+  html += '<div class="form-row"><label class="form-label">Tétel keresése *</label>';
+  html += '<input class="form-input" id="rik-search" placeholder="🔍 Kezd el gépelni a tétel nevét..." oninput="rIktatSearch()">';
+  html += '<div id="rik-results" style="margin-top:6px;"></div>';
+  html += '<input type="hidden" id="rik-item-id">';
+  html += '<div id="rik-selected" style="display:none;background:rgba(22,160,133,0.08);border:1px solid rgba(22,160,133,0.3);border-radius:5px;padding:8px 12px;margin-top:6px;font-size:12px;"></div>';
+  html += '</div>';
+  html += '<div id="rik-newitem-hint" style="display:none;margin-bottom:12px;background:rgba(22,160,133,0.06);border:1px solid rgba(22,160,133,0.2);border-radius:5px;padding:8px 12px;font-size:11px;color:#16a085;">Nem találod? <span style="cursor:pointer;text-decoration:underline;font-weight:600;" onclick="rNewItemForm()">➕ Új tétel felvitele</span></div>';
+  html += '<div class="form-row-2"><div><label class="form-label">Mennyiség *</label>';
+  html += '<input class="form-input" type="number" id="rik-qty" min="0.01" step="0.01" placeholder="0"></div>';
+  html += '<div><label class="form-label">Dátum</label>';
+  html += '<input class="form-input" type="date" id="rik-date" value="'+new Date().toISOString().slice(0,10)+'"></div></div>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés / Szállítólevél</label>';
+  html += '<input class="form-input" id="rik-note" placeholder="pl. SL-2026-123, szállítói átvétel..."></div>';
+  html += '<div style="margin-top:16px;display:flex;gap:10px;">';
+  html += '<button class="btn btn-secondary" onclick="raktarShowView(\'dashboard\')">Mégse</button>';
+  html += '<button class="btn btn-primary" style="background:#27ae60;border-color:#27ae60;" onclick="rConfirmIktat()">📥 Iktatás rögzítése</button>';
+  html += '</div></div></div>';
+  if(preItemId) {
+    setTimeout(function() {
+      var it = _rItems.find(function(i){ return i.id === preItemId; });
+      if(it) rIktatSelectItem(it.id, it.name, rQty(it.id), it.unit||'db');
+    }, 50);
+  }
+  return html;
+}
+
+function rIktatSearch() {
+  var s = ((document.getElementById('rik-search')||{}).value||'').trim().toLowerCase();
+  var res  = document.getElementById('rik-results');
+  var hint = document.getElementById('rik-newitem-hint');
+  if(!res) return;
+  if(!s) { res.innerHTML = ''; if(hint) hint.style.display = 'none'; return; }
+  var found = _rItems.filter(function(it){
+    return (it.name||'').toLowerCase().indexOf(s) >= 0 ||
+           (it.tipus||'').toLowerCase().indexOf(s) >= 0;
+  }).slice(0, 8);
+  if(found.length === 0) {
+    res.innerHTML = '';
+    if(hint) hint.style.display = 'block';
+    return;
+  }
+  if(hint) hint.style.display = 'none';
+  var html = '<div style="border:1px solid var(--border);border-radius:5px;overflow:hidden;">';
+  found.forEach(function(it) {
+    var q = rQty(it.id);
+    html += '<div class="rtp-item" data-rid="'+it.id+'" data-rname="'+it.name.replace(/"/g,'&quot;')+'" data-rqty="'+q+'" data-runit="'+(it.unit||'db')+'"' +
+            ' onclick="rIktatSelectItem(this.dataset.rid,this.dataset.rname,this.dataset.rqty,this.dataset.runit)"' +
+            ' style="padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;">' +
+            '<span style="font-weight:600;">'+it.name+'</span> ' +
+            '<span style="color:var(--text-dim);">'+(it.tipus||'')+'</span> · ' +
+            '<span style="color:'+(q>0?'#27ae60':'#e05252')+';">készlet: '+q+' '+(it.unit||'db')+'</span>' +
+            '</div>';
+  });
+  html += '</div>';
+  res.innerHTML = html;
+}
+
+function rIktatSelectItem(id, name, qty, unit) {
+  var inp = document.getElementById('rik-item-id');
+  var sel = document.getElementById('rik-selected');
+  var res = document.getElementById('rik-results');
+  var srch = document.getElementById('rik-search');
+  if(inp)  inp.value = id;
+  if(srch) srch.value = name;
+  if(res)  res.innerHTML = '';
+  var hint = document.getElementById('rik-newitem-hint');
+  if(hint) hint.style.display = 'none';
+  if(sel) {
+    sel.style.display = 'block';
+    sel.innerHTML = '✓ Kiválasztva: <strong>'+name+'</strong> · Aktuális készlet: <strong style="color:'+(qty>0?'#27ae60':'#e05252')+'">'+qty+' '+unit+'</strong>';
+  }
+}
+
 // ── KIADÁS (ALLOKÁCIÓ) ────────────────────────────────────────────────────────
 function renderRKiad(preItemId) {
   var projOpts = '<option value="">– Nincs projekt –</option>' +
@@ -12722,6 +12822,9 @@ window.rNewItemForm      = rNewItemForm;
 window.rSaveItem         = rSaveItem;
 window.rEditItem         = rEditItem;
 window.rDelItem          = rDelItem;
+window.renderRIktat      = renderRIktat;
+window.rIktatSearch      = rIktatSearch;
+window.rIktatSelectItem  = rIktatSelectItem;
 window.rLiveSearch       = rLiveSearch;
 window.rClearFilter      = rClearFilter;
 window.rIktatSearch      = rIktatSearch;
