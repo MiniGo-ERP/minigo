@@ -12292,15 +12292,10 @@ function rNewItemForm(preItemId) {
   var mc = rmc(); if(!mc) return;
   rNav('items');
 
-  // Legördülő opciók
+  // Opciók
   var unitOpts = RAKTAR_UNITS.map(function(u){
     return '<option value="'+u+'"'+(item&&item.unit===u?' selected':'')+'>'+u+'</option>';
   }).join('');
-
-  var projOpts = '<option value="">– Nincs projekt –</option>' +
-    (typeof projects !== 'undefined' ? projects.filter(function(p){return p.status!==7;}).map(function(p){
-      return '<option value="'+p.id+'"'+(item&&item.projectId===p.id?' selected':'')+'>'+(p.id+(p.desc?' – '+p.desc.slice(0,28):''))+'</option>';
-    }).join('') : '');
 
   var helyekList = rGetHelyek();
   var helyekOpts = '<option value="">– Válassz helyszínt –</option>' +
@@ -12308,118 +12303,79 @@ function rNewItemForm(preItemId) {
       return '<option value="'+h+'"'+(item&&item.location===h?' selected':'')+'>'+h+'</option>';
     }).join('');
   if(item && item.location && helyekList.indexOf(item.location) < 0)
-    helyekOpts += '<option value="'+item.location+'" selected>'+item.location+' (egyedi)</option>';
+    helyekOpts += '<option value="'+item.location+'" selected>'+item.location+'</option>';
 
   var kats2 = rGetKats();
-  var katOpts2 = '<option value="">– Kategória –</option>' +
+  var katOpts2 = '<option value="">– Válassz kategóriát –</option>' +
     kats2.map(function(k){
       return '<option value="'+k.id+'"'+(item&&item.katId===k.id?' selected':'')+'>'+k.name+'</option>';
     }).join('');
 
-  var initKatId2   = item && item.katId ? item.katId : '';
-  var initAlkats2  = initKatId2 ? rGetAlkats(initKatId2) : [];
-  var alkatOpts2   = '<option value="">– Alkategória –</option>' +
+  var initKatId2  = item && item.katId ? item.katId : '';
+  var initAlkats2 = initKatId2 ? rGetAlkats(initKatId2) : [];
+  var alkatOpts2  = '<option value="">– Válassz alkategóriát –</option>' +
     initAlkats2.map(function(a){
       return '<option value="'+a.id+'"'+(item&&item.alkatId===a.id?' selected':'')+'>'+a.name+'</option>';
     }).join('');
 
   var isEdit = !!item;
-  var title  = isEdit ? 'Tétel szerkesztése' : 'Új tétel';
 
-  var html = '<div style="max-width:660px;">';
+  var html = '<div style="max-width:560px;">';
 
   // Fejléc
-  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">';
   html += '<button class="btn btn-secondary" onclick="raktarShowView(\'items\')">← Vissza</button>';
-  html += '<div style="font-family:var(--mono);font-size:15px;font-weight:700;">'+title+'</div>';
+  html += '<div style="font-family:var(--mono);font-size:15px;font-weight:700;">'+(isEdit?'Tétel szerkesztése':'Új tétel')+'</div>';
   html += '</div>';
 
-  // ── 1. ALAP ADATOK ──────────────────────────────────────────────────────────
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">ALAP ADATOK</div>';
-
-  html += '<div class="form-row"><label class="form-label">Megnevezés *</label>';
-  html += '<input class="form-input" id="ri-name" value="'+(item?item.name:'')+'" placeholder="pl. StarCharge töltő, M8 csavar, 3x1,5 kábel..."></div>';
-
-  html += '<div style="display:grid;grid-template-columns:1fr 100px;gap:10px;">';
-  // Típus csoport
-  html += '<div><label class="form-label">Típus csoport *</label>';
-  html += '<div style="position:relative;">';
-  html += '<input class="form-input" id="ri-tipus-inp" autocomplete="off" value="'+(item?item.tipus||'':'')+'" placeholder="pl. Elektronika, Szerszám..." oninput="rTipusSearch()" onfocus="rTipusOpen()">';
-  html += '<input type="hidden" id="ri-tipus-hidden" value="'+(item?item.tipus||'':'')+'">';
-  html += '<div id="ri-tipus-dd" style="display:none;position:absolute;z-index:200;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,0.4);max-height:180px;overflow-y:auto;top:calc(100% + 4px);left:0;"></div>';
-  html += '</div></div>';
-  // Egység
-  html += '<div><label class="form-label">Egység *</label>';
-  html += '<select class="form-input" id="ri-unit">'+unitOpts+'</select></div>';
-  html += '</div>';
-
-  html += '</div>';
-
-  // ── 2. KATEGÓRIA ─────────────────────────────────────────────────────────────
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px;">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;">KATEGORIZÁLÁS</div>';
-  html += '<div style="display:flex;gap:12px;">';
-  html += '<span style="font-size:10px;color:#16a085;cursor:pointer;" data-v="kats" onclick="raktarShowView(this.dataset.v)">+ Kategóriák kezelése</span>';
-  html += '<span style="font-size:10px;color:#16a085;cursor:pointer;" data-v="alkats" onclick="raktarShowView(this.dataset.v)">+ Alkategóriák</span>';
-  html += '</div></div>';
-
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
-  html += '<div><label class="form-label">🏷️ Kategória</label>';
+  // Kategória + Alkategória + Részletezés
+  html += '<div class="form-row"><label class="form-label">🏷️ Kategória *';
+  html += ' <span style="font-weight:400;font-size:10px;color:#16a085;cursor:pointer;" data-v="kats" onclick="raktarShowView(this.dataset.v)">(kezelés)</span></label>';
   html += '<select class="form-input" id="ri-kat" onchange="rKatChange()">'+katOpts2+'</select></div>';
-  html += '<div><label class="form-label">🔖 Alkategória</label>';
+
+  html += '<div class="form-row"><label class="form-label">🔖 Alkategória';
+  html += ' <span style="font-weight:400;font-size:10px;color:#16a085;cursor:pointer;" data-v="alkats" onclick="raktarShowView(this.dataset.v)">(kezelés)</span></label>';
   html += '<select class="form-input" id="ri-alkat">'+alkatOpts2+'</select></div>';
+
+  html += '<div class="form-row"><label class="form-label">Részletezés <span style="color:var(--text-dim);font-weight:400;font-size:10px;">– szabad leírás a kategóriához</span></label>';
+  html += '<input class="form-input" id="ri-katreszlet" value="'+(item&&item.katReszlet?item.katReszlet:'')+'" placeholder="pl. 3 fázisú 22 kW, aljzatos, falra szerelt..."></div>';
+
+  html += '<div style="border-top:1px solid var(--border);margin:16px 0;"></div>';
+
+  // Egység + Készlet sor
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+  html += '<div class="form-row" style="margin:0;"><label class="form-label">Egység</label>';
+  html += '<select class="form-input" id="ri-unit">'+unitOpts+'</select></div>';
+  html += '<div class="form-row" style="margin:0;"><label class="form-label">Min. készlet <span style="color:#e8a020;" title="Ha a készlet erre a számra csökken → ⚠️ figyelmeztetés">⚠️</span></label>';
+  html += '<input class="form-input" type="number" id="ri-minqty" value="'+(item?item.minQty||'':'')+'" min="0" placeholder="0 = nincs riasztás"></div>';
   html += '</div>';
 
-  html += '<div><label class="form-label">Részletezés <span style="color:var(--text-dim);font-weight:400;">(opcionális)</span></label>';
-  html += '<input class="form-input" id="ri-katreszlet" value="'+(item&&item.katReszlet?item.katReszlet:'')+'" placeholder="pl. 3 fázisú 22 kW, aljzatos kivitel..."></div>';
+  html += '<div style="border-top:1px solid var(--border);margin:16px 0;"></div>';
 
-  html += '</div>';
-
-  // ── 3. ELHELYEZÉS ────────────────────────────────────────────────────────────
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">ELHELYEZÉS & TULAJDONOS</div>';
-
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
-  html += '<div><label class="form-label">📍 Helyszín</label>';
-  html += '<select class="form-input" id="ri-location">'+helyekOpts+'</select>';
-  html += '<span style="font-size:10px;color:#16a085;cursor:pointer;" data-v="helyek" onclick="raktarShowView(this.dataset.v)">+ Helyszínek kezelése</span>';
-  html += '</div>';
-  html += '<div><label class="form-label">👤 Tulajdonos</label>';
+  // Helyszín + Tulajdonos sor
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+  html += '<div class="form-row" style="margin:0;"><label class="form-label">📍 Helyszín';
+  html += ' <span style="font-weight:400;font-size:10px;color:#16a085;cursor:pointer;" data-v="helyek" onclick="raktarShowView(this.dataset.v)">(kezelés)</span></label>';
+  html += '<select class="form-input" id="ri-location">'+helyekOpts+'</select></div>';
+  html += '<div class="form-row" style="margin:0;"><label class="form-label">👤 Tulajdonos</label>';
   html += '<input class="form-input" id="ri-owner" value="'+(item?item.owner||'':'')+'" placeholder="pl. InfraGo Kft., Kovács J."></div>';
   html += '</div>';
 
-  html += '</div>';
+  html += '<div style="border-top:1px solid var(--border);margin:16px 0;"></div>';
 
-  // ── 4. KÉSZLET & PROJEKT ────────────────────────────────────────────────────
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">KÉSZLET & PROJEKT</div>';
+  // Komment + Megjegyzés
+  html += '<div class="form-row"><label class="form-label">💬 Komment / Egyedi jellemző</label>';
+  html += '<textarea class="form-input" id="ri-comment" rows="2" placeholder="pl. Használt tétel, garanciális, felújított...">'+(item?item.comment||'':'')+'</textarea></div>';
 
-  html += '<div style="display:grid;grid-template-columns:120px 1fr;gap:10px;">';
-  html += '<div><label class="form-label">Min. készlet <span style="color:#e8a020;font-size:9px;" title="Ha elér ide → ⚠️ jelzés">⚠️</span></label>';
-  html += '<input class="form-input" type="number" id="ri-minqty" value="'+(item?item.minQty||'':'')+'" min="0" placeholder="0"></div>';
-  html += '<div><label class="form-label">Kapcsolódó projekt</label>';
-  html += '<select class="form-input" id="ri-project">'+projOpts+'</select></div>';
-  html += '</div>';
-
-  html += '</div>';
-
-  // ── 5. EGYÉB ────────────────────────────────────────────────────────────────
-  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;margin-bottom:16px;">';
-  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:12px;">EGYÉB MEGJEGYZÉSEK</div>';
-
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
-  html += '<div><label class="form-label">💬 Komment / Jellemző</label>';
-  html += '<textarea class="form-input" id="ri-comment" rows="2" placeholder="pl. Használt, garanciális...">'+(item?item.comment||'':'')+'</textarea></div>';
-  html += '<div><label class="form-label">Megjegyzés</label>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés <span style="color:var(--text-dim);font-weight:400;font-size:10px;">– egyéb</span></label>';
   html += '<textarea class="form-input" id="ri-note" rows="2" placeholder="Egyéb megjegyzés...">'+(item?item.note||'':'')+'</textarea></div>';
-  html += '</div>';
 
-  html += '</div>';
+  // Hidden mezők amik nem kellenek a formra de a mentéshez igen
+  html += '<input type="hidden" id="ri-name" value="'+(item?item.name||'':'tmp')+'">'; // a katReszlet lesz a megnevezés alapja
+  html += '<input type="hidden" id="ri-project" value="'+(item?item.projectId||'':'')+'">'; 
 
   // Gombok
-  html += '<div style="display:flex;gap:10px;">';
+  html += '<div style="display:flex;gap:10px;margin-top:8px;">';
   html += '<button class="btn btn-secondary" onclick="raktarShowView(\'items\')">Mégse</button>';
   html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;flex:1;justify-content:center;" data-eid="'+(item?item.id:'')+'" onclick="rSaveItemCheck(this.dataset.eid)">✓ Mentés</button>';
   html += '</div>';
@@ -12427,7 +12383,7 @@ function rNewItemForm(preItemId) {
   html += '</div>';
   mc.innerHTML = html;
 
-  // Típus dropdown klikk kívülre → bezár
+  // Klikk kívülre bezárja a dropdown-t ha lenne
   setTimeout(function() {
     document.addEventListener('click', function rTipusClickOut(e) {
       var dd  = document.getElementById('ri-tipus-dd');
@@ -12442,9 +12398,16 @@ function rNewItemForm(preItemId) {
 
 
 function rSaveItem(editId) {
-  var name      = (document.getElementById('ri-name')||{}).value||'';
+  // Megnevezés: kategória / alkategória / részletezés kombinációja
+  var _katReszlet = (document.getElementById('ri-katreszlet')||{}).value||'';
+  var _katId2     = (document.getElementById('ri-kat')||{}).value||'';
+  var _alkatId2   = (document.getElementById('ri-alkat')||{}).value||'';
+  var _autoName   = '';
+  if(_katId2)   { var _kk=rGetKats().find(function(k){return k.id===_katId2;});   if(_kk)  _autoName=_kk.name; }
+  if(_alkatId2) { var _ak=rGetAlkats(_katId2).find(function(a){return a.id===_alkatId2;}); if(_ak) _autoName+=(_autoName?' – ':'')+_ak.name; }
+  var name = _katReszlet.trim() || _autoName || (document.getElementById('ri-name')||{}).value || '(névtelen tétel)';
   var unit      = (document.getElementById('ri-unit')||{}).value||'db';
-  var tipus     = ((document.getElementById('ri-tipus-hidden')||document.getElementById('ri-tipus-inp')||{}).value||'Egyéb').trim();
+  var tipus     = ((document.getElementById('ri-tipus-hidden')||{}).value||'').trim() || 'Egyéb';
   var minQty    = (document.getElementById('ri-minqty')||{}).value||'';
   var projId    = (document.getElementById('ri-project')||{}).value||'';
   var note      = (document.getElementById('ri-note')||{}).value||'';
@@ -12486,7 +12449,7 @@ function rSaveItemCheck(editId) {
   var tipus = ((document.getElementById('ri-tipus-hidden')||{}).value||'').trim();
   var inp   = (document.getElementById('ri-tipus-inp')||{}).value||'';
   var effectiveTipus = tipus || inp.trim();
-  if(!effectiveTipus) { alert('Válassz vagy adj meg típus csoportot!'); return; }
+  if(!effectiveTipus) effectiveTipus = 'Egyéb'; // típus nem kötelező az új formban
   // Szinkronizál
   var hid = document.getElementById('ri-tipus-hidden');
   if(hid) hid.value = effectiveTipus;
