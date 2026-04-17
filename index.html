@@ -74,6 +74,8 @@
   .s-5{color:#e88a20;border-color:#e88a20;background:rgba(232,138,32,0.1);}
   .s-6{color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,0.1);}
   .s-7{color:#1abc9c;border-color:#1abc9c;background:rgba(26,188,156,0.1);}
+.rtp-item:hover{background:rgba(22,160,133,0.12)!important;cursor:pointer;}
+.rtp-item-new:hover{background:rgba(22,160,133,0.06)!important;cursor:pointer;}
   .s-8{color:#3498db;border-color:#3498db;background:rgba(52,152,219,0.1);}
   .s-9{color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,0.18);}
 
@@ -870,7 +872,7 @@
         <div class="tile-desc">Raktárkészlet és egyéb nyilvántartás – kategóriák, iktatás, kiadás, riportálás.</div>
         <div class="tile-stats">
           <div><span class="tile-stat-val" id="tstat-raktar-items">–</span><span class="tile-stat-label">tétel</span></div>
-          <div><span class="tile-stat-val" id="tstat-raktar-cats">–</span><span class="tile-stat-label">kategória</span></div>
+          <div><span class="tile-stat-val" id="tstat-raktar-cats">–</span><span class="tile-stat-label">mozgás</span></div>
         </div>
       </div>
 
@@ -2720,7 +2722,7 @@ function renderClientProjects(cid){
 function renderProjects(list, showClosed, activeType, showAll){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
-  const CLOSED_STATUS = 7; // Projekt kész (volt 8, Kifizetésre vár eltávolítva)
+  const CLOSED_STATUS = 7; // Projekt kész (index 7 a STATUSES tömbben)
 
   let displayList;
   if(showAll) {
@@ -3038,7 +3040,7 @@ function filterByStatus(idx){
 }
 
 function renderProjectsFiltered(list, statusIdx){
-  const CLOSED_STATUS = 7; // Projekt kész (volt 8, Kifizetésre vár eltávolítva)
+  const CLOSED_STATUS = 7; // Projekt kész (index 7 a STATUSES tömbben)
   const st = STATUSES[statusIdx];
   const stColors = ['#6b7a96','#2d7dd2','#9b59b6','#e8a020','#e05252','#e88a20','#27ae60','#1abc9c','#3498db','#27ae60'];
   const color = st ? (stColors[statusIdx]||'var(--text-dim)') : 'var(--text-dim)';
@@ -3145,7 +3147,7 @@ document.addEventListener('click', e=>{
   if(!e.target.closest('#typeFilterDisplay')   && !e.target.closest('#typeDropdown'))   closeTypeDropdown();
 });
 
-Object.assign(window, {toggleStatusDropdown,closeStatusDropdown,selectStatusFilter,toggleTypeDropdown,closeTypeDropdown,selectTypeFilter,filterByStatus,renderProjectsFiltered,projInitYearFilter,projRenderYearFilter,projAddYearFilter,projToggleYear,projApplyYearFilter});
+Object.assign(window, {allTimeDashboard,resetDashboardFilter,toggleStatusDropdown,closeStatusDropdown,selectStatusFilter,toggleTypeDropdown,closeTypeDropdown,selectTypeFilter,filterByStatus,renderProjectsFiltered,projInitYearFilter,projRenderYearFilter,projAddYearFilter,projToggleYear,projApplyYearFilter});
 
 function filterByType(typ){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
@@ -7522,7 +7524,7 @@ function showLauncher(){
   const _mgTop = document.getElementById('minigo-topbar');
   if (_mgTop) _mgTop.style.display = '';
   // Update launcher stats
-  const openProj = projects.filter(p=>p.status!==8).length;
+  const openProj = projects.filter(p=>p.status!==7).length;
   const curYear  = new Date().getFullYear().toString();
   const yearInc  = projects.reduce((s,p)=>{
     return s + (p.incomeInvoices||[]).filter(i=>i.date&&i.date.startsWith(curYear)).reduce((ss,i)=>ss+Number(i.amount),0);
@@ -11262,7 +11264,7 @@ function renderQEditor() {
     return '<option value="' + c.id + '"' + (q.clientId===c.id?' selected':'') + '>' + c.name + '</option>';
   }).join('');
   const projectsOpts = '<option value="">– Új projekt generálása –</option>' +
-    (projects||[]).filter(function(p){return p.status!==8;}).map(function(p) {
+    (projects||[]).filter(function(p){return p.status!==7;}).map(function(p) {
       return '<option value="' + p.id + '"' + (q.projectId===p.id?' selected':'') + '>' + p.id + (p.desc?' – '+p.desc.slice(0,40):'') + '</option>';
     }).join('');
 
@@ -11367,7 +11369,7 @@ function renderQRows(secKey, rows, currency) {
   html += '<th style="text-align:right;padding:4px 8px;width:15%;">Egységár (nettó)</th>';
   html += '<th style="text-align:right;padding:4px 8px;width:15%;">Összeg</th>';
   html += '<th style="text-align:left;padding:4px 8px;width:12%;">Megj.</th>';
-  html += '<th style="width:5%;"></th>';
+  html += '<th style="width:60px;"></th>';
   html += '</tr></thead><tbody>';
 
   rows.forEach(function(row, idx) {
@@ -11768,14 +11770,14 @@ function renderQList(filter) {
 }
 
 function qListFilter() {
-  var mc = document.getElementById('q-mc');
+  var mc = document.getElementById('quote-mc');
   if(!mc) return;
   var search = (document.getElementById('ql-search')||{}).value||'';
   var date   = (document.getElementById('ql-date')||{}).value||'';
-  mc.innerHTML = renderQList({search, date});
+  mc.innerHTML = renderQList({search:search, date:date});
 }
 function qListFilterReset() {
-  var mc = document.getElementById('q-mc');
+  var mc = document.getElementById('quote-mc');
   if(mc) mc.innerHTML = renderQList({search:'', date:''});
 }
 
@@ -12081,7 +12083,12 @@ function raktarInit() {
   _rItems = (window._raktarItems || []).slice();
   _rLogs  = (window._raktarLogs  || []).slice();
   _rTrash = (window._raktarTrash || []).slice();
-  // Frissítjük a predefined halmazt a meglévő tételek tipus mezőjéből
+  // Betöltjük a mentett predefined listát ha van
+  var savedPresets = window._raktarCats && window._raktarCats.find(function(c){return c.id==='preset_list';});
+  if(savedPresets && savedPresets.presets) {
+    savedPresets.presets.forEach(function(p){ if(_rPresets.indexOf(p)<0) _rPresets.push(p); });
+  }
+  // Kiegészítjük a meglévő tételek típusaival
   _rItems.forEach(function(it) {
     if(it.tipus && _rPresets.indexOf(it.tipus) < 0) _rPresets.push(it.tipus);
   });
@@ -12223,19 +12230,28 @@ function renderRItems(search, filterTipus) {
     html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;padding:20px 0;">Nincs találat.</div>';
   } else {
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-    html += '<th>Megnevezés</th><th>Típus csoport</th><th>Egység</th><th>Készlet</th><th>Min.</th><th>Hely</th><th>Komment</th><th></th>';
+    html += '<th style="min-width:160px;">Megnevezés</th>';
+    html += '<th style="min-width:120px;">Típus</th>';
+    html += '<th style="min-width:70px;text-align:center;">Egység</th>';
+    html += '<th style="min-width:90px;text-align:center;">Készlet</th>';
+    html += '<th style="min-width:60px;text-align:center;">Min.</th>';
+    html += '<th style="min-width:80px;">Tulajdonos</th>';
+    html += '<th style="min-width:100px;">Hely</th>';
+    html += '<th style="min-width:120px;">Komment</th>';
+    html += '<th style="min-width:90px;"></th>';
     html += '</tr></thead><tbody>';
     list.forEach(function(it) {
       var qty = rQty(it.id);
       var low = it.minQty && qty <= parseFloat(it.minQty||0);
       html += '<tr>';
-      html += '<td style="font-weight:600;">'+(low?'⚠️ ':'')+it.name+'</td>';
-      html += '<td style="font-size:11px;"><span style="background:rgba(22,160,133,0.1);color:#16a085;padding:2px 8px;border-radius:10px;font-size:10px;">'+(it.tipus||'Egyéb')+'</span></td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;">'+(it.unit||'–')+'</td>';
-      html += '<td style="font-family:var(--mono);font-size:13px;color:'+(low?'#e05252':qty>0?'#27ae60':'var(--text-dim)')+';">'+qty+(it.unit?' '+it.unit:'')+'</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+(it.minQty||'–')+'</td>';
-      html += '<td style="font-size:11px;color:var(--text-dim);">'+(it.location?'📍 '+it.location:'–')+'</td>';
-      html += '<td style="font-size:11px;color:var(--text-dim);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.comment||'')+'">'+(it.comment||'–')+'</td>';
+      html += '<td style="font-weight:600;padding:10px 12px;">'+(low?'⚠️ ':'')+it.name+'</td>';
+      html += '<td style="padding:10px 12px;"><span style="background:rgba(22,160,133,0.1);color:#16a085;padding:2px 8px;border-radius:10px;font-size:10px;white-space:nowrap;">'+(it.tipus||'Egyéb')+'</span></td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;text-align:center;padding:10px 12px;">'+(it.unit||'–')+'</td>';
+      html += '<td style="font-family:var(--mono);font-size:13px;font-weight:700;text-align:center;padding:10px 12px;color:'+(low?'#e05252':qty>0?'#27ae60':'var(--text-dim)')+';">'+qty+'</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;text-align:center;color:var(--text-dim);padding:10px 12px;">'+(it.minQty||'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);padding:10px 12px;">'+(it.owner?'👤 '+it.owner:'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);padding:10px 12px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.location||'')+'">'+(it.location?'📍 '+it.location:'–')+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);padding:10px 12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+(it.comment||'')+'">'+(it.comment||'–')+'</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" style="color:#27ae60;" title="Iktatás" data-rid="'+it.id+'" onclick="raktarIktatFor(this.dataset.rid)">📥</button>';
       html += '<button class="icon-btn" style="color:#e8a020;" title="Kiadás" data-rid="'+it.id+'" onclick="raktarKiadFor(this.dataset.rid)">📤</button>';
@@ -12269,38 +12285,44 @@ function rNewItemForm(preItemId) {
   var mc = rmc(); if(!mc) return;
   rNav('items');
 
-  // Predefined halmazok mint datalist
-  var presetList = '<datalist id="r-tipus-list">' +
-    _rPresets.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('') +
-    '</datalist>';
-
   var unitOpts = RAKTAR_UNITS.map(function(u){return '<option value="'+u+'"'+(item&&item.unit===u?' selected':'')+'>'+u+'</option>';}).join('');
   var projOpts = '<option value="">– Nincs projekt –</option>' +
     (typeof projects !== 'undefined' ? projects.filter(function(p){return p.status!==7;}).map(function(p){
       return '<option value="'+p.id+'"'+(item&&item.projectId===p.id?' selected':'')+'>'+(p.id+(p.desc?' – '+p.desc.slice(0,30):''))+'</option>';
     }).join('') : '');
 
-  var html = '<div style="max-width:600px;">';
+  var html = '<div style="max-width:620px;">';
   html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">';
   html += '<button class="btn btn-secondary" onclick="raktarShowView(\'items\')">← Vissza</button>';
   html += '<div style="font-family:var(--mono);font-size:15px;font-weight:700;">'+(item?'Tétel szerkesztése':'Új tétel hozzáadása')+'</div>';
   html += '</div>';
 
-  html += presetList;
-
   html += '<div class="form-row"><label class="form-label">Megnevezés *</label>';
   html += '<input class="form-input" id="ri-name" value="'+(item?item.name:'')+'" placeholder="pl. M8 csavar, 3x1,5 kábel, kézifúró..."></div>';
 
+  // Típus csoport – predefined lista kereshető dropdownnal
   html += '<div class="form-row-2"><div><label class="form-label">Típus csoport *</label>';
-  html += '<input class="form-input" id="ri-tipus" list="r-tipus-list" value="'+(item?item.tipus||'':'')+'" placeholder="Válassz vagy gépelj újat...">';
-  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Ha nem találod, gépeld be – a rendszer elmenti a listába.</div></div>';
+  html += '<div style="position:relative;">';
+  html += '<input class="form-input" id="ri-tipus-inp" autocomplete="off" value="'+(item?item.tipus||'':'')+'" placeholder="Válassz a listából vagy gépelj újat..." oninput="rTipusSearch()" onfocus="rTipusOpen()">';
+  html += '<input type="hidden" id="ri-tipus-hidden" value="'+(item?item.tipus||'':'')+'">';
+  html += '<div id="ri-tipus-dd" style="display:none;position:absolute;z-index:200;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;box-shadow:0 6px 20px rgba(0,0,0,0.4);max-height:200px;overflow-y:auto;top:calc(100% + 4px);left:0;"></div>';
+  html += '</div>';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Gépelj újat ha nem találod – rákérdez hogy felvegyük-e a listára.</div></div>';
   html += '<div><label class="form-label">Egység *</label>';
   html += '<select class="form-input" id="ri-unit">'+unitOpts+'</select></div></div>';
 
-  html += '<div class="form-row-2"><div><label class="form-label">Min. készlet (riasztás)</label>';
-  html += '<input class="form-input" type="number" id="ri-minqty" value="'+(item?item.minQty||'':'')+'" min="0" placeholder="0"></div>';
+  html += '<div class="form-row-2"><div>';
+  html += '<label class="form-label" style="display:flex;align-items:center;gap:6px;">Min. készlet ';
+  html += '<span style="background:rgba(232,160,32,0.15);color:#e8a020;font-size:9px;padding:2px 8px;border-radius:10px;font-weight:400;">⚠️ riasztási küszöb</span>';
+  html += '</label>';
+  html += '<input class="form-input" type="number" id="ri-minqty" value="'+(item?item.minQty||'':'')+'" min="0" placeholder="0 = nincs riasztás">';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Ha a készlet eléri vagy erre a számra csökken → ⚠️ figyelmeztető jelzés jelenik meg a tételnél és az Áttekintő oldalon.</div>';
+  html += '</div>';
   html += '<div><label class="form-label">Kapcsolódó projekt</label>';
   html += '<select class="form-input" id="ri-project">'+projOpts+'</select></div></div>';
+
+  html += '<div class="form-row"><label class="form-label">👤 Tulajdonos</label>';
+  html += '<input class="form-input" id="ri-owner" value="'+(item?item.owner||'':'')+'" placeholder="pl. InfraGo Energy Kft., Kovács János, saját eszköz..."></div>';
 
   html += '<div class="form-row"><label class="form-label">📍 Raktári hely / Elhelyezés</label>';
   html += '<input class="form-input" id="ri-location" value="'+(item?item.location||'':'')+'" placeholder="pl. Garázs, Raktár A1 polc, Szerszámoskamra, 2045 Törökbálint..."></div>';
@@ -12313,146 +12335,92 @@ function rNewItemForm(preItemId) {
 
   html += '<div style="display:flex;gap:10px;margin-top:20px;">';
   html += '<button class="btn btn-secondary" onclick="raktarShowView(\'items\')">Mégse</button>';
-  html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;" data-eid="'+(item?item.id:'')+'" onclick="rSaveItem(this.dataset.eid)">✓ Mentés</button>';
+  html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;" data-eid="'+(item?item.id:'')+'" onclick="rSaveItemCheck(this.dataset.eid)">✓ Mentés</button>';
   html += '</div></div>';
   mc.innerHTML = html;
+
+  // Klikk kívülre → dropdown bezár
+  setTimeout(function() {
+    document.addEventListener('click', function rTipusClickOut(e) {
+      var dd  = document.getElementById('ri-tipus-dd');
+      var inp = document.getElementById('ri-tipus-inp');
+      if(dd && inp && !dd.contains(e.target) && e.target !== inp) {
+        dd.style.display = 'none';
+        document.removeEventListener('click', rTipusClickOut);
+      }
+    });
+  }, 200);
 }
 
-function rSaveItem(editId) {
-  var name     = (document.getElementById('ri-name')||{}).value||'';
-  var unit     = (document.getElementById('ri-unit')||{}).value||'db';
-  var tipus    = ((document.getElementById('ri-tipus')||{}).value||'Egyéb').trim();
-  var minQty   = (document.getElementById('ri-minqty')||{}).value||'';
-  var projId   = (document.getElementById('ri-project')||{}).value||'';
-  var location = (document.getElementById('ri-location')||{}).value||'';
-  var comment  = (document.getElementById('ri-comment')||{}).value||'';
-  var note     = (document.getElementById('ri-note')||{}).value||'';
-  if(!name){ alert('Add meg a megnevezést!'); return; }
-  if(!tipus){ alert('Add meg a típus csoportot!'); return; }
-
-  // Új típus → bekerül a predefined listába
-  if(_rPresets.indexOf(tipus) < 0) { _rPresets.push(tipus); RAKTAR_TIPUS = _rPresets; }
-
-  var it;
-  if(editId) {
-    it = _rItems.find(function(i){return i.id===editId;});
-    if(!it) return;
-    it.name=name; it.unit=unit; it.tipus=tipus; it.minQty=minQty;
-    it.projectId=projId; it.location=location; it.comment=comment; it.note=note;
-    it.updatedAt = rNow();
-  } else {
-    it = {id:'ri_'+Date.now(), name:name, unit:unit, tipus:tipus,
-          minQty:minQty, projectId:projId, location:location, comment:comment,
-          note:note, createdAt:rNow(), updatedAt:rNow()};
-    _rItems.push(it);
-  }
-  window._raktarItems = _rItems;
-  if(window.fbSaveRaktarItem) window.fbSaveRaktarItem(it).catch(function(e){console.error(e);});
-  updateRaktarLauncherStats();
-  raktarShowView('items');
+// ── Típus csoport dropdown keresés ─────────────────────────────────────────────
+function rTipusOpen() {
+  rTipusRender('');
 }
 
-function rEditItem(id) { raktarInit(); rNewItemForm(id); }
-
-function rDelItem(id) {
-  if(!confirm('Biztosan törlöd? A mozgásnapló megmarad.')) return;
-  var it = _rItems.find(function(i){return i.id===id;});
-  if(!it) return;
-  _rItems = _rItems.filter(function(i){return i.id!==id;});
-  window._raktarItems = _rItems;
-  var trash = {id:'rt_'+Date.now(), type:'item', data:it, deletedAt:rNow()};
-  _rTrash.push(trash);
-  window._raktarTrash = _rTrash;
-  if(window.fbDelRaktarItem) window.fbDelRaktarItem(id).catch(function(e){console.error(e);});
-  if(window.fbSaveRaktarTrash) window.fbSaveRaktarTrash(trash).catch(function(e){console.error(e);});
-  if(typeof showToast==='function') showToast('🗑️ Tétel kukába került.');
-  updateRaktarLauncherStats();
-  raktarShowView('items');
+function rTipusSearch() {
+  var inp = document.getElementById('ri-tipus-inp');
+  var hid = document.getElementById('ri-tipus-hidden');
+  if(inp && hid) hid.value = inp.value; // valós idejű szinkron
+  rTipusRender(inp ? inp.value : '');
 }
 
-// ── IKTATÁS (BEVÉT) ───────────────────────────────────────────────────────────
-function renderRIktat(preItemId) {
-  var html = '<div style="max-width:600px;">';
-  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:#27ae60;margin-bottom:20px;">📥 Iktatás – Bevét</div>';
-  html += '<div style="background:rgba(39,174,96,0.05);border:1px solid rgba(39,174,96,0.2);border-radius:8px;padding:20px;">';
-
-  // Keresés a tételek között
-  html += '<div class="form-row"><label class="form-label">Tétel keresése *</label>';
-  html += '<input class="form-input" id="rik-search" placeholder="🔍 Kezd el gépelni a tétel nevét..." oninput="rIktatSearch()">';
-  html += '<div id="rik-results" style="margin-top:6px;"></div>';
-  html += '<input type="hidden" id="rik-item-id">';
-  html += '<div id="rik-selected" style="display:none;background:rgba(22,160,133,0.08);border:1px solid rgba(22,160,133,0.3);border-radius:5px;padding:8px 12px;margin-top:6px;font-size:12px;"></div>';
-  html += '</div>';
-
-  html += '<div id="rik-newitem-hint" style="display:none;margin-bottom:12px;background:rgba(22,160,133,0.06);border:1px solid rgba(22,160,133,0.2);border-radius:5px;padding:8px 12px;font-size:11px;color:#16a085;">Nem találod? <span style="cursor:pointer;text-decoration:underline;font-weight:600;" onclick="rNewItemForm()">➕ Új tétel felvitele</span></div>';
-
-  html += '<div class="form-row-2"><div><label class="form-label">Mennyiség *</label>';
-  html += '<input class="form-input" type="number" id="rik-qty" min="0.01" step="0.01" placeholder="0"></div>';
-  html += '<div><label class="form-label">Dátum</label>';
-  html += '<input class="form-input" type="date" id="rik-date" value="'+new Date().toISOString().slice(0,10)+'"></div></div>';
-
-  html += '<div class="form-row"><label class="form-label">Megjegyzés / Szállítólevél</label>';
-  html += '<input class="form-input" id="rik-note" placeholder="pl. SL-2026-123, szállítói átvétel..."></div>';
-
-  html += '<div style="margin-top:16px;display:flex;gap:10px;">';
-  html += '<button class="btn btn-secondary" onclick="raktarShowView(\'dashboard\')">Mégse</button>';
-  html += '<button class="btn btn-primary" style="background:#27ae60;border-color:#27ae60;" onclick="rConfirmIktat()">📥 Iktatás rögzítése</button>';
-  html += '</div></div></div>';
-
-  // Ha preItemId van, előtöltjük
-  if(preItemId) {
-    setTimeout(function() {
-      var it = _rItems.find(function(i){return i.id===preItemId;});
-      if(it) rIktatSelectItem(it.id, it.name, rQty(it.id), it.unit||'db');
-    }, 50);
-  }
-  return html;
-}
-
-function rIktatSearch() {
-  var s = ((document.getElementById('rik-search')||{}).value||'').trim().toLowerCase();
-  var res = document.getElementById('rik-results');
-  var hint = document.getElementById('rik-newitem-hint');
-  if(!res) return;
-  if(!s) { res.innerHTML = ''; if(hint) hint.style.display='none'; return; }
-  var found = _rItems.filter(function(it){
-    return (it.name||'').toLowerCase().indexOf(s)>=0 || (it.tipus||'').toLowerCase().indexOf(s)>=0;
-  }).slice(0,8);
-  if(found.length === 0) {
-    res.innerHTML = '';
-    if(hint) hint.style.display = 'block';
-    return;
-  }
-  if(hint) hint.style.display = 'none';
-  var html = '<div style="border:1px solid var(--border);border-radius:5px;overflow:hidden;">';
-  found.forEach(function(it) {
-    var q = rQty(it.id);
-    html += '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:12px;" ' +
-            'onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'" ' +
-            'data-rid="'+it.id+'" data-rname="'+it.name.replace(/"/g,'&quot;')+'" data-rqty="'+q+'" data-runit="'+(it.unit||'db')+'" ' +
-            'onclick="rIktatSelectItem(this.dataset.rid,this.dataset.rname,this.dataset.rqty,this.dataset.runit)">' +
-            '<span style="font-weight:600;">'+it.name+'</span> ' +
-            '<span style="color:var(--text-dim);">'+it.tipus+'</span> · ' +
-            '<span style="color:'+(q>0?'#27ae60':'#e05252')+';">készlet: '+q+' '+(it.unit||'db')+'</span>' +
-            '</div>';
+function rTipusRender(search) {
+  var dd = document.getElementById('ri-tipus-dd');
+  if(!dd) return;
+  var s = (search||'').toLowerCase().trim();
+  var filtered = _rPresets.filter(function(p){ return !s || p.toLowerCase().indexOf(s) >= 0; });
+  var html = '';
+  filtered.forEach(function(p) {
+    html += '<div class="rtp-item" data-rtp="' + p.replace(/"/g,'&quot;') + '" onclick="rTipusSelect(this.dataset.rtp)"' +
+            ' style="padding:9px 14px;font-size:12px;border-bottom:1px solid var(--border);">' + p + '</div>';
   });
-  html += '</div>';
-  res.innerHTML = html;
+  if(s && filtered.length === 0) {
+    html += '<div style="padding:9px 14px;font-size:12px;color:var(--text-dim);">Nincs ilyen típus – mentéskor rákérdez.</div>';
+  }
+  if(s && !_rPresets.find(function(p){ return p.toLowerCase() === s; })) {
+    html += '<div class="rtp-item-new" data-rtp="' + search.replace(/"/g,'&quot;') + '" onclick="rTipusSelect(this.dataset.rtp)"' +
+            ' style="padding:9px 14px;font-size:12px;color:#16a085;border-top:1px solid var(--border);">&#10133; Új: <strong>' + search + '</strong></div>';
+  }
+  dd.innerHTML = html;
+  dd.style.display = (filtered.length > 0 || s) ? 'block' : 'none';
 }
 
-function rIktatSelectItem(id, name, qty, unit) {
-  var inp = document.getElementById('rik-item-id');
-  var sel = document.getElementById('rik-selected');
-  var res = document.getElementById('rik-results');
-  var srch = document.getElementById('rik-search');
-  if(inp) inp.value = id;
-  if(srch) srch.value = name;
-  if(res) res.innerHTML = '';
-  if(sel) {
-    sel.style.display = 'block';
-    sel.innerHTML = '✓ Kiválasztva: <strong>'+name+'</strong> · Aktuális készlet: <strong style="color:'+(qty>0?'#27ae60':'#e05252')+'">'+qty+' '+unit+'</strong>';
-  }
+function rTipusSelect(val) {
+  var inp = document.getElementById('ri-tipus-inp');
+  var hid = document.getElementById('ri-tipus-hidden');
+  var dd  = document.getElementById('ri-tipus-dd');
+  if(inp) inp.value = val;
+  if(hid) hid.value = val;
+  if(dd)  dd.style.display = 'none';
 }
+window.rTipusOpen   = rTipusOpen;
+window.rTipusSearch = rTipusSearch;
+window.rTipusSelect = rTipusSelect;
+
+// ── Mentés előtt ellenőrzi az új típust ────────────────────────────────────────
+function rSaveItemCheck(editId) {
+  var tipus = ((document.getElementById('ri-tipus-hidden')||{}).value||'').trim();
+  var inp   = (document.getElementById('ri-tipus-inp')||{}).value||'';
+  var effectiveTipus = tipus || inp.trim();
+  if(!effectiveTipus) { alert('Válassz vagy adj meg típus csoportot!'); return; }
+  // Szinkronizál
+  var hid = document.getElementById('ri-tipus-hidden');
+  if(hid) hid.value = effectiveTipus;
+
+  // Ha új típus és nincs a listában
+  if(_rPresets.indexOf(effectiveTipus) < 0) {
+    if(confirm('"' + effectiveTipus + '" \u2013 új típus csoport. Felvegyük a listára? (Legközelebb ebből is lehet választani)')) {
+      _rPresets.push(effectiveTipus);
+      RAKTAR_TIPUS = _rPresets;
+      // Firestore-ba is elmentjük a preset listát
+      if(window.fbSaveRaktarCat) {
+        window.fbSaveRaktarCat({id:'preset_list', presets:_rPresets, updatedAt:rNow()}).catch(function(e){console.error(e);});
+      }
+    }
+  }
+  rSaveItem(editId);
+}
+window.rSaveItemCheck = rSaveItemCheck;
 window.rIktatSelectItem = rIktatSelectItem;
 
 function rConfirmIktat() {
@@ -12634,7 +12602,7 @@ function rGenReport() {
   var html = '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;">';
   html += '<button class="btn btn-secondary" onclick="rExportXLS()">📥 Export XLS</button></div>';
   html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-  html += '<th>Megnevezés</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Mozgások</th><th>Összes bevét</th><th>Összes kiadás</th><th>Hely</th><th>Komment</th>';
+  html += '<th>Megnevezés</th><th>Típus</th><th>Egység</th><th>Készlet</th><th>Mozgások</th><th>Összes bevét</th><th>Összes kiadás</th><th>Tulajdonos</th><th>Hely</th><th>Komment</th>';
   html += '</tr></thead><tbody>';
   rows.forEach(function(r) {
     var inn = r.logs.filter(function(l){return l.type==='in';}).reduce(function(s,l){return s+(parseFloat(l.qty)||0);},0);
@@ -12648,6 +12616,7 @@ function rGenReport() {
     html += '<td style="font-family:var(--mono);">'+r.logs.length+'</td>';
     html += '<td style="font-family:var(--mono);color:#27ae60;">'+inn+'</td>';
     html += '<td style="font-family:var(--mono);color:#e8a020;">'+out+'</td>';
+    html += '<td style="font-size:11px;color:var(--text-dim);">'+(r.item.owner?'👤 '+r.item.owner:'–')+'</td>';
     html += '<td style="font-size:11px;color:var(--text-dim);">'+(r.item.location?'📍 '+r.item.location:'–')+'</td>';
     html += '<td style="font-size:11px;color:var(--text-dim);">'+(r.item.comment||'–')+'</td>';
     html += '</tr>';
@@ -12660,11 +12629,11 @@ function rGenReport() {
 function rExportXLS() {
   var rows = window._raktarReportData || [];
   if(!rows.length){ alert('Generálj riportot először!'); return; }
-  var lines = [['Megnevezés','Típus','Egység','Jelenlegi készlet','Mozgások','Összes bevét','Összes kiadás','Min. készlet','Hely','Komment','Projekt','Megjegyzés']];
+  var lines = [['Megnevezés','Típus','Egység','Jelenlegi készlet','Mozgások','Összes bevét','Összes kiadás','Tulajdonos','Min. készlet','Hely','Komment','Projekt','Megjegyzés']];
   rows.forEach(function(r) {
     var inn = r.logs.filter(function(l){return l.type==='in';}).reduce(function(s,l){return s+(parseFloat(l.qty)||0);},0);
     var out = r.logs.filter(function(l){return l.type==='out';}).reduce(function(s,l){return s+(parseFloat(l.qty)||0);},0);
-    lines.push([r.item.name, r.item.tipus||'', r.item.unit||'', r.qty, r.logs.length, inn, out, r.item.minQty||'', r.item.location||'', r.item.comment||'', r.item.projectId||'', r.item.note||'']);
+    lines.push([r.item.name, r.item.tipus||'', r.item.unit||'', r.qty, r.logs.length, inn, out, r.item.owner||'', r.item.minQty||'', r.item.location||'', r.item.comment||'', r.item.projectId||'', r.item.note||'']);
   });
   var tsv = lines.map(function(row){ return row.join('\t'); }).join('\n');
   var blob = new Blob(['\ufeff'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
@@ -12735,8 +12704,9 @@ function updateRaktarLauncherStats() {
   var t = document.getElementById('tstat-raktar-items');
   var c = document.getElementById('tstat-raktar-cats');
   var items = window._raktarItems || [];
+  var logs  = window._raktarLogs  || [];
   if(t) t.textContent = items.length;
-  if(c) c.textContent = 0; // nincs kategória a v2-ben
+  if(c) c.textContent = logs.length;
 }
 window.updateRaktarLauncherStats = updateRaktarLauncherStats;
 
