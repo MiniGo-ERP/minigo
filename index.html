@@ -12097,15 +12097,18 @@ function raktarInit() {
 
 function raktarShowView(v) {
   raktarInit();
-  rNav(v === 'trash' ? 'trash' : v);
+  rNav(v === 'trash' ? 'trash' : v === 'helyek' ? 'helyek' : v);
   var mc = rmc();
   if(!mc) return;
   if(v==='dashboard') mc.innerHTML = renderRDashboard();
   else if(v==='items')  mc.innerHTML = renderRItems('','');
   else if(v==='iktat')  mc.innerHTML = renderRIktat(null);
   else if(v==='kiad')   mc.innerHTML = renderRKiad(null);
-  else if(v==='report') mc.innerHTML = renderRReport();
-  else if(v==='trash')  mc.innerHTML = renderRTrash();
+  else if(v==='report')  mc.innerHTML = renderRReport();
+  else if(v==='helyek')  mc.innerHTML = renderRHelyek();
+  else if(v==='kats')    mc.innerHTML = renderRKats();
+  else if(v==='alkats')  mc.innerHTML = renderRAlkats();
+  else if(v==='trash')   mc.innerHTML = renderRTrash();
   else mc.innerHTML = '<div style="color:var(--text-dim);padding:20px;">Ismeretlen nézet.</div>';
 }
 window.raktarShowView = raktarShowView;
@@ -12232,6 +12235,8 @@ function renderRItems(search, filterTipus) {
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
     html += '<th style="min-width:160px;">Megnevezés</th>';
     html += '<th style="min-width:120px;">Típus</th>';
+    html += '<th style="min-width:120px;">Kategória</th>';
+    html += '<th style="min-width:100px;">Alkategória</th>';
     html += '<th style="min-width:70px;text-align:center;">Egység</th>';
     html += '<th style="min-width:90px;text-align:center;">Készlet</th>';
     html += '<th style="min-width:60px;text-align:center;">Min.</th>';
@@ -12246,6 +12251,8 @@ function renderRItems(search, filterTipus) {
       html += '<tr>';
       html += '<td style="font-weight:600;padding:10px 12px;">'+(low?'⚠️ ':'')+it.name+'</td>';
       html += '<td style="padding:10px 12px;"><span style="background:rgba(22,160,133,0.1);color:#16a085;padding:2px 8px;border-radius:10px;font-size:10px;white-space:nowrap;">'+(it.tipus||'Egyéb')+'</span></td>';
+      html += '<td style="font-size:11px;padding:10px 12px;">'+(it.katName?'<span style="font-weight:600;">'+it.katName+'</span>'+(it.katReszlet?' <span style="color:var(--text-dim);font-size:10px;">'+it.katReszlet+'</span>':''):'–')+'</td>';
+      html += '<td style="font-size:11px;padding:10px 12px;color:var(--text-dim);">'+(it.alkatName||'–')+'</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;text-align:center;padding:10px 12px;">'+(it.unit||'–')+'</td>';
       html += '<td style="font-family:var(--mono);font-size:13px;font-weight:700;text-align:center;padding:10px 12px;color:'+(low?'#e05252':qty>0?'#27ae60':'var(--text-dim)')+';">'+qty+'</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;text-align:center;color:var(--text-dim);padding:10px 12px;">'+(it.minQty||'–')+'</td>';
@@ -12321,11 +12328,49 @@ function rNewItemForm(preItemId) {
   html += '<div><label class="form-label">Kapcsolódó projekt</label>';
   html += '<select class="form-input" id="ri-project">'+projOpts+'</select></div></div>';
 
+    // Tétel kategória + alkategória
+  var kats2 = rGetKats();
+  var katOpts2 = '<option value="">– Válassz kategóriát –</option>';
+  kats2.forEach(function(k){
+    var sel2 = item && item.katId === k.id ? ' selected' : '';
+    katOpts2 += '<option value="'+k.id+'"'+sel2+'>'+k.name+'</option>';
+  });
+  html += '<div class="form-row-2"><div><label class="form-label">🏷️ Tétel kategória</label>';
+  html += '<select class="form-input" id="ri-kat" onchange="rKatChange()">'+katOpts2+'</select>';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;"><span style="cursor:pointer;color:#16a085;" data-v="kats" onclick="raktarShowView(this.dataset.v)">Kategóriák kezelése &rarr;</span></div>';
+  html += '</div>';
+  var initKatId2 = item && item.katId ? item.katId : '';
+  var initAlkats2 = initKatId2 ? rGetAlkats(initKatId2) : [];
+  var alkatOpts2 = '<option value="">– Válassz alkategóriát –</option>';
+  initAlkats2.forEach(function(a){
+    var sel3 = item && item.alkatId === a.id ? ' selected' : '';
+    alkatOpts2 += '<option value="'+a.id+'"'+sel3+'>'+a.name+'</option>';
+  });
+  html += '<div><label class="form-label">🔖 Alkategória</label>';
+  html += '<select class="form-input" id="ri-alkat">'+alkatOpts2+'</select>';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;"><span style="cursor:pointer;color:#16a085;" data-v="alkats" onclick="raktarShowView(this.dataset.v)">Alkategóriák kezelése &rarr;</span></div>';
+  html += '</div></div>';
+  html += '<div class="form-row"><label class="form-label">📝 Kategória részletezés</label>';
+  html += '<input class="form-input" id="ri-katreszlet" value="'+(item&&item.katReszlet?item.katReszlet:'')+'" placeholder="Szabad szöveges részletezés, pl. 3 fázisú 22 kW, aljzatos kivitel..."></div>';
+
   html += '<div class="form-row"><label class="form-label">👤 Tulajdonos</label>';
   html += '<input class="form-input" id="ri-owner" value="'+(item?item.owner||'':'')+'" placeholder="pl. InfraGo Energy Kft., Kovács János, saját eszköz..."></div>';
 
+  // Helyszínek legördülő – predefined lista
+  var helyekOpts = '<option value="">– Válassz helyszínt –</option>';
+  var helyekList = rGetHelyek();
+  helyekList.forEach(function(h) {
+    var sel = item && item.location === h ? ' selected' : '';
+    helyekOpts += '<option value="'+h+'"'+sel+'>📍 '+h+'</option>';
+  });
+  // Ha a tétel helye nem szerepel a listában (régi adat), adjuk hozzá opciókhoz
+  if(item && item.location && helyekList.indexOf(item.location) < 0) {
+    helyekOpts += '<option value="'+item.location+'" selected>📍 '+item.location+' (egyedi)</option>';
+  }
   html += '<div class="form-row"><label class="form-label">📍 Raktári hely / Elhelyezés</label>';
-  html += '<input class="form-input" id="ri-location" value="'+(item?item.location||'':'')+'" placeholder="pl. Garázs, Raktár A1 polc, Szerszámoskamra, 2045 Törökbálint..."></div>';
+  html += '<select class="form-input" id="ri-location">'+helyekOpts+'</select>';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">Helyszíneket az <span style="color:#16a085;cursor:pointer;" onclick="raktarShowView(\'helyek\')">Admin → Helyszínek</span> menüben kezelheted.</div>';
+  html += '</div>';
 
   html += '<div class="form-row"><label class="form-label">💬 Komment / Egyedi jellemző</label>';
   html += '<textarea class="form-input" id="ri-comment" rows="2" placeholder="pl. Használt tétel, felújított, garanciális, gyári hibás...">'+(item?item.comment||'':'')+'</textarea></div>';
@@ -12398,6 +12443,47 @@ window.rTipusSearch = rTipusSearch;
 window.rTipusSelect = rTipusSelect;
 
 // ── Mentés előtt ellenőrzi az új típust ────────────────────────────────────────
+function rSaveItem(editId) {
+  var name      = (document.getElementById('ri-name')||{}).value||'';
+  var unit      = (document.getElementById('ri-unit')||{}).value||'db';
+  var tipus     = ((document.getElementById('ri-tipus-hidden')||document.getElementById('ri-tipus-inp')||{}).value||'Egyéb').trim();
+  var minQty    = (document.getElementById('ri-minqty')||{}).value||'';
+  var projId    = (document.getElementById('ri-project')||{}).value||'';
+  var note      = (document.getElementById('ri-note')||{}).value||'';
+  var location  = (document.getElementById('ri-location')||{}).value||'';
+  var comment   = (document.getElementById('ri-comment')||{}).value||'';
+  var owner     = (document.getElementById('ri-owner')||{}).value||'';
+  var katId     = (document.getElementById('ri-kat')||{}).value||'';
+  var alkatId   = (document.getElementById('ri-alkat')||{}).value||'';
+  var katReszlet= (document.getElementById('ri-katreszlet')||{}).value||'';
+  var katName   = ''; var alkatName = '';
+  if(katId)   { var kk=rGetKats().find(function(k){return k.id===katId;}); if(kk) katName=kk.name; }
+  if(alkatId) { var ak=rGetAlkats(katId).find(function(a){return a.id===alkatId;}); if(ak) alkatName=ak.name; }
+  if(!name){ alert('Add meg a megnevezést!'); return; }
+  if(!tipus){ alert('Válassz vagy adj meg típus csoportot!'); return; }
+  var it;
+  if(editId) {
+    it = _rItems.find(function(i){ return i.id === editId; });
+    if(!it) return;
+    it.name=name; it.unit=unit; it.tipus=tipus; it.minQty=minQty;
+    it.projectId=projId; it.location=location; it.comment=comment; it.note=note;
+    it.owner=owner; it.katId=katId; it.alkatId=alkatId;
+    it.katName=katName; it.alkatName=alkatName; it.katReszlet=katReszlet;
+    it.updatedAt = rNow();
+  } else {
+    it = {id:'ri_'+Date.now(), name:name, unit:unit, tipus:tipus,
+          minQty:minQty, projectId:projId, location:location, comment:comment,
+          note:note, owner:owner, katId:katId, alkatId:alkatId,
+          katName:katName, alkatName:alkatName, katReszlet:katReszlet,
+          createdAt:rNow(), updatedAt:rNow()};
+    _rItems.push(it);
+  }
+  window._raktarItems = _rItems;
+  if(window.fbSaveRaktarItem) window.fbSaveRaktarItem(it).catch(function(e){console.error(e);});
+  updateRaktarLauncherStats();
+  raktarShowView('items');
+}
+
 function rSaveItemCheck(editId) {
   var tipus = ((document.getElementById('ri-tipus-hidden')||{}).value||'').trim();
   var inp   = (document.getElementById('ri-tipus-inp')||{}).value||'';
@@ -12421,6 +12507,18 @@ function rSaveItemCheck(editId) {
   rSaveItem(editId);
 }
 window.rSaveItemCheck = rSaveItemCheck;
+function rKatChange() {
+  var katSel   = document.getElementById('ri-kat');
+  var alkatSel = document.getElementById('ri-alkat');
+  if(!katSel || !alkatSel) return;
+  var katId = katSel.value;
+  var alkats = katId ? rGetAlkats(katId) : [];
+  var opts = '<option value="">– Válassz alkategóriát –</option>';
+  alkats.forEach(function(a){ opts += '<option value="'+a.id+'">'+a.name+'</option>'; });
+  alkatSel.innerHTML = opts;
+}
+window.rKatChange = rKatChange;
+
 window.rIktatSelectItem = rIktatSelectItem;
 
 function rConfirmIktat() {
@@ -12655,6 +12753,322 @@ function raktarKiadFor(id) {
 }
 window.raktarKiadFor = raktarKiadFor;
 
+// ── HELYSZÍNEK (PREDEFINED HELY LISTA) ───────────────────────────────────────
+// A helyszínek a window._raktarHelyek tömbben tárolódnak
+// Firestore: raktar_cats collection, id='helyek_list' dokumentumban
+
+function rGetHelyek() {
+  // Firestore-ból betöltött lista
+  var saved = window._raktarCats && window._raktarCats.find(function(c){ return c.id === 'helyek_list'; });
+  if(saved && Array.isArray(saved.helyek)) return saved.helyek.slice();
+  return ['Garázs', 'Iroda', 'Raktár', 'Helyszín'];
+}
+
+function rSaveHelyek(helyek) {
+  var doc = {id: 'helyek_list', helyek: helyek, updatedAt: rNow()};
+  // window._raktarCats frissítése
+  if(!window._raktarCats) window._raktarCats = [];
+  var idx = window._raktarCats.findIndex(function(c){ return c.id === 'helyek_list'; });
+  if(idx >= 0) window._raktarCats[idx] = doc;
+  else window._raktarCats.push(doc);
+  // Firestore mentés
+  if(window.fbSaveRaktarCat) window.fbSaveRaktarCat(doc).catch(function(e){ console.error(e); });
+}
+
+function renderRHelyek() {
+  var helyek = rGetHelyek();
+  var html = '<div style="max-width:600px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;">📍 Helyszínek kezelése</div>';
+  html += '</div>';
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;">';
+  html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Ezekből lehet majd választani tétel felvitelekor. Bármikor bővíthető és szerkeszthető.</div>';
+
+  // Lista
+  if(helyek.length === 0) {
+    html += '<div style="color:var(--text-dim);font-size:12px;padding:12px 0;">Nincs helyszín felvéve. Adj hozzá egyet lentebb.</div>';
+  } else {
+    html += '<div id="r-helyek-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">';
+    helyek.forEach(function(h, i) {
+      html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 12px;">';
+      html += '<span style="font-size:14px;">📍</span>';
+      html += '<span style="flex:1;font-size:13px;" id="rhelytext-'+i+'">' + h + '</span>';
+      html += '<button class="icon-btn" style="font-size:12px;" title="Szerkesztés" data-hi="'+i+'" onclick="rEditHely(+this.dataset.hi)">✏️</button>';
+      html += '<button class="icon-btn del" style="font-size:12px;" title="Törlés" data-hi="'+i+'" onclick="rDelHely(+this.dataset.hi)">🗑️</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Új hely hozzáadása
+  html += '<div style="border-top:1px solid var(--border);padding-top:16px;">';
+  html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px;">ÚJ HELYSZÍN HOZZÁADÁSA</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<input class="form-input" id="r-new-hely-inp" placeholder="pl. Garázs, Raktár A, Budapest XIV. ker..." style="flex:1;" onkeydown="if(event.key===\'Enter\')rAddHely()">';
+  html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;white-space:nowrap;" onclick="rAddHely()">➕ Hozzáad</button>';
+  html += '</div></div>';
+
+  html += '</div></div>';
+  return html;
+}
+
+function rAddHely() {
+  raktarInit();
+  var inp = document.getElementById('r-new-hely-inp');
+  if(!inp) return;
+  var val = inp.value.trim();
+  if(!val) { if(typeof showToast==='function') showToast('⚠️ Add meg a helyszín nevét!','warn'); return; }
+  var helyek = rGetHelyek();
+  if(helyek.indexOf(val) >= 0) { if(typeof showToast==='function') showToast('⚠️ Ez a helyszín már szerepel a listában!','warn'); return; }
+  helyek.push(val);
+  rSaveHelyek(helyek);
+  if(typeof showToast==='function') showToast('✅ Helyszín hozzáadva: ' + val);
+  // Frissítjük a nézetet
+  var mc = rmc();
+  if(mc) mc.innerHTML = renderRHelyek();
+}
+
+function rDelHely(idx) {
+  raktarInit();
+  var helyek = rGetHelyek();
+  if(idx < 0 || idx >= helyek.length) return;
+  var name = helyek[idx];
+  if(!confirm('Biztosan törlöd: ' + name + '?')) return;
+  helyek.splice(idx, 1);
+  rSaveHelyek(helyek);
+  if(typeof showToast==='function') showToast('🗑️ Helyszín törölve: ' + name);
+  var mc = rmc();
+  if(mc) mc.innerHTML = renderRHelyek();
+}
+
+function rEditHely(idx) {
+  raktarInit();
+  var helyek = rGetHelyek();
+  if(idx < 0 || idx >= helyek.length) return;
+  var oldName = helyek[idx];
+  var newName = prompt('Helyszín szerkesztése:', oldName);
+  if(!newName || !newName.trim() || newName.trim() === oldName) return;
+  newName = newName.trim();
+  if(helyek.indexOf(newName) >= 0) { alert('Ez a helyszín már szerepel a listában!'); return; }
+  helyek[idx] = newName;
+  rSaveHelyek(helyek);
+  if(typeof showToast==='function') showToast('✅ Helyszín módosítva: ' + newName);
+  var mc = rmc();
+  if(mc) mc.innerHTML = renderRHelyek();
+}
+
+// ── TÉTEL KATEGÓRIÁK & ALKATEGÓRIÁK ──────────────────────────────────────────
+// Tárolás: raktar_cats collection
+//   {id:'tkat_list',  kats:  [{id,name},...]}
+//   {id:'talkat_list',alkats:[{id,katId,name},...]}
+
+function rGetKats() {
+  var saved = window._raktarCats && window._raktarCats.find(function(c){ return c.id === 'tkat_list'; });
+  if(saved && Array.isArray(saved.kats)) return saved.kats;
+  return [];
+}
+
+function rGetAlkats(katId) {
+  var saved = window._raktarCats && window._raktarCats.find(function(c){ return c.id === 'talkat_list'; });
+  var all = (saved && Array.isArray(saved.alkats)) ? saved.alkats : [];
+  if(katId) return all.filter(function(a){ return a.katId === katId; });
+  return all;
+}
+
+function rSaveKats(kats) {
+  var doc = {id:'tkat_list', kats:kats, updatedAt:rNow()};
+  if(!window._raktarCats) window._raktarCats = [];
+  var idx = window._raktarCats.findIndex(function(c){ return c.id === 'tkat_list'; });
+  if(idx >= 0) window._raktarCats[idx] = doc; else window._raktarCats.push(doc);
+  if(window.fbSaveRaktarCat) window.fbSaveRaktarCat(doc).catch(function(e){console.error(e);});
+}
+
+function rSaveAlkats(alkats) {
+  var doc = {id:'talkat_list', alkats:alkats, updatedAt:rNow()};
+  if(!window._raktarCats) window._raktarCats = [];
+  var idx = window._raktarCats.findIndex(function(c){ return c.id === 'talkat_list'; });
+  if(idx >= 0) window._raktarCats[idx] = doc; else window._raktarCats.push(doc);
+  if(window.fbSaveRaktarCat) window.fbSaveRaktarCat(doc).catch(function(e){console.error(e);});
+}
+
+// ── KATEGÓRIÁK ADMIN OLDAL ────────────────────────────────────────────────────
+function renderRKats() {
+  var kats = rGetKats();
+  var html = '<div style="max-width:600px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;">🏷️ Tétel kategóriák</div>';
+  html += '</div>';
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;">';
+  html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Ezekből lehet választani tétel felvitelekor. Az alkategóriák ehhez a listához kapcsolódnak.</div>';
+
+  if(kats.length === 0) {
+    html += '<div style="color:var(--text-dim);font-size:12px;padding:12px 0;">Nincs kategória felvéve.</div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">';
+    kats.forEach(function(k, i) {
+      var alkatCount = rGetAlkats(k.id).length;
+      html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:8px 12px;">';
+      html += '<span style="font-size:14px;">🏷️</span>';
+      html += '<span style="flex:1;font-size:13px;font-weight:600;">' + k.name + '</span>';
+      if(alkatCount > 0) html += '<span style="font-size:10px;color:var(--text-dim);">' + alkatCount + ' alkategória</span>';
+      html += '<button class="icon-btn" title="Szerkesztés" data-ki="'+i+'" onclick="rEditKat(+this.dataset.ki)">✏️</button>';
+      html += '<button class="icon-btn del" title="Törlés" data-ki="'+i+'" onclick="rDelKat(+this.dataset.ki)">🗑️</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div style="border-top:1px solid var(--border);padding-top:16px;">';
+  html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:8px;letter-spacing:1px;">ÚJ KATEGÓRIA</div>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<input class="form-input" id="r-new-kat-inp" placeholder="pl. AC töltő, DC töltő, Kábel..." style="flex:1;">';
+  html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;white-space:nowrap;" onclick="rAddKat()">➕ Hozzáad</button>';
+  html += '</div></div>';
+  html += '</div></div>';
+  return html;
+}
+
+function rAddKat() {
+  raktarInit();
+  var inp = document.getElementById('r-new-kat-inp');
+  if(!inp) return;
+  var val = inp.value.trim();
+  if(!val) { if(typeof showToast==='function') showToast('⚠️ Add meg a kategória nevét!','warn'); return; }
+  var kats = rGetKats();
+  if(kats.find(function(k){ return k.name === val; })) { if(typeof showToast==='function') showToast('⚠️ Ez a kategória már létezik!','warn'); return; }
+  kats.push({id:'kat_'+Date.now(), name:val});
+  rSaveKats(kats);
+  if(typeof showToast==='function') showToast('✅ Kategória hozzáadva: ' + val);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRKats();
+}
+
+function rEditKat(i) {
+  raktarInit();
+  var kats = rGetKats();
+  if(i < 0 || i >= kats.length) return;
+  var newName = prompt('Kategória szerkesztése:', kats[i].name);
+  if(!newName || !newName.trim() || newName.trim() === kats[i].name) return;
+  newName = newName.trim();
+  if(kats.find(function(k){ return k.name === newName; })) { alert('Ez a kategória már létezik!'); return; }
+  kats[i].name = newName;
+  rSaveKats(kats);
+  if(typeof showToast==='function') showToast('✅ Módosítva: ' + newName);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRKats();
+}
+
+function rDelKat(i) {
+  raktarInit();
+  var kats = rGetKats();
+  if(i < 0 || i >= kats.length) return;
+  var k = kats[i];
+  var hasAlkats = rGetAlkats(k.id).length > 0;
+  if(hasAlkats) { alert('Nem törölhető: van hozzá alkategória! Előbb töröld az alkategóriákat.'); return; }
+  if(!confirm('Biztosan törlöd: ' + k.name + '?')) return;
+  kats.splice(i, 1);
+  rSaveKats(kats);
+  if(typeof showToast==='function') showToast('🗑️ Törölve: ' + k.name);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRKats();
+}
+
+// ── ALKATEGÓRIÁK ADMIN OLDAL ──────────────────────────────────────────────────
+function renderRAlkats() {
+  var kats   = rGetKats();
+  var alkats = rGetAlkats();
+
+  var html = '<div style="max-width:700px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;">🔖 Tétel alkategóriák</div>';
+  html += '</div>';
+  html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;">';
+  html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Minden alkategória egy főkategóriához tartozik. Tétel felvitelekor: főkategória → alkategória.</div>';
+
+  if(kats.length === 0) {
+    html += '<div style="background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.2);border-radius:5px;padding:12px;font-size:12px;color:#e8a020;margin-bottom:16px;">⚠️ Előbb vegyél fel főkategóriákat a <strong>Tétel kategóriák</strong> menüben!</div>';
+  } else {
+    // Főkategóriánként csoportosítva
+    if(alkats.length > 0) {
+      kats.forEach(function(k) {
+        var sub = rGetAlkats(k.id);
+        if(sub.length === 0) return;
+        html += '<div style="margin-bottom:14px;">';
+        html += '<div style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:6px;letter-spacing:1px;">' + k.name.toUpperCase() + '</div>';
+        html += '<div style="display:flex;flex-direction:column;gap:5px;">';
+        sub.forEach(function(a) {
+          var allAlkats = rGetAlkats();
+          var ai = allAlkats.findIndex(function(x){ return x.id === a.id; });
+          html += '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 12px;padding-left:20px;">';
+          html += '<span style="font-size:12px;">🔖</span>';
+          html += '<span style="flex:1;font-size:12px;">' + a.name + '</span>';
+          html += '<button class="icon-btn" title="Szerkesztés" data-ai="'+ai+'" onclick="rEditAlkat(+this.dataset.ai)">✏️</button>';
+          html += '<button class="icon-btn del" title="Törlés" data-ai="'+ai+'" onclick="rDelAlkat(+this.dataset.ai)">🗑️</button>';
+          html += '</div>';
+        });
+        html += '</div></div>';
+      });
+    } else {
+      html += '<div style="color:var(--text-dim);font-size:12px;padding:8px 0 16px;">Nincs alkategória felvéve.</div>';
+    }
+
+    // Új alkategória
+    html += '<div style="border-top:1px solid var(--border);padding-top:16px;">';
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:10px;letter-spacing:1px;">ÚJ ALKATEGÓRIA</div>';
+    var katOpts = '<option value="">– Válassz főkategóriát –</option>';
+    kats.forEach(function(k){ katOpts += '<option value="'+k.id+'">'+k.name+'</option>'; });
+    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
+    html += '<select class="form-input" id="r-new-alkat-kat" style="max-width:220px;">'+katOpts+'</select>';
+    html += '<input class="form-input" id="r-new-alkat-inp" placeholder="pl. Kábeles, Aljzatos, Hordozható..." style="flex:1;min-width:180px;">';
+    html += '<button class="btn btn-primary" style="background:#16a085;border-color:#16a085;white-space:nowrap;" onclick="rAddAlkat()">➕ Hozzáad</button>';
+    html += '</div></div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function rAddAlkat() {
+  raktarInit();
+  var katSel = document.getElementById('r-new-alkat-kat');
+  var inp    = document.getElementById('r-new-alkat-inp');
+  if(!katSel || !inp) return;
+  var katId = katSel.value;
+  var val   = inp.value.trim();
+  if(!katId) { if(typeof showToast==='function') showToast('⚠️ Válassz főkategóriát!','warn'); return; }
+  if(!val)   { if(typeof showToast==='function') showToast('⚠️ Add meg az alkategória nevét!','warn'); return; }
+  var alkats = rGetAlkats();
+  if(alkats.find(function(a){ return a.katId === katId && a.name === val; })) {
+    if(typeof showToast==='function') showToast('⚠️ Ez az alkategória már létezik ennél a főkategóriánál!','warn'); return;
+  }
+  alkats.push({id:'alkat_'+Date.now(), katId:katId, name:val});
+  rSaveAlkats(alkats);
+  if(typeof showToast==='function') showToast('✅ Alkategória hozzáadva: ' + val);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRAlkats();
+}
+
+function rEditAlkat(i) {
+  raktarInit();
+  var alkats = rGetAlkats();
+  if(i < 0 || i >= alkats.length) return;
+  var newName = prompt('Alkategória szerkesztése:', alkats[i].name);
+  if(!newName || !newName.trim() || newName.trim() === alkats[i].name) return;
+  newName = newName.trim();
+  alkats[i].name = newName;
+  rSaveAlkats(alkats);
+  if(typeof showToast==='function') showToast('✅ Módosítva: ' + newName);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRAlkats();
+}
+
+function rDelAlkat(i) {
+  raktarInit();
+  var alkats = rGetAlkats();
+  if(i < 0 || i >= alkats.length) return;
+  if(!confirm('Biztosan törlöd: ' + alkats[i].name + '?')) return;
+  var name = alkats[i].name;
+  alkats.splice(i, 1);
+  rSaveAlkats(alkats);
+  if(typeof showToast==='function') showToast('🗑️ Törölve: ' + name);
+  var mc = rmc(); if(mc) mc.innerHTML = renderRAlkats();
+}
+
 // ── RIPORT ─────────────────────────────────────────────────────────────────────
 function renderRReport() {
   var allTipus = [];
@@ -12837,6 +13251,18 @@ window.rRestoreTrash     = rRestoreTrash;
 window.rPermDelTrash     = rPermDelTrash;
 window.rEmptyTrash       = rEmptyTrash;
 window.rFilterByTipus    = rFilterByTipus;
+window.renderRHelyek     = renderRHelyek;
+window.rAddHely          = rAddHely;
+window.rDelHely          = rDelHely;
+window.rEditHely         = rEditHely;
+window.renderRKats       = renderRKats;
+window.rAddKat           = rAddKat;
+window.rEditKat          = rEditKat;
+window.rDelKat           = rDelKat;
+window.renderRAlkats     = renderRAlkats;
+window.rAddAlkat         = rAddAlkat;
+window.rEditAlkat        = rEditAlkat;
+window.rDelAlkat         = rDelAlkat;
 
 })(); // end RAKTAR MODULE
 
@@ -13177,6 +13603,11 @@ setTimeout(()=>{
       <div style="padding:8px 16px 4px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">Beállítások</div>
 
       <div class="nav-item" id="rnav-report" onclick="raktarShowView('report')"><span>📊</span> Riport & Export</div>
+      <div class="sidebar-divider"></div>
+      <div style="padding:8px 16px 4px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">Admin</div>
+      <div class="nav-item" id="rnav-helyek" onclick="raktarShowView('helyek')"><span>📍</span> Helyszínek</div>
+      <div class="nav-item" id="rnav-kats" onclick="raktarShowView('kats')"><span>🏷️</span> Tétel kategóriák</div>
+      <div class="nav-item" id="rnav-alkats" onclick="raktarShowView('alkats')"><span>🔖</span> Tétel alkategóriák</div>
       <div class="sidebar-divider"></div>
       <div class="nav-item" id="rnav-trash" onclick="raktarShowView('trash')" style="color:var(--danger);opacity:0.7;"><span>🗑️</span> Kuka</div>
     </div>
