@@ -74,6 +74,7 @@
   .s-5{color:#e88a20;border-color:#e88a20;background:rgba(232,138,32,0.1);}
   .s-6{color:#27ae60;border-color:#27ae60;background:rgba(39,174,96,0.1);}
   .s-7{color:#1abc9c;border-color:#1abc9c;background:rgba(26,188,156,0.1);}
+.s-cont{color:#3498db;border-color:#3498db;background:rgba(52,152,219,0.12);}
 .rtp-item:hover{background:rgba(22,160,133,0.12)!important;cursor:pointer;}
 .rtp-item-new:hover{background:rgba(22,160,133,0.06)!important;cursor:pointer;}
   .s-8{color:#3498db;border-color:#3498db;background:rgba(52,152,219,0.1);}
@@ -1046,6 +1047,10 @@
     </div>
     <div class="form-row"><label class="form-label">Leírás (opcionális)</label><input class="form-input" id="np-desc" placeholder="pl. Parkoló EV töltő kiépítés"></div>
     <div class="form-row"><label class="form-label">Projekt dátuma *</label><input class="form-input" type="date" id="np-date"></div>
+    <div style="margin:12px 0 4px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="np-continuous" style="cursor:pointer;">
+      <label for="np-continuous" style="font-size:12px;cursor:pointer;">🔄 Folyamatos projekt <span style="color:var(--text-dim);font-size:10px;">(több rész-TIG, nem zárul le automatikusan)</span></label>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createProject()">✓ Létrehozás</button>
@@ -2322,11 +2327,15 @@ const STATUSES = [
   {label:'Ajánlat elfogadás alatt',  short:'Elfogadás alatt', cls:'s-1'},
   {label:'Megrendelés alatt',        short:'Megrendelés',     cls:'s-2'},
   {label:'Projekt folyamatban',      short:'Folyamatban',     cls:'s-3'},
+  {label:'Folyamatos projekt',       short:'Folyamatos 🔄',   cls:'s-cont'},
   {label:'TIG aláírásra vár',        short:'TIG vár',         cls:'s-4'},
   {label:'Projekt számlázásra vár',  short:'Számlázás vár',   cls:'s-5'},
   {label:'Számlázva',                short:'Számlázva',       cls:'s-6'},
   {label:'Projekt kész',             short:'Kész ✓',          cls:'s-9'},
 ];
+// Folyamatos projekt index
+const STATUS_CONTINUOUS = 4;
+const STATUS_CLOSED     = 8; // Projekt kész (index 8 az új tömbben)
 const FOLDERS = ['Árajánlat','TIG','Képek','VBF','EGYÉB'];
 let trashBin    = []; // Projektkövetés kuka: project|client|supplier
 let relTrashBin = []; // Reliability kuka: equipment|responsible|failuretype|ticket|ca
@@ -2509,7 +2518,7 @@ function pIncomeFiltered(p)  { return filterInvoicesByDate(p.incomeInvoices||[])
 function pCostFiltered(p)    { return filterInvoicesByDate(p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
 function renderDashboard(){
   const tot=projects.length, act=projects.filter(p=>p.status>0&&p.status<8).length,
-        done=projects.filter(p=>p.status===7).length;
+        done=projects.filter(p=>p.status===8).length;
   const curYear = new Date().getFullYear().toString();
   if(dashboardDateFrom === null && dashboardDateTo === null){
     dashboardDateFrom = curYear + '-01-01';
@@ -2722,7 +2731,7 @@ function renderClientProjects(cid){
 function renderProjects(list, showClosed, activeType, showAll){
   const TYPE_LABELS = {'TELEPITES':'Telepítés','SZERVIZ':'Szervíz','TANACSADAS':'Tanácsadás','OTTHON':'Otthontöltő'};
   const TYPE_COLORS = {'TELEPITES':'#2d7dd2','SZERVIZ':'#e8a020','TANACSADAS':'#9b59b6','OTTHON':'#27ae60'};
-  const CLOSED_STATUS = 7; // Projekt kész (index 7 a STATUSES tömbben)
+  const CLOSED_STATUS = 8; // Projekt kész (index 8 a STATUSES tömbben – Folyamatos beillesztve)
 
   let displayList;
   if(showAll) {
@@ -2785,11 +2794,13 @@ function renderProjectRow(p){
   const typeBadge = normType
     ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ${TYPE_COLORS[normType]};color:${TYPE_COLORS[normType]};background:${TYPE_COLORS[normType]}22;white-space:nowrap;">${TYPE_ICONS[normType]} ${TYPE_LABELS[normType]}</span>`
     : '';
+  const umbrellaTag = p.isUmbrella ? '<span title="Umbrella projekt" style="font-size:10px;background:rgba(52,152,219,0.12);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 7px;margin-left:4px;">🗂️ Umbrella</span>' : (p.parentId ? '<span title="Alprojekt" style="font-size:10px;background:rgba(52,152,219,0.08);color:#3498db;border:1px solid rgba(52,152,219,0.3);border-radius:10px;padding:1px 7px;margin-left:4px;">↳ Alprojekt</span>' : '');
+  const contTag = (p.isContinuous||p.status===STATUS_CONTINUOUS) ? '<span title="Folyamatos" style="font-size:10px;background:rgba(52,152,219,0.1);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 6px;margin-left:4px;">🔄</span>' : '';
   return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
     <div class="project-id" title="${p.id}">${p.id}</div>
     <div class="project-info">
       <div class="project-company">${p.personName ? `👤 ${p.personName}` : (co?co.name:p.clientId)}</div>
-      <div class="project-name">${p.desc||'–'}</div>
+      <div class="project-name">${p.desc||'–'}${umbrellaTag}${contTag}</div>
     </div>
     <div style="display:flex;align-items:center;">${typeBadge}</div>
     <div style="display:flex;align-items:center;"><span class="status-badge ${st.cls}">${st.short}</span></div>
@@ -3009,12 +3020,193 @@ function renderProjectDetail(pid){
     </div>`:''}
   </div>
 
+  ${renderUmbrellaSection(p, pid)}
+  ${renderPartTigSection(p, pid)}
+
   <div class="panel-title">Dokumentumok</div>
   <div class="docs-grid">${docs}</div>
 
   <div class="panel-title">Eseménynapló</div>
   <div class="log-list">${log||'<div style="color:var(--text-dim);font-size:12px">Nincs bejegyzés.</div>'}</div>`;
 }
+
+// ── UMBRELLA PROJEKT SZEKCIÓ ─────────────────────────────────────────────────
+function renderUmbrellaSection(p, pid) {
+  // Ha ez EGY ALPROJEKT → szülő linket mutat
+  if(p.parentId) {
+    const parent = projects.find(function(x){ return x.id===p.parentId; });
+    return `<div class="panel-title" style="color:#3498db;">🔗 Umbrella projekt</div>
+    <div style="background:rgba(52,152,219,0.08);border:1px solid rgba(52,152,219,0.2);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:20px;">🗂️</span>
+      <div style="flex:1;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">Ez egy alprojekt – főprojekt:</div>
+        <div style="font-family:var(--mono);font-weight:700;cursor:pointer;color:#3498db;" onclick="showView('project-detail','${p.parentId}')">${p.parentId}${parent?' – '+parent.desc:''}</div>
+      </div>
+    </div>`;
+  }
+
+  // Ha ez UMBRELLA FŐPROJEKT vagy bármely projekt → alprojekt szekció
+  const subProjects = projects.filter(function(x){ return x.parentId===pid; });
+  const isUmbrella = p.isUmbrella || subProjects.length > 0;
+
+  let html = '';
+
+  if(isUmbrella || subProjects.length > 0) {
+    // Umbrella főprojekt nézet
+    html += `<div class="panel-title" style="color:#3498db;">🗂️ Alprojektek (${subProjects.length} db)</div>`;
+    html += '<div style="margin-bottom:16px;">';
+
+    if(subProjects.length === 0) {
+      html += '<div style="color:var(--text-dim);font-size:12px;padding:8px 0;">Nincs alprojekt felvéve.</div>';
+    } else {
+      // Összesítő
+      const totalInc  = subProjects.reduce(function(s,sp){ return s + pIncome(sp); }, 0);
+      const totalCost = subProjects.reduce(function(s,sp){ return s + pCost(sp); }, 0);
+      const totalPro  = totalInc - totalCost;
+      html += `<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+          <span style="color:var(--text-dim);">Összes bevétel: </span><strong style="color:var(--profit);">${fmtS(totalInc)}</strong>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+          <span style="color:var(--text-dim);">Összes kiadás: </span><strong style="color:var(--cost);">${fmtS(totalCost)}</strong>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+          <span style="color:var(--text-dim);">Összesített profit: </span><strong style="color:${totalPro>=0?'var(--profit)':'var(--danger)'};">${fmtS(totalPro)}</strong>
+        </div>
+      </div>`;
+
+      // Alprojekt lista
+      subProjects.forEach(function(sp) {
+        const spSt = STATUSES[sp.status]||STATUSES[0];
+        const spInc = pIncome(sp), spPro = pProfit(sp);
+        const tigCount = typeof tigStore !== 'undefined' ? tigStore.filter(function(t){ return (t.projectRefs||[]).includes(sp.id); }).length : 0;
+        html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #3498db;border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showView('project-detail','${sp.id}')">
+          <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3498db;min-width:140px;">${sp.id}</div>
+          <div style="flex:1;font-size:12px;">${sp.desc||'–'}</div>
+          <span class="status-badge ${spSt.cls}">${spSt.short}</span>
+          ${spInc>0?`<span style="font-family:var(--mono);font-size:11px;color:${spPro>=0?'var(--profit)':'var(--danger)'};">${spPro>=0?'+':''}${fmtS(spPro)}</span>`:''}
+          ${tigCount>0?`<span style="font-size:10px;color:var(--text-dim);">${tigCount} TIG</span>`:''}
+        </div>`;
+      });
+    }
+
+    html += `<button class="btn btn-secondary" style="margin-top:8px;font-size:12px;" onclick="openNewSubProjectModal('${pid}')">➕ Alprojekt hozzáadása</button>`;
+    html += '</div>';
+  } else {
+    // Normál projekt → lehetőség umbrella-vá alakítani + alprojektet adni
+    html += `<div style="border:1px dashed var(--border);border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;color:var(--text-dim);">🗂️</span>
+      <div style="flex:1;font-size:12px;color:var(--text-dim);">Ez a projekt önálló. Alprojektek hozzáadásával umbrella projektté alakítható.</div>
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;" onclick="openNewSubProjectModal('${pid}')">➕ Alprojekt</button>
+    </div>`;
+  }
+
+  return html;
+}
+
+// ── RÉSZ-TIG-EK SZEKCIÓ ───────────────────────────────────────────────────────
+function renderPartTigSection(p, pid) {
+  // Csak folyamatos projekteknél mutatjuk hangsúlyosan, de minden projektnél elérhető
+  const linkedTigs = typeof tigStore !== 'undefined'
+    ? tigStore.filter(function(t){ return (t.projectRefs||[]).includes(pid); })
+    : [];
+
+  if(linkedTigs.length <= 1 && !p.isContinuous) return ''; // 0-1 TIG esetén a docs szekcióban látszik
+
+  const isCont = p.isContinuous || p.status === STATUS_CONTINUOUS;
+  const totalNet = linkedTigs.reduce(function(s,t){ return s+(t.netTotal||0); }, 0);
+  const totalGross = linkedTigs.reduce(function(s,t){ return s+(t.grossTotal||0); }, 0);
+
+  let html = `<div class="panel-title" style="color:#2d7dd2;">📋 Rész-TIG-ek (${linkedTigs.length} db)</div>`;
+  html += '<div style="margin-bottom:16px;">';
+
+  if(isCont) {
+    html += `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.3);border-radius:20px;padding:3px 12px;font-size:11px;color:#3498db;margin-bottom:12px;">🔄 Folyamatos projekt – több rész-TIG lehetséges</div>`;
+  }
+
+  if(linkedTigs.length > 1) {
+    html += `<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+        <span style="color:var(--text-dim);">TIG-ek száma: </span><strong>${linkedTigs.length} db</strong>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+        <span style="color:var(--text-dim);">Összes nettó: </span><strong style="color:var(--profit);">${fmtS(totalNet)} Ft</strong>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
+        <span style="color:var(--text-dim);">Összes bruttó: </span><strong>${fmtS(totalGross)} Ft</strong>
+      </div>
+    </div>`;
+  }
+
+  // TIG-ek listája időrendben
+  const sortedTigs = linkedTigs.slice().sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); });
+  sortedTigs.forEach(function(t, i) {
+    html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #2d7dd2;border-radius:5px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:12px;">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:20px;">${i+1}.</span>
+      <div style="font-family:var(--mono);font-size:12px;font-weight:700;min-width:130px;">${t.id}</div>
+      <div style="font-size:11px;color:var(--text-dim);flex:1;">${t.date||'–'}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);">Nettó: ${fmtS(t.netTotal||0)} Ft</div>
+      <button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;" onclick="mlRedownloadDirect('${t.id}')">⬇️</button>
+    </div>`;
+  });
+
+  html += `<div style="display:flex;gap:8px;margin-top:10px;">
+    <button class="btn btn-secondary" style="font-size:12px;" onclick="openMlForProject('${pid}')">📋 Új rész-TIG készítése</button>
+    ${!isCont?`<button class="btn btn-secondary" style="font-size:11px;" onclick="setProjContinuous('${pid}')">🔄 Folyamatos projektté alakítás</button>`:''}
+  </div>`;
+
+  html += '</div>';
+  return html;
+}
+
+// ── ALPROJEKT LÉTREHOZÁS ──────────────────────────────────────────────────────
+function openNewSubProjectModal(parentId) {
+  const parent = projects.find(function(p){ return p.id===parentId; });
+  if(!parent) return;
+
+  // Előre kitöltjük a projekt modal-t a szülő adataival
+  _mlPreselectedProjectId = null;
+  const modal = document.getElementById('newProjectModal');
+  if(modal) modal.style.display = 'flex';
+  openNewProjectModal(parent.clientId);
+
+  // Beállítjuk hogy alprojektként mentse
+  window._pendingParentId = parentId;
+
+  // Ha a szülő folyamatos, az alprojekt is az lesz alapból
+  if(parent.isContinuous || parent.status === STATUS_CONTINUOUS) {
+    setTimeout(function() {
+      // Állapot szekció alapból "Folyamatos" az alprojektnél is
+    }, 100);
+  }
+
+  if(typeof showToast === 'function') showToast('📌 Alprojekt létrehozása: ' + parentId + ' alá', 'info');
+}
+window.openNewSubProjectModal = openNewSubProjectModal;
+
+// setProjContinuous – folyamatos projektté alakítás
+function setProjContinuous(pid) {
+  const p = projects.find(function(x){ return x.id===pid; });
+  if(!p) return;
+  if(!confirm('Folyamatos projektté alakítod? A projekt nem zárul le automatikusan TIG után.')) return;
+  p.isContinuous = true;
+  p.status = STATUS_CONTINUOUS;
+  p.updatedAt = new Date().toISOString().split('T')[0];
+  p.log = p.log||[];
+  p.log.push({time:nowStr(), msg:'Folyamatos projektté alakítva', type:'advance'});
+  if(window.fbSaveProject) window.fbSaveProject(p).catch(function(e){console.error(e);});
+  showView('project-detail', pid);
+  if(typeof showToast === 'function') showToast('🔄 Folyamatos projekt beállítva!');
+}
+window.setProjContinuous = setProjContinuous;
+
+// openMlForProject – TIG készítő megnyitása projektre előválasztva
+function openMlForProject(pid) {
+  _mlPreselectedProjectId = pid;
+  enterModule('ml');
+  setTimeout(function(){ showView('new-tig'); }, 100);
+}
+window.openMlForProject = openMlForProject;
 
 // ── KERESÉS ───────────────────────────────────────────────────────────────────
 function doSearch(val){
@@ -3040,7 +3232,7 @@ function filterByStatus(idx){
 }
 
 function renderProjectsFiltered(list, statusIdx){
-  const CLOSED_STATUS = 7; // Projekt kész (index 7 a STATUSES tömbben)
+  const CLOSED_STATUS = 8; // Projekt kész (index 8 a STATUSES tömbben – Folyamatos beillesztve)
   const st = STATUSES[statusIdx];
   const stColors = ['#6b7a96','#2d7dd2','#9b59b6','#e8a020','#e05252','#e88a20','#27ae60','#1abc9c','#3498db','#27ae60'];
   const color = st ? (stColors[statusIdx]||'var(--text-dim)') : 'var(--text-dim)';
@@ -3392,12 +3584,30 @@ function createProject(){
 
   const pid = generateSafePid(loc, ph);
   const now=new Date().toISOString().split('T')[0];
-  const newP={id:pid,clientId:effectiveCid,projectType:typ,desc,status:0,createdAt:projDate,updatedAt:now,
+  const newP={id:pid,clientId:effectiveCid,projectType:typ,desc,status: (document.getElementById('np-continuous')&&document.getElementById('np-continuous').checked) ? STATUS_CONTINUOUS : 0,
+    createdAt:projDate,updatedAt:now,
+    parentId: null,        // umbrella projekt ID (ha alprojekt)
+    isUmbrella: false,     // true ha főprojekt (alprojekteket tartalmaz)
+    isContinuous: !!(document.getElementById('np-continuous') && document.getElementById('np-continuous').checked),
     personName: priv ? document.getElementById('np-person-name').value.trim() : '',
     personAddress: priv ? document.getElementById('np-person-address').value.trim() : '',
     docs:{'Árajánlat':[],'TIG':[],'Képek':[],'VBF':[],'EGYÉB':[]},
     incomeInvoices:[],costInvoices:[],
     log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create',projectType:typ}]};
+  // Alprojekt: szülő linkje + szülő umbrella-vá alakítása
+  if(window._pendingParentId) {
+    newP.parentId = window._pendingParentId;
+    const parentProj = projects.find(function(x){ return x.id===window._pendingParentId; });
+    if(parentProj && !parentProj.isUmbrella) {
+      parentProj.isUmbrella = true;
+      parentProj.updatedAt = now;
+      parentProj.log = parentProj.log||[];
+      parentProj.log.push({time:nowStr(), msg:'Umbrella projektté vált (alprojekt: '+pid+')', type:'advance'});
+      if(window.fbSaveProject) window.fbSaveProject(parentProj).catch(function(e){console.error(e);});
+    }
+    window._pendingParentId = null;
+    newP.log.push({time:nowStr(), msg:'Alprojekt létrehozva: '+window._pendingParentId||'', type:'create'});
+  }
   projects.push(newP);
   if(window.fbSaveProject) window.fbSaveProject(newP).catch(e=>console.error(e));
   closeModal('newProjectModal');
@@ -7524,7 +7734,7 @@ function showLauncher(){
   const _mgTop = document.getElementById('minigo-topbar');
   if (_mgTop) _mgTop.style.display = '';
   // Update launcher stats
-  const openProj = projects.filter(p=>p.status!==7).length;
+  const openProj = projects.filter(p=>p.status!==8).length;
   const curYear  = new Date().getFullYear().toString();
   const yearInc  = projects.reduce((s,p)=>{
     return s + (p.incomeInvoices||[]).filter(i=>i.date&&i.date.startsWith(curYear)).reduce((ss,i)=>ss+Number(i.amount),0);
@@ -11790,6 +12000,7 @@ function qGeneratePreview() {
   // Mentés
   qSaveDraft();
   // PDF HTML generálás
+  window._qPreviewDraft = q; // Excel exporthoz
   const html = buildQPdfHtml(q);
   openQPreviewModal(q.id, html);
 }
@@ -11798,6 +12009,7 @@ function qPreviewQuote(id) {
   quoteInit(); // friss settings és items betöltése
   const q = _qStore.find(function(x){return x.id===id;});
   if(!q) { alert('Ajánlat nem található: ' + id); return; }
+  window._qPreviewDraft = q; // Excel exporthoz
   const html = buildQPdfHtml(q);
   openQPreviewModal(q.id, html);
 }
@@ -11815,6 +12027,7 @@ function openQPreviewModal(qId, html) {
       '<div style="margin-left:auto;display:flex;gap:8px;">' +
       '<button class="btn btn-secondary" onclick="closeModal(\'qPreviewModal\')">&#10005; Mégse</button>' +
       '<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="qDownloadPdf()">⬇️ Letöltés (Print/PDF)</button>' +
+      '<button class="btn btn-secondary" style="margin-left:6px;" onclick="qDownloadXLS()">📊 Excel letöltés</button>' +
       '</div></div>' +
       '<div style="flex:1;overflow:hidden;padding:0;">' +
       '<iframe id="qPreviewFrame" style="width:100%;height:100%;min-height:70vh;border:none;background:#fff;"></iframe>' +
@@ -11838,6 +12051,87 @@ function qDownloadPdf() {
   if(!frame||!frame.contentWindow) return;
   frame.contentWindow.focus();
   frame.contentWindow.print();
+}
+
+function qDownloadXLS() {
+  // Az aktuális _pendingTigObj-ból vagy a preview-ban lévő ajánlatból dolgozunk
+  const q = window._qPreviewDraft;
+  if(!q) { alert('Nincs megjeleníthető ajánlat!'); return; }
+
+  const s        = _qSettings || {};
+  const client   = (clients||[]).find(function(c){return c.id===q.clientId;});
+  const clientName = client ? client.name : (q.clientId||'–');
+  const vat      = q.vat || 27;
+  const cur      = q.currency || 'HUF';
+  const date     = q.date || new Date().toISOString().slice(0,10);
+
+  const secDefs  = [
+    {key:'material', title:'Anyag'},
+    {key:'work',     title:'Munkadíj'},
+    {key:'travel',   title:'Kiszállás / Utazás'},
+  ];
+  const qSections = q.sections || {};
+
+  // Fejléc sorok
+  const companyName = s.name || 'Vállalkozó';
+  const rows = [];
+
+  // Cégfejléc
+  rows.push([companyName, '', '', '', '', '', '']);
+  rows.push(['Ajánlat azonosító:', q.id||'–', '', 'Dátum:', date, '', '']);
+  rows.push(['Megrendelő:', clientName, '', '', '', '', '']);
+  rows.push(['Deviza:', cur, '', 'ÁFA:', vat+'%', '', '']);
+  rows.push(['', '', '', '', '', '', '']);
+
+  // Oszlopfejléc
+  rows.push(['Megnevezés', 'Megjegyzés', 'Szekció', 'Mennyiség', 'Egység', 'Egységár (nettó)', 'Összeg (nettó)']);
+
+  let grandNet = 0;
+
+  // Sorok szekciónként
+  secDefs.forEach(function(sec) {
+    const secRows = (qSections[sec.key]||[]).filter(function(r){
+      return (parseFloat(r.qty)||0) > 0 && (parseFloat(r.unitPrice)||0) > 0 || r.customName || r.itemId;
+    });
+    if(secRows.length === 0) return;
+
+    secRows.forEach(function(r) {
+      const name    = r.customName || (_qItems.find(function(it){return it.id===r.itemId;})||{name:r.itemId||'–'}).name;
+      const qty     = parseFloat(r.qty)||0;
+      const price   = parseFloat(r.unitPrice)||0;
+      const line    = qty * price;
+      grandNet     += line;
+      rows.push([name, r.note||'', sec.title, qty, r.unit||'', price, line]);
+    });
+  });
+
+  // Összesítők
+  const vatAmt = Math.round(grandNet * vat / 100);
+  const gross  = grandNet + vatAmt;
+  rows.push(['', '', '', '', '', '', '']);
+  rows.push(['NETTÓ ÖSSZESEN', '', '', '', '', '', grandNet]);
+  rows.push(['ÁFA ('+vat+'%)', '', '', '', '', '', vatAmt]);
+  rows.push(['BRUTTÓ VÉGÖSSZEG', '', '', '', '', '', gross]);
+
+  // Egyedi szöveg
+  if(q.customText) {
+    rows.push(['', '', '', '', '', '', '']);
+    rows.push(['Megjegyzés:', q.customText, '', '', '', '', '']);
+  }
+
+  // TSV → XLS
+  const tsv = rows.map(function(row){return row.map(function(cell){var c2=String(cell==null?'':cell);c2=c2.split(String.fromCharCode(9)).join(' ').split(String.fromCharCode(10)).join(' ');return c2;}).join(String.fromCharCode(9));}).join(String.fromCharCode(10));
+
+  const blob = new Blob(['﻿' + tsv], {type:'text/tab-separated-values;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'ajanlat_' + (q.id||'export') + '_' + date + '.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(typeof showToast==='function') showToast('📊 Excel letöltve!');
 }
 
 // ── PDF HTML SABLON ───────────────────────────────────────────────────────────
