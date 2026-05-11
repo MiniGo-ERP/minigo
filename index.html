@@ -12066,7 +12066,6 @@ function qDownloadXLS() {
   ];
   const qSections = q.sections || {};
 
-  // Szekciónként összesítők
   const secTotals = {material:0, work:0, travel:0};
   const secRowsMap = {};
   secDefs.forEach(sec => {
@@ -12084,115 +12083,121 @@ function qDownloadXLS() {
   const grandNet = secTotals.material + secTotals.work + secTotals.travel;
   const vatAmt   = Math.round(grandNet * vat / 100);
   const gross    = grandNet + vatAmt;
-  const numFmt   = n => typeof n==='number' ? n.toLocaleString('hu-HU') : (n||'');
+  const numFmt   = n => (typeof n==='number' ? n : 0).toLocaleString('hu-HU');
 
-  // Stílusok
+  const BASE = 'font-family:Calibri,Arial,sans-serif;font-size:11pt;vertical-align:middle;';
   const S = {
-    hdr:     'background:#1F4E79;color:#FFFFFF;font-weight:bold;font-size:13px;padding:5px 8px;',
-    colHdr:  'background:#2D6A9F;color:#FFFFFF;font-weight:bold;text-align:center;padding:4px 6px;',
-    secHdr:  'background:#CCCCCC;color:#000000;font-weight:bold;padding:4px 8px;',
-    sum:     'background:#E8E8E8;font-weight:bold;',
-    sumR:    'background:#E8E8E8;font-weight:bold;text-align:right;',
-    tot:     'background:#D0D8E8;font-weight:bold;',
-    totR:    'background:#D0D8E8;font-weight:bold;text-align:right;',
-    cell:    'padding:3px 6px;',
-    cellR:   'padding:3px 6px;text-align:right;',
-    cellAlt: 'padding:3px 6px;background:#F5F5F5;',
-    cellAltR:'padding:3px 6px;background:#F5F5F5;text-align:right;',
-    label:   'padding:3px 6px;color:#444444;',
-    num:     'mso-number-format:"# ##0";',
+    hdr:     BASE+'background:#1F4E79;color:#FFFFFF;font-weight:bold;font-size:13pt;padding:6px 10px;',
+    colHdr:  BASE+'background:#2D6A9F;color:#FFFFFF;font-weight:bold;text-align:center;padding:5px 8px;border:1px solid #1a5080;',
+    secHdr:  BASE+'background:#CCCCCC;color:#000000;font-weight:bold;padding:5px 10px;',
+    sum:     BASE+'background:#E8E8E8;font-weight:bold;padding:4px 8px;border-top:1px solid #AAAAAA;',
+    sumR:    BASE+'background:#E8E8E8;font-weight:bold;text-align:right;padding:4px 8px;border-top:1px solid #AAAAAA;',
+    tot:     BASE+'background:#D0D8E8;font-weight:bold;padding:4px 8px;',
+    totR:    BASE+'background:#D0D8E8;font-weight:bold;text-align:right;padding:4px 8px;',
+    cell:    BASE+'padding:4px 8px;white-space:nowrap;',
+    cellR:   BASE+'padding:4px 8px;text-align:right;white-space:nowrap;',
+    cellAlt: BASE+'background:#F5F5F5;padding:4px 8px;white-space:nowrap;',
+    cellAltR:BASE+'background:#F5F5F5;padding:4px 8px;text-align:right;white-space:nowrap;',
+    label:   BASE+'padding:4px 8px;color:#333333;',
+    empty:   BASE+'padding:4px 8px;',
   };
 
-  function td(val, style, isNum) {
-    const safe = String(val??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const numStyle = isNum ? 'mso-number-format:\'# ##0\';' : '';
-    return `<td style="${style}${numStyle}">${safe}</td>`;
+  function td(val, style) {
+    const safe = String(val??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<td style="${style}">${safe}</td>`;
   }
-  function tr(...cells) { return '<tr>' + cells.join('') + '</tr>'; }
-  function tdFull(val, colspan, style) {
-    return `<td colspan="${colspan}" style="${style}">${String(val??'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>`;
+  function tdN(n, style) {
+    return `<td style="${style}">${numFmt(n)}&nbsp;${cur}</td>`;
   }
+  function tdSpan(val, colspan, style) {
+    const safe = String(val??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<td colspan="${colspan}" style="${style}">${safe}</td>`;
+  }
+  function tr(...cells) { return '<tr style="height:22px;">' + cells.join('') + '</tr>\n'; }
+  function trH(h, ...cells) { return `<tr style="height:${h}px;">` + cells.join('') + '</tr>\n'; }
+  function emptyRow() { return `<tr style="height:8px;">${'<td></td>'.repeat(7)}</tr>\n`; }
 
   let rows = '';
 
-  // ── 1. CÉG FEJLÉC ────────────────────────────────────────────────────────
-  rows += tr(tdFull(companyName, 7, S.hdr));
-  rows += tr(td('Ajánlat azonosító:',S.label), td(q.id||'–',S.cell), td('',S.cell), td('Dátum:',S.label), td(date,S.cell), td('',S.cell), td('',S.cell));
-  rows += tr(td('Megrendelő:',S.label), tdFull(clientName, 6, S.cell));
-  if(clientAddr) rows += tr(td('Cím:',S.label), tdFull(clientAddr, 6, S.cell));
-  rows += tr(td('Deviza:',S.label), td(cur,S.cell), td('',S.cell), td('ÁFA:',S.label), td(vat+'%',S.cell), td('',S.cell), td('',S.cell));
-  rows += tr(tdFull('',7,''));
+  // ── 1. CÉG FEJLÉC
+  rows += trH(28, tdSpan(companyName, 7, S.hdr));
+  rows += tr(td('Ajánlat azonosító:',S.label), td(q.id||'–',S.cell), td('',S.empty), td('Dátum:',S.label), td(date,S.cell), td('',S.empty), td('',S.empty));
+  rows += tr(td('Megrendelő:',S.label), tdSpan(clientName, 6, S.cell));
+  if(clientAddr) rows += tr(td('Cím:',S.label), tdSpan(clientAddr, 6, S.cell));
+  rows += tr(td('Deviza:',S.label), td(cur,S.cell), td('',S.empty), td('ÁFA:',S.label), td(vat+'%',S.cell), td('',S.empty), td('',S.empty));
+  rows += emptyRow();
 
-  // ── 2. ÖSSZESÍTŐ BLOKK ───────────────────────────────────────────────────
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('Anyag összesen (nettó):',S.sum), td(numFmt(secTotals.material)+' '+cur,S.sumR));
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('Munkadíj összesen (nettó):',S.sum), td(numFmt(secTotals.work)+' '+cur,S.sumR));
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('Kiszállás összesen (nettó):',S.sum), td(numFmt(secTotals.travel)+' '+cur,S.sumR));
-  rows += tr(tdFull('',7,''));
+  // ── 2. ÖSSZESÍTŐ BLOKK
+  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('Anyag összesen (nettó):',S.sum), tdN(secTotals.material, S.sumR));
+  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('Munkadíj összesen (nettó):',S.sum), tdN(secTotals.work, S.sumR));
+  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('Kiszállás összesen (nettó):',S.sum), tdN(secTotals.travel, S.sumR));
+  rows += emptyRow();
 
-  // ── 3. OSZLOPFEJLÉC ──────────────────────────────────────────────────────
-  rows += tr(
+  // ── 3. OSZLOPFEJLÉC
+  rows += trH(24,
     td('Megnevezés',S.colHdr), td('Megjegyzés',S.colHdr), td('Szekció',S.colHdr),
     td('Mennyiség',S.colHdr),  td('Egység',S.colHdr),
     td('Egységár (nettó, '+cur+')',S.colHdr), td('Összeg (nettó, '+cur+')',S.colHdr)
   );
 
-  // ── 4. TÉTELSOROK ────────────────────────────────────────────────────────
+  // ── 4. TÉTELSOROK
   secDefs.forEach(sec => {
     const secRows = secRowsMap[sec.key];
     if(!secRows || secRows.length === 0) return;
 
-    // Szekció fejléc (szürke)
-    rows += tr(tdFull(sec.title, 7, S.secHdr));
+    rows += trH(22, tdSpan(sec.title, 7, S.secHdr));
 
-    // Tételek
     secRows.forEach((r, ri) => {
       const even = ri%2===0;
       const c  = even ? S.cell    : S.cellAlt;
       const cR = even ? S.cellR   : S.cellAltR;
       rows += tr(
         td(r.name,c), td(r.note,c), td(sec.title,c),
-        td(r.qty,cR), td(r.unit,c),
-        td(numFmt(r.price),cR), td(numFmt(r.line),cR)
+        td(r.qty + (r.unit ? ' '+r.unit : ''),cR),
+        td('',S.empty),
+        tdN(r.price,cR), tdN(r.line,cR)
       );
     });
 
-    // Szekció összesen
-    rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-               td(sec.title+' összesen (nettó):',S.sum),
-               td(numFmt(secTotals[sec.key])+' '+cur,S.sumR));
-    rows += tr(tdFull('',7,''));
+    rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+               td(sec.title+' összesen (nettó):',S.sum), tdN(secTotals[sec.key], S.sumR));
+    rows += emptyRow();
   });
 
-  // ── 5. VÉGÖSSZEG ─────────────────────────────────────────────────────────
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('Nettó összesen:',S.tot), td(numFmt(grandNet)+' '+cur,S.totR));
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('ÁFA ('+vat+'%):',S.tot), td(numFmt(vatAmt)+' '+cur,S.totR));
-  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
-             td('Bruttó végösszeg:',S.tot), td(numFmt(gross)+' '+cur,S.totR));
+  // ── 5. VÉGÖSSZEG
+  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('Nettó összesen:',S.tot), tdN(grandNet, S.totR));
+  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('ÁFA ('+vat+'%):',S.tot), tdN(vatAmt, S.totR));
+  rows += trH(26,td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+             td('Bruttó végösszeg:',S.tot+'font-size:12pt;'), tdN(gross, S.totR+'font-size:12pt;font-weight:bold;'));
 
   if(q.customText) {
-    rows += tr(tdFull('',7,''));
-    rows += tr(td('Megjegyzés:',S.label), tdFull(q.customText,6,S.cell));
+    rows += emptyRow();
+    rows += tr(td('Megjegyzés:',S.label), tdSpan(q.customText, 6, S.cell));
   }
 
-  // ── HTML XLS összeállítás ─────────────────────────────────────────────────
+  // ── HTML összeállítás
   const sheetName = 'Ajánlat';
-  const colWidths = [300,160,120,80,60,160,160];
-  let colgroup = colWidths.map(w => `<col style="width:${w}px;">`).join('');
-
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="UTF-8">
 <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
 <x:Name>${sheetName}</x:Name>
 <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
 </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-<style>td{font-family:Calibri,Arial,sans-serif;font-size:11px;}table{border-collapse:collapse;}</style>
 </head><body>
-<table><colgroup>${colgroup}</colgroup>${rows}</table>
+<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt;">
+<col style="width:240pt;">
+<col style="width:110pt;">
+<col style="width:90pt;">
+<col style="width:70pt;">
+<col style="width:50pt;">
+<col style="width:130pt;">
+<col style="width:120pt;">
+${rows}</table>
 </body></html>`;
 
   const fileName = 'ajanlat_' + (q.id||'export') + '_' + date + '.xls';
