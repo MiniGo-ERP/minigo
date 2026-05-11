@@ -12051,7 +12051,7 @@ function qDownloadXLS() {
   if(!q) { alert('Nyisd meg az ajánlat előnézetét először, majd kattints az Excel gombra!'); return; }
 
   const s          = _qSettings || {};
-  const client     = (clients||[]).find(function(c){return c.id===q.clientId;});
+  const client     = (clients||[]).find(c => c.id===q.clientId);
   const clientName = client ? client.name : (q.clientId||'–');
   const clientAddr = client ? (client.address||'') : '';
   const vat        = q.vat || 27;
@@ -12067,182 +12067,143 @@ function qDownloadXLS() {
   const qSections = q.sections || {};
 
   // Szekciónként összesítők
-  var secTotals = {material:0, work:0, travel:0};
-  var secRowsMap = {};
-  secDefs.forEach(function(sec) {
-    var rows = (qSections[sec.key]||[]).filter(function(r){
-      return r.customName || r.itemId;
-    });
-    var mapped = rows.map(function(r) {
-      var name  = r.customName || (_qItems.find(function(it){return it.id===r.itemId;})||{name:r.itemId||'–'}).name;
-      var qty   = parseFloat(r.qty)||0;
-      var price = parseFloat(r.unitPrice)||0;
-      var line  = qty * price;
+  const secTotals = {material:0, work:0, travel:0};
+  const secRowsMap = {};
+  secDefs.forEach(sec => {
+    const rows = (qSections[sec.key]||[]).filter(r => r.customName || r.itemId);
+    secRowsMap[sec.key] = rows.map(r => {
+      const name  = r.customName || (_qItems.find(it => it.id===r.itemId)||{name:r.itemId||'–'}).name;
+      const qty   = parseFloat(r.qty)||0;
+      const price = parseFloat(r.unitPrice)||0;
+      const line  = qty * price;
       secTotals[sec.key] += line;
-      return {name:name, note:r.note||'', qty:qty, unit:r.unit||'', price:price, line:line};
+      return {name, note:r.note||'', qty, unit:r.unit||'', price, line};
     });
-    secRowsMap[sec.key] = mapped;
   });
 
-  var grandNet = secTotals.material + secTotals.work + secTotals.travel;
-  var vatAmt   = Math.round(grandNet * vat / 100);
-  var gross    = grandNet + vatAmt;
+  const grandNet = secTotals.material + secTotals.work + secTotals.travel;
+  const vatAmt   = Math.round(grandNet * vat / 100);
+  const gross    = grandNet + vatAmt;
+  const numFmt   = n => typeof n==='number' ? n.toLocaleString('hu-HU') : (n||'');
 
-  function fmt(n){ return n===0 ? 0 : n; }
+  // Stílusok
+  const S = {
+    hdr:     'background:#1F4E79;color:#FFFFFF;font-weight:bold;font-size:13px;padding:5px 8px;',
+    colHdr:  'background:#2D6A9F;color:#FFFFFF;font-weight:bold;text-align:center;padding:4px 6px;',
+    secHdr:  'background:#CCCCCC;color:#000000;font-weight:bold;padding:4px 8px;',
+    sum:     'background:#E8E8E8;font-weight:bold;',
+    sumR:    'background:#E8E8E8;font-weight:bold;text-align:right;',
+    tot:     'background:#D0D8E8;font-weight:bold;',
+    totR:    'background:#D0D8E8;font-weight:bold;text-align:right;',
+    cell:    'padding:3px 6px;',
+    cellR:   'padding:3px 6px;text-align:right;',
+    cellAlt: 'padding:3px 6px;background:#F5F5F5;',
+    cellAltR:'padding:3px 6px;background:#F5F5F5;text-align:right;',
+    label:   'padding:3px 6px;color:#444444;',
+    num:     'mso-number-format:"# ##0";',
+  };
 
-  function buildAndDownload(XLSX) {
-    var wb = XLSX.utils.book_new();
-    var wsData = [];
-    var styles = {}; // cellcím -> stílus
-
-    // Színek
-    var YELLOW    = 'FFFF00';
-    var BLUE_HDR  = '1F4E79';
-    var BLUE_COL  = '2D7DD2';
-    var GRAY_ROW  = 'F2F2F2';
-    var SUM_BG    = 'FFF2CC';
-    var WHITE     = 'FFFFFF';
-    var DARK      = '000000';
-
-    function cellStyle(bg, bold, color, align) {
-      return {
-        font: {bold:!!bold, color:{rgb: color||DARK}},
-        fill: {patternType:'solid', fgColor:{rgb: bg||WHITE}},
-        alignment: {horizontal: align||'left', vertical:'center'},
-        border: {
-          top:    {style:'thin', color:{rgb:'CCCCCC'}},
-          bottom: {style:'thin', color:{rgb:'CCCCCC'}},
-          left:   {style:'thin', color:{rgb:'CCCCCC'}},
-          right:  {style:'thin', color:{rgb:'CCCCCC'}}
-        }
-      };
-    }
-
-    function pushRow(row, styleArr) {
-      var rowIdx = wsData.length;
-      wsData.push(row);
-      if(styleArr) {
-        styleArr.forEach(function(s, ci) {
-          if(s) styles[XLSX.utils.encode_cell({r:rowIdx, c:ci})] = s;
-        });
-      }
-    }
-
-    // ── 1. CÉG FEJLÉC ────────────────────────────────────────────────────────
-    pushRow([companyName,'','','','','',''], [
-      cellStyle(BLUE_HDR, true, WHITE, 'left'),null,null,null,null,null,null
-    ]);
-    pushRow(['Ajánlat azonosító:',q.id||'–','','Dátum:',date,'',''], null);
-    pushRow(['Megrendelő:',clientName,'','','','',''], null);
-    if(clientAddr) pushRow(['Cím:',clientAddr,'','','','',''], null);
-    pushRow(['Deviza:',cur,'','ÁFA:',vat+'%','',''], null);
-    pushRow([],[]);  // üres sor
-
-    // ── 2. ÖSSZESÍTŐ SOR ─────────────────────────────────────────────────────
-    pushRow(['','','','','','Anyag összesen (nettó):',fmt(secTotals.material)], [
-      null,null,null,null,null,
-      cellStyle(SUM_BG,true),cellStyle(SUM_BG,true)
-    ]);
-    pushRow(['','','','','','Munkadíj összesen (nettó):',fmt(secTotals.work)], [
-      null,null,null,null,null,
-      cellStyle(SUM_BG,true),cellStyle(SUM_BG,true)
-    ]);
-    pushRow(['','','','','','Kiszállás összesen (nettó):',fmt(secTotals.travel)], [
-      null,null,null,null,null,
-      cellStyle(SUM_BG,true),cellStyle(SUM_BG,true)
-    ]);
-    pushRow([],[]);
-
-    // ── 3. OSZLOPFEJLÉC ──────────────────────────────────────────────────────
-    var colHdrStyle = cellStyle(BLUE_COL,true,WHITE,'center');
-    pushRow(
-      ['Megnevezés','Megjegyzés','Szekció','Mennyiség','Egység','Egységár (nettó, '+cur+')','Összeg (nettó, '+cur+')'],
-      [colHdrStyle,colHdrStyle,colHdrStyle,colHdrStyle,colHdrStyle,colHdrStyle,colHdrStyle]
-    );
-
-    // ── 4. TÉTELSOROK SZEKCIÓNKÉNT ───────────────────────────────────────────
-    secDefs.forEach(function(sec) {
-      var rows = secRowsMap[sec.key];
-      if(!rows || rows.length === 0) return;
-
-      // Szekció fejléc sor (sárga)
-      var secHdrSt = cellStyle(YELLOW,true,DARK,'left');
-      pushRow(
-        [sec.title,'','','','','',''],
-        [secHdrSt,secHdrSt,secHdrSt,secHdrSt,secHdrSt,secHdrSt,secHdrSt]
-      );
-
-      // Tételek
-      rows.forEach(function(r, ri) {
-        var bg = (ri%2===0) ? WHITE : GRAY_ROW;
-        var st = cellStyle(bg,false);
-        var stR = cellStyle(bg,false,DARK,'right');
-        pushRow(
-          [r.name, r.note, sec.title, r.qty, r.unit, fmt(r.price), fmt(r.line)],
-          [st,st,st,stR,st,stR,stR]
-        );
-      });
-
-      // Szekció összesen
-      var sumSt  = cellStyle(SUM_BG,true);
-      var sumStR = cellStyle(SUM_BG,true,DARK,'right');
-      pushRow(
-        ['','','','','',sec.title+' összesen (nettó):',fmt(secTotals[sec.key])],
-        [null,null,null,null,null,sumSt,sumStR]
-      );
-      pushRow([],[]);
-    });
-
-    // ── 5. VÉGÖSSZEG ─────────────────────────────────────────────────────────
-    var totSt  = cellStyle('D9E1F2',true);
-    var totStR = cellStyle('D9E1F2',true,DARK,'right');
-    pushRow(['','','','','','Nettó összesen:',fmt(grandNet)],
-      [null,null,null,null,null,totSt,totStR]);
-    pushRow(['','','','','','ÁFA ('+vat+'%):',fmt(vatAmt)],
-      [null,null,null,null,null,totSt,totStR]);
-    pushRow(['','','','','','Bruttó végösszeg:',fmt(gross)],
-      [null,null,null,null,null,totSt,totStR]);
-
-    if(q.customText) {
-      pushRow([],[]);
-      pushRow(['Megjegyzés:',q.customText,'','','','',''],null);
-    }
-
-    // ── Munkalap összeállítás ─────────────────────────────────────────────────
-    var ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Stílusok alkalmazása
-    Object.keys(styles).forEach(function(addr) {
-      if(!ws[addr]) ws[addr] = {t:'s', v:''};
-      ws[addr].s = styles[addr];
-    });
-
-    // Oszlopszélességek
-    ws['!cols'] = [
-      {wch:42},{wch:22},{wch:18},{wch:10},{wch:8},{wch:24},{wch:22}
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Ajánlat');
-
-    var fileName = 'ajanlat_' + (q.id||'export') + '_' + date + '.xlsx';
-    XLSX.writeFile(wb, fileName);
-    if(typeof showToast==='function') showToast('📊 Excel letöltve: ' + fileName);
+  function td(val, style, isNum) {
+    const safe = String(val??'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const numStyle = isNum ? 'mso-number-format:\'# ##0\';' : '';
+    return `<td style="${style}${numStyle}">${safe}</td>`;
+  }
+  function tr(...cells) { return '<tr>' + cells.join('') + '</tr>'; }
+  function tdFull(val, colspan, style) {
+    return `<td colspan="${colspan}" style="${style}">${String(val??'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>`;
   }
 
-  if(window.XLSX) {
-    buildAndDownload(window.XLSX);
-  } else {
-    var script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-    script.onload = function() { buildAndDownload(window.XLSX); };
-    script.onerror = function() {
-      if(typeof showToast==='function') showToast('⚠️ Excel lib nem elérhető','warn');
-    };
-    document.head.appendChild(script);
+  let rows = '';
+
+  // ── 1. CÉG FEJLÉC ────────────────────────────────────────────────────────
+  rows += tr(tdFull(companyName, 7, S.hdr));
+  rows += tr(td('Ajánlat azonosító:',S.label), td(q.id||'–',S.cell), td('',S.cell), td('Dátum:',S.label), td(date,S.cell), td('',S.cell), td('',S.cell));
+  rows += tr(td('Megrendelő:',S.label), tdFull(clientName, 6, S.cell));
+  if(clientAddr) rows += tr(td('Cím:',S.label), tdFull(clientAddr, 6, S.cell));
+  rows += tr(td('Deviza:',S.label), td(cur,S.cell), td('',S.cell), td('ÁFA:',S.label), td(vat+'%',S.cell), td('',S.cell), td('',S.cell));
+  rows += tr(tdFull('',7,''));
+
+  // ── 2. ÖSSZESÍTŐ BLOKK ───────────────────────────────────────────────────
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('Anyag összesen (nettó):',S.sum), td(numFmt(secTotals.material)+' '+cur,S.sumR));
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('Munkadíj összesen (nettó):',S.sum), td(numFmt(secTotals.work)+' '+cur,S.sumR));
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('Kiszállás összesen (nettó):',S.sum), td(numFmt(secTotals.travel)+' '+cur,S.sumR));
+  rows += tr(tdFull('',7,''));
+
+  // ── 3. OSZLOPFEJLÉC ──────────────────────────────────────────────────────
+  rows += tr(
+    td('Megnevezés',S.colHdr), td('Megjegyzés',S.colHdr), td('Szekció',S.colHdr),
+    td('Mennyiség',S.colHdr),  td('Egység',S.colHdr),
+    td('Egységár (nettó, '+cur+')',S.colHdr), td('Összeg (nettó, '+cur+')',S.colHdr)
+  );
+
+  // ── 4. TÉTELSOROK ────────────────────────────────────────────────────────
+  secDefs.forEach(sec => {
+    const secRows = secRowsMap[sec.key];
+    if(!secRows || secRows.length === 0) return;
+
+    // Szekció fejléc (szürke)
+    rows += tr(tdFull(sec.title, 7, S.secHdr));
+
+    // Tételek
+    secRows.forEach((r, ri) => {
+      const even = ri%2===0;
+      const c  = even ? S.cell    : S.cellAlt;
+      const cR = even ? S.cellR   : S.cellAltR;
+      rows += tr(
+        td(r.name,c), td(r.note,c), td(sec.title,c),
+        td(r.qty,cR), td(r.unit,c),
+        td(numFmt(r.price),cR), td(numFmt(r.line),cR)
+      );
+    });
+
+    // Szekció összesen
+    rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+               td(sec.title+' összesen (nettó):',S.sum),
+               td(numFmt(secTotals[sec.key])+' '+cur,S.sumR));
+    rows += tr(tdFull('',7,''));
+  });
+
+  // ── 5. VÉGÖSSZEG ─────────────────────────────────────────────────────────
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('Nettó összesen:',S.tot), td(numFmt(grandNet)+' '+cur,S.totR));
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('ÁFA ('+vat+'%):',S.tot), td(numFmt(vatAmt)+' '+cur,S.totR));
+  rows += tr(td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),td('',S.cell),
+             td('Bruttó végösszeg:',S.tot), td(numFmt(gross)+' '+cur,S.totR));
+
+  if(q.customText) {
+    rows += tr(tdFull('',7,''));
+    rows += tr(td('Megjegyzés:',S.label), tdFull(q.customText,6,S.cell));
   }
+
+  // ── HTML XLS összeállítás ─────────────────────────────────────────────────
+  const sheetName = 'Ajánlat';
+  const colWidths = [300,160,120,80,60,160,160];
+  let colgroup = colWidths.map(w => `<col style="width:${w}px;">`).join('');
+
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${sheetName}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+<style>td{font-family:Calibri,Arial,sans-serif;font-size:11px;}table{border-collapse:collapse;}</style>
+</head><body>
+<table><colgroup>${colgroup}</colgroup>${rows}</table>
+</body></html>`;
+
+  const fileName = 'ajanlat_' + (q.id||'export') + '_' + date + '.xls';
+  const blob = new Blob(['\ufeff' + html], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  if(typeof showToast==='function') showToast('📊 Excel letöltve: ' + fileName);
 }
-
-
 function qDownloadPdf() {
   const frame = document.getElementById('qPreviewFrame');
   if(!frame||!frame.contentWindow) return;
