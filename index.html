@@ -12047,16 +12047,16 @@ function openQPreviewModal(qId, html) {
 }
 
 function qDownloadXLS() {
+  // Az aktuális _pendingTigObj-ból vagy a preview-ban lévő ajánlatból dolgozunk
   const q = window._qPreviewDraft;
-  if(!q) { alert('Nyisd meg az ajánlat előnézetét először, majd kattints az Excel gombra!'); return; }
+  if(!q) { alert('Nincs megjeleníthető ajánlat!'); return; }
 
-  const s          = _qSettings || {};
-  const client     = (clients||[]).find(function(c){return c.id===q.clientId;});
+  const s        = _qSettings || {};
+  const client   = (clients||[]).find(function(c){return c.id===q.clientId;});
   const clientName = client ? client.name : (q.clientId||'–');
-  const vat        = q.vat || 27;
-  const cur        = q.currency || 'HUF';
-  const date       = q.date || new Date().toISOString().slice(0,10);
-  const companyName= s.companyName || 'Vállalkozó';
+  const vat      = q.vat || 27;
+  const cur      = q.currency || 'HUF';
+  const date     = q.date || new Date().toISOString().slice(0,10);
 
   const secDefs  = [
     {key:'material', title:'Anyag'},
@@ -12065,116 +12065,67 @@ function qDownloadXLS() {
   ];
   const qSections = q.sections || {};
 
-  // Adatsorok összeállítása
-  let grandNet = 0;
-  const dataRows = []; // {megnevezes, megjegyzes, szekció, qty, unit, egysegar, osszeg}
+  // Fejléc sorok
+  const companyName = s.companyName || 'Vállalkozó';
+  const rows = [];
 
+  // Cégfejléc
+  rows.push([companyName, '', '', '', '', '', '']);
+  rows.push(['Ajánlat azonosító:', q.id||'–', '', 'Dátum:', date, '', '']);
+  rows.push(['Megrendelő:', clientName, '', '', '', '', '']);
+  rows.push(['Deviza:', cur, '', 'ÁFA:', vat+'%', '', '']);
+  rows.push(['', '', '', '', '', '', '']);
+
+  // Oszlopfejléc
+  rows.push(['Megnevezés', 'Megjegyzés', 'Szekció', 'Mennyiség', 'Egység', 'Egységár (nettó)', 'Összeg (nettó)']);
+
+  let grandNet = 0;
+
+  // Sorok szekciónként
   secDefs.forEach(function(sec) {
     const secRows = (qSections[sec.key]||[]).filter(function(r){
       return (parseFloat(r.qty)||0) > 0 && (parseFloat(r.unitPrice)||0) > 0 || r.customName || r.itemId;
     });
     if(secRows.length === 0) return;
+
     secRows.forEach(function(r) {
-      const name  = r.customName || (_qItems.find(function(it){return it.id===r.itemId;})||{name:r.itemId||'–'}).name;
-      const qty   = parseFloat(r.qty)||0;
-      const price = parseFloat(r.unitPrice)||0;
-      const line  = qty * price;
-      grandNet   += line;
-      dataRows.push([name, r.note||'', sec.title, qty, r.unit||'', price, line]);
+      const name    = r.customName || (_qItems.find(function(it){return it.id===r.itemId;})||{name:r.itemId||'–'}).name;
+      const qty     = parseFloat(r.qty)||0;
+      const price   = parseFloat(r.unitPrice)||0;
+      const line    = qty * price;
+      grandNet     += line;
+      rows.push([name, r.note||'', sec.title, qty, r.unit||'', price, line]);
     });
   });
 
+  // Összesítők
   const vatAmt = Math.round(grandNet * vat / 100);
   const gross  = grandNet + vatAmt;
+  rows.push(['', '', '', '', '', '', '']);
+  rows.push(['NETTÓ ÖSSZESEN', '', '', '', '', '', grandNet]);
+  rows.push(['ÁFA ('+vat+'%)', '', '', '', '', '', vatAmt]);
+  rows.push(['BRUTTÓ VÉGÖSSZEG', '', '', '', '', '', gross]);
 
-  // SheetJS betöltése ha nincs
-  function buildAndDownload(XLSX) {
-    const wb = XLSX.utils.book_new();
-
-    // ── Fejléc adat ──────────────────────────────────────────────────────────
-    const wsData = [];
-    wsData.push([companyName]);
-    wsData.push(['Ajánlat azonosító:', q.id||'–', '', 'Dátum:', date]);
-    wsData.push(['Megrendelő:', clientName]);
-    wsData.push(['Deviza:', cur, '', 'ÁFA:', vat+'%']);
-    wsData.push([]);
-
-    // Oszlopfejléc
-    wsData.push(['Megnevezés','Megjegyzés','Szekció','Mennyiség','Egység','Egységár (nettó, '+cur+')','Összeg (nettó, '+cur+')']);
-
-    // Tételsorok
-    dataRows.forEach(function(r){ wsData.push(r); });
-
-    wsData.push([]);
-    wsData.push(['','','','','','Nettó összesen:', grandNet]);
-    wsData.push(['','','','','','ÁFA ('+vat+'%):', vatAmt]);
-    wsData.push(['','','','','','Bruttó végösszeg:', gross]);
-
-    if(q.customText) {
-      wsData.push([]);
-      wsData.push(['Megjegyzés:', q.customText]);
-    }
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Oszlopszélességek
-    ws['!cols'] = [
-      {wch:40}, {wch:20}, {wch:16}, {wch:10}, {wch:8}, {wch:20}, {wch:20}
-    ];
-
-    // Fejléc sor bold stílus (ha a XLSX verzió támogatja)
-    const headerRowIdx = 5; // 0-indexed
-    const headerRange = XLSX.utils.decode_range(ws['!ref']||'A1');
-    for(var c = headerRange.s.c; c <= Math.min(headerRange.e.c, 6); c++) {
-      var cellAddr = XLSX.utils.encode_cell({r: headerRowIdx, c: c});
-      if(ws[cellAddr]) {
-        ws[cellAddr].s = {font:{bold:true}, fill:{fgColor:{rgb:'2D7DD2'}}, fontColor:{rgb:'FFFFFF'}};
-      }
-    }
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Ajánlat');
-
-    // Letöltés
-    const fileName = 'ajanlat_' + (q.id||'export') + '_' + date + '.xlsx';
-    XLSX.writeFile(wb, fileName);
-    if(typeof showToast==='function') showToast('📊 Excel letöltve: ' + fileName);
+  // Egyedi szöveg
+  if(q.customText) {
+    rows.push(['', '', '', '', '', '', '']);
+    rows.push(['Megjegyzés:', q.customText, '', '', '', '', '']);
   }
 
-  // SheetJS dinamikus betöltése
-  if(window.XLSX) {
-    buildAndDownload(window.XLSX);
-  } else {
-    var script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
-    script.onload = function() { buildAndDownload(window.XLSX); };
-    script.onerror = function() {
-      // Fallback: CSV ha a CDN nem elérhető
-      if(typeof showToast==='function') showToast('⚠️ Excel lib betöltési hiba – CSV mentés folyamatban...','warn');
-      var sep = String.fromCharCode(59); // pontosvessző (magyar Excel)
-      var nl  = String.fromCharCode(10);
-      var csvRows = [['Megnevezés','Megjegyzés','Szekció','Mennyiség','Egység','Egységár','Összeg']];
-      dataRows.forEach(function(r){ csvRows.push(r); });
-      csvRows.push([]);
-      csvRows.push(['','','','','','Nettó összesen',grandNet]);
-      csvRows.push(['','','','','','ÁFA ('+vat+'%)',vatAmt]);
-      csvRows.push(['','','','','','Bruttó',gross]);
-      var csv = csvRows.map(function(r){
-        return r.map(function(c){
-          var s2=String(c==null?'':c).replace(/"/g,'""');
-          return s2.indexOf(sep)>=0||s2.indexOf('"')>=0?'"'+s2+'"':s2;
-        }).join(sep);
-      }).join(nl);
-      var blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href=url; a.download='ajanlat_'+(q.id||'export')+'_'+date+'.csv';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-    document.head.appendChild(script);
-  }
+  // TSV → XLS
+  const tsv = rows.map(function(row){return row.map(function(cell){var c2=String(cell==null?'':cell);c2=c2.split(String.fromCharCode(9)).join(' ').split(String.fromCharCode(10)).join(' ');return c2;}).join(String.fromCharCode(9));}).join(String.fromCharCode(10));
+
+  const blob = new Blob(['﻿' + tsv], {type:'text/tab-separated-values;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'ajanlat_' + (q.id||'export') + '_' + date + '.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(typeof showToast==='function') showToast('📊 Excel letöltve!');
 }
-
 
 function qDownloadPdf() {
   const frame = document.getElementById('qPreviewFrame');
