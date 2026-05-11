@@ -12087,9 +12087,9 @@ function qDownloadXLS() {
 
   const BASE = 'font-family:Calibri,Arial,sans-serif;font-size:11pt;vertical-align:middle;';
   const S = {
-    hdr:     BASE+'background:#1F4E79;color:#FFFFFF;font-weight:bold;font-size:13pt;padding:6px 10px;',
-    colHdr:  BASE+'background:#2D6A9F;color:#FFFFFF;font-weight:bold;text-align:center;padding:5px 8px;border:1px solid #1a5080;',
-    secHdr:  BASE+'background:#CCCCCC;color:#000000;font-weight:bold;padding:5px 10px;',
+    hdr:     BASE+'background:#1F4E79;color:#FFFFFF;font-weight:bold;font-size:13pt;padding:4px 10px;',
+    colHdr:  BASE+'background:#2D6A9F;color:#FFFFFF;font-weight:bold;text-align:center;padding:4px 6px;border:1px solid #1a5080;',
+    secHdr:  BASE+'background:#CCCCCC;color:#000000;font-weight:bold;padding:4px 10px;',
     sum:     BASE+'background:#E8E8E8;font-weight:bold;padding:4px 8px;border-top:1px solid #AAAAAA;',
     sumR:    BASE+'background:#E8E8E8;font-weight:bold;text-align:right;padding:4px 8px;border-top:1px solid #AAAAAA;',
     tot:     BASE+'background:#D0D8E8;font-weight:bold;padding:4px 8px;',
@@ -12099,115 +12099,89 @@ function qDownloadXLS() {
     cellAlt: BASE+'background:#F5F5F5;padding:4px 8px;white-space:nowrap;',
     cellAltR:BASE+'background:#F5F5F5;padding:4px 8px;text-align:right;white-space:nowrap;',
     label:   BASE+'padding:4px 8px;color:#333333;',
-    empty:   BASE+'padding:4px 8px;',
+    empty:   BASE+'padding:2px 4px;',
   };
 
-  function td(val, style) {
-    const safe = String(val??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return `<td style="${style}">${safe}</td>`;
-  }
-  function tdN(n, style) {
-    return `<td style="${style}">${numFmt(n)}&nbsp;${cur}</td>`;
-  }
-  function tdSpan(val, colspan, style) {
-    const safe = String(val??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    return `<td colspan="${colspan}" style="${style}">${safe}</td>`;
-  }
-  function tr(...cells) { return '<tr style="height:22px;">' + cells.join('') + '</tr>\n'; }
-  function trH(h, ...cells) { return `<tr style="height:${h}px;">` + cells.join('') + '</tr>\n'; }
-  function emptyRow() { return `<tr style="height:8px;">${'<td></td>'.repeat(7)}</tr>\n`; }
+  const esc = v => String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const td  = (v,s)    => `<td style="${s}">${esc(v)}</td>`;
+  const tdN = (n,s)    => `<td style="${s}">${numFmt(n)}&nbsp;${cur}</td>`;
+  const tds = (v,cs,s) => `<td colspan="${cs}" style="${s}">${esc(v)}</td>`;
+  // Sor: height attrib + mso-height style = Excel biztosan tiszteli
+  const tr22  = (...c) => `<tr height="28" style="mso-height-source:userset;">${c.join('')}</tr>\n`;
+  const tr28  = (...c) => `<tr height="34" style="mso-height-source:userset;">${c.join('')}</tr>\n`;
+  const trGap = ()     => `<tr height="6"  style="mso-height-source:userset;">${'<td></td>'.repeat(7)}</tr>\n`;
 
   let rows = '';
 
   // ── 1. CÉG FEJLÉC
-  rows += trH(28, tdSpan(companyName, 7, S.hdr));
-  rows += tr(td('Ajánlat azonosító:',S.label), td(q.id||'–',S.cell), td('',S.empty), td('Dátum:',S.label), td(date,S.cell), td('',S.empty), td('',S.empty));
-  rows += tr(td('Megrendelő:',S.label), tdSpan(clientName, 6, S.cell));
-  if(clientAddr) rows += tr(td('Cím:',S.label), tdSpan(clientAddr, 6, S.cell));
-  rows += tr(td('Deviza:',S.label), td(cur,S.cell), td('',S.empty), td('ÁFA:',S.label), td(vat+'%',S.cell), td('',S.empty), td('',S.empty));
-  rows += emptyRow();
+  rows += tr28(tds(companyName, 7, S.hdr));
+  rows += tr22(td('Ajánlat azonosító:',S.label), td(q.id||'–',S.cell), td('',S.empty), td('Dátum:',S.label), td(date,S.cell), td('',S.empty), td('',S.empty));
+  rows += tr22(td('Megrendelő:',S.label), tds(clientName,6,S.cell));
+  if(clientAddr) rows += tr22(td('Cím:',S.label), tds(clientAddr,6,S.cell));
+  rows += tr22(td('Deviza:',S.label), td(cur,S.cell), td('',S.empty), td('ÁFA:',S.label), td(vat+'%',S.cell), td('',S.empty), td('',S.empty));
+  rows += trGap();
 
-  // ── 2. ÖSSZESÍTŐ BLOKK
-  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('Anyag összesen (nettó):',S.sum), tdN(secTotals.material, S.sumR));
-  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('Munkadíj összesen (nettó):',S.sum), tdN(secTotals.work, S.sumR));
-  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('Kiszállás összesen (nettó):',S.sum), tdN(secTotals.travel, S.sumR));
-  rows += emptyRow();
+  // ── 2. ÖSSZESÍTŐ
+  rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty), td('Anyag összesen (nettó):',S.sum),    tdN(secTotals.material,S.sumR));
+  rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty), td('Munkadíj összesen (nettó):',S.sum), tdN(secTotals.work,S.sumR));
+  rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty), td('Kiszállás összesen (nettó):',S.sum),tdN(secTotals.travel,S.sumR));
+  rows += trGap();
 
   // ── 3. OSZLOPFEJLÉC
-  rows += trH(24,
+  rows += tr28(
     td('Megnevezés',S.colHdr), td('Megjegyzés',S.colHdr), td('Szekció',S.colHdr),
-    td('Mennyiség',S.colHdr),  td('Egység',S.colHdr),
+    td('Mennyiség',S.colHdr), td('Egység',S.colHdr),
     td('Egységár (nettó, '+cur+')',S.colHdr), td('Összeg (nettó, '+cur+')',S.colHdr)
   );
 
   // ── 4. TÉTELSOROK
   secDefs.forEach(sec => {
     const secRows = secRowsMap[sec.key];
-    if(!secRows || secRows.length === 0) return;
-
-    rows += trH(22, tdSpan(sec.title, 7, S.secHdr));
-
-    secRows.forEach((r, ri) => {
+    if(!secRows || secRows.length===0) return;
+    rows += tr22(tds(sec.title,7,S.secHdr));
+    secRows.forEach((r,ri) => {
       const even = ri%2===0;
       const c  = even ? S.cell    : S.cellAlt;
       const cR = even ? S.cellR   : S.cellAltR;
-      rows += tr(
-        td(r.name,c), td(r.note,c), td(sec.title,c),
-        td(r.qty + (r.unit ? ' '+r.unit : ''),cR),
-        td('',S.empty),
-        tdN(r.price,cR), tdN(r.line,cR)
-      );
+      rows += tr22(td(r.name,c), td(r.note,c), td(sec.title,c), td(r.qty,cR), td(r.unit,c), tdN(r.price,cR), tdN(r.line,cR));
     });
-
-    rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-               td(sec.title+' összesen (nettó):',S.sum), tdN(secTotals[sec.key], S.sumR));
-    rows += emptyRow();
+    rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+                 td(sec.title+' összesen (nettó):',S.sum), tdN(secTotals[sec.key],S.sumR));
+    rows += trGap();
   });
 
   // ── 5. VÉGÖSSZEG
-  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('Nettó összesen:',S.tot), tdN(grandNet, S.totR));
-  rows += tr(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('ÁFA ('+vat+'%):',S.tot), tdN(vatAmt, S.totR));
-  rows += trH(26,td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
-             td('Bruttó végösszeg:',S.tot+'font-size:12pt;'), tdN(gross, S.totR+'font-size:12pt;font-weight:bold;'));
+  rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty), td('Nettó összesen:',S.tot),       tdN(grandNet,S.totR));
+  rows += tr22(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty), td('ÁFA ('+vat+'%):',S.tot),        tdN(vatAmt,S.totR));
+  rows += tr28(td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),td('',S.empty),
+               td('Bruttó végösszeg:',S.tot+'font-size:12pt;'),
+               tdN(gross,S.totR+'font-size:12pt;'));
 
   if(q.customText) {
-    rows += emptyRow();
-    rows += tr(td('Megjegyzés:',S.label), tdSpan(q.customText, 6, S.cell));
+    rows += trGap();
+    const wrapStyle = S.cell.replace('white-space:nowrap;','') + 'white-space:normal;';
+    rows += `<tr height="80" style="mso-height-source:userset;">${td('Megjegyzés:',S.label)}${tds(q.customText,6,wrapStyle)}</tr>\n`;
   }
 
-  // ── HTML összeállítás
-  const sheetName = 'Ajánlat';
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="UTF-8">
 <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-<x:Name>${sheetName}</x:Name>
-<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+<x:Name>Ajánlat</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
 </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
 </head><body>
-<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt;">
-<col style="width:240pt;">
-<col style="width:110pt;">
-<col style="width:90pt;">
-<col style="width:70pt;">
-<col style="width:50pt;">
-<col style="width:130pt;">
-<col style="width:120pt;">
-${rows}</table>
-</body></html>`;
+<table style="border-collapse:collapse;">
+<col style="width:220pt;"><col style="width:100pt;"><col style="width:90pt;">
+<col style="width:60pt;"><col style="width:45pt;"><col style="width:130pt;"><col style="width:115pt;">
+${rows}</table></body></html>`;
 
-  const fileName = 'ajanlat_' + (q.id||'export') + '_' + date + '.xls';
-  const blob = new Blob(['\ufeff' + html], {type:'application/vnd.ms-excel;charset=utf-8'});
+  const fileName = 'ajanlat_'+(q.id||'export')+'_'+date+'.xls';
+  const blob = new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href=url; a.download=fileName;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-  if(typeof showToast==='function') showToast('📊 Excel letöltve: ' + fileName);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  if(typeof showToast==='function') showToast('📊 Excel letöltve: '+fileName);
 }
 function qDownloadPdf() {
   const frame = document.getElementById('qPreviewFrame');
