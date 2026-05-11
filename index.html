@@ -12145,7 +12145,7 @@ function qDownloadXLS() {
     buildAndDownload(window.XLSX);
   } else {
     var script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     script.onload = function() { buildAndDownload(window.XLSX); };
     script.onerror = function() {
       // Fallback: CSV ha a CDN nem elérhető
