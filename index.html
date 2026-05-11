@@ -12046,13 +12046,6 @@ function openQPreviewModal(qId, html) {
   setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
 }
 
-function qDownloadPdf() {
-  const frame = document.getElementById('qPreviewFrame');
-  if(!frame||!frame.contentWindow) return;
-  frame.contentWindow.focus();
-  frame.contentWindow.print();
-}
-
 function qDownloadXLS() {
   // Az aktuális _pendingTigObj-ból vagy a preview-ban lévő ajánlatból dolgozunk
   const q = window._qPreviewDraft;
@@ -12073,7 +12066,7 @@ function qDownloadXLS() {
   const qSections = q.sections || {};
 
   // Fejléc sorok
-  const companyName = s.name || 'Vállalkozó';
+  const companyName = s.companyName || 'Vállalkozó';
   const rows = [];
 
   // Cégfejléc
@@ -12133,6 +12126,14 @@ function qDownloadXLS() {
   URL.revokeObjectURL(url);
   if(typeof showToast==='function') showToast('📊 Excel letöltve!');
 }
+
+function qDownloadPdf() {
+  const frame = document.getElementById('qPreviewFrame');
+  if(!frame||!frame.contentWindow) return;
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+}
+
 
 // ── PDF HTML SABLON ───────────────────────────────────────────────────────────
 function buildQPdfHtml(q) {
@@ -12330,6 +12331,7 @@ window.qEditQuote       = qEditQuote;
 window.qDelQuote        = qDelQuote;
 window.qGeneratePreview = qGeneratePreview;
 window.qPreviewQuote    = qPreviewQuote;
+window.qDownloadXLS     = qDownloadXLS;
 window.qDownloadPdf     = qDownloadPdf;
 
 })(); // end QUOTE MODULE
