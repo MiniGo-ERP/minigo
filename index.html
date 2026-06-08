@@ -2397,6 +2397,9 @@ let projects = [
 // ── UTILS ────────────────────────────────────────────────────────────────────
 const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
 const fmtS = n => n>=1e6 ? (n/1e6).toFixed(1).replace('.',',')+' M Ft' : n>=1000 ? Math.round(n/1000)+' e Ft' : n+' Ft';
+// Projekt ID-t HTML onclick attribútumba biztonságosan injektáló segédfüggvény
+// (megakadályozza hogy az ID-ban lévő " vagy ' karakterek törjék az attribútumot)
+const escPid = id => (id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 const pIncome  = p => (p.incomeInvoices||[]).reduce((s,i)=>s+Number(i.amount),0);
 const pCost    = p => (p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0);
 const pProfit  = p => pIncome(p)-pCost(p);
@@ -2607,7 +2610,7 @@ function renderCashflow(){
     ${chartP.map(p=>{
       const inc=pIncome(p),cost=pCost(p),pro=inc-cost;
       const iW=Math.round(inc/maxV*100), cW=Math.round(cost/maxV*100);
-      return `<div class="cf-bar-row" onclick="showView('project-detail','${p.id}')">
+      return `<div class="cf-bar-row" onclick="showView('project-detail','${escPid(p.id)}')">
         <div class="cf-bar-label" title="${p.id}">${p.id}</div>
         <div class="cf-bar-track">
           <div class="cf-bar-inc" style="width:${iW}%"></div>
@@ -2641,7 +2644,7 @@ function renderCashflow(){
       <div class="panel-title">Összes számla</div>
       <div style="display:flex;flex-direction:column;gap:5px;max-height:300px;overflow-y:auto;">
         ${allInv.map(i=>`
-          <div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="showView('project-detail','${i.pid}')">
+          <div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:4px;cursor:pointer;" onclick="showView('project-detail','${escPid(i.pid)}')">
             <span>${i.type==='in'?'💚':'🔴'}</span>
             <div style="flex:1;min-width:0;">
               <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${i.pid} · ${i.ref}</div>
@@ -2804,7 +2807,7 @@ function renderProjectRow(p){
     : '';
   const umbrellaTag = p.isUmbrella ? '<span title="Umbrella projekt" style="font-size:10px;background:rgba(52,152,219,0.12);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 7px;margin-left:4px;">🗂️ Umbrella</span>' : (p.parentId ? '<span title="Alprojekt" style="font-size:10px;background:rgba(52,152,219,0.08);color:#3498db;border:1px solid rgba(52,152,219,0.3);border-radius:10px;padding:1px 7px;margin-left:4px;">↳ Alprojekt</span>' : '');
   const contTag = (p.isContinuous||p.status===STATUS_CONTINUOUS) ? '<span title="Folyamatos" style="font-size:10px;background:rgba(52,152,219,0.1);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 6px;margin-left:4px;">🔄</span>' : '';
-  return `<div class="project-card" onclick="showView('project-detail','${p.id}')">
+  return `<div class="project-card" onclick="showView('project-detail','${escPid(p.id)}')">
     <div class="project-id" title="${p.id}">${p.id}</div>
     <div class="project-info">
       <div class="project-company">${p.personName ? `👤 ${p.personName}` : (co?co.name:p.clientId)}</div>
@@ -2815,8 +2818,8 @@ function renderProjectRow(p){
     <div style="font-family:var(--mono);font-size:11px;color:${inc>0?(pro>=0?'var(--profit)':'var(--danger)'):'var(--text-dim)'};">${inc>0?(pro>=0?'+':'')+fmtS(pro):'–'}</div>
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">${p.updatedAt?.slice(0,10)||'–'}</div>
     <div class="row-actions" onclick="event.stopPropagation()">
-      <button class="icon-btn edit" title="Szerkesztés" onclick="openEditProject('${p.id}')">✏️</button>
-      <button class="icon-btn del"  title="Törlés"      onclick="deleteProject('${p.id}')">🗑️</button>
+      <button class="icon-btn edit" title="Szerkesztés" onclick="openEditProject('${escPid(p.id)}')">✏️</button>
+      <button class="icon-btn del"  title="Törlés"      onclick="deleteProject('${escPid(p.id)}')">🗑️</button>
     </div>
   </div>`;
 }
@@ -2855,7 +2858,7 @@ function renderProjectDetail(pid){
           <div class="doc-folder-name" style="margin-bottom:0">TIG – Teljesítési Igazolás</div>
           <div class="doc-folder-count">${linkedTigs.length} TIG dokumentum</div>
         </div>
-        <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;white-space:nowrap;" onclick="enterMunkalapForProject('${pid}')">
+        <button class="btn btn-secondary" style="font-size:10px;padding:4px 9px;white-space:nowrap;" onclick="enterMunkalapForProject('${escPid(pid)}')">
           📋 Munkalapkészítő →
         </button>
       </div>
@@ -2868,7 +2871,7 @@ function renderProjectDetail(pid){
         </div>`).join('') : `
         <div style="font-size:11px;color:var(--text-dim);padding:4px 0;">
           Még nincs TIG ehhez a projekthez.
-          <span style="color:var(--accent2);cursor:pointer;" onclick="enterMunkalapForProject('${pid}')">Készíts egyet →</span>
+          <span style="color:var(--accent2);cursor:pointer;" onclick="enterMunkalapForProject('${escPid(pid)}')">Készíts egyet →</span>
         </div>`}
       ${tigDocs.filter(d=>!d._tigGenerated).length > 0 ? `
         <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);">
@@ -2880,12 +2883,12 @@ function renderProjectDetail(pid){
               ${d.url?`<a href="${d.url}" target="_blank" style="font-size:10px;font-family:var(--mono);color:var(--accent2);flex:1;text-decoration:none;">${icon} ${d.name}</a>`
                 :`<span style="font-size:10px;font-family:var(--mono);color:var(--text-dim);flex:1;">${icon} ${d.name}</span>`}
               <span style="font-size:9px;color:var(--text-dim);">${d.date||''}</span>
-              <button class="icon-btn del" style="width:18px;height:18px;font-size:10px;" onclick="deleteDoc('${pid}','TIG',${realIdx})">🗑️</button>
+              <button class="icon-btn del" style="width:18px;height:18px;font-size:10px;" onclick="deleteDoc('${escPid(pid)}','TIG',${realIdx})">🗑️</button>
             </div>`;
           }).join('')}
-          <div class="doc-upload-btn" onclick="openUploadModal('${pid}','TIG')">📤 Aláírt TIG feltöltése</div>
+          <div class="doc-upload-btn" onclick="openUploadModal('${escPid(pid)}','TIG')">📤 Aláírt TIG feltöltése</div>
         </div>` : `
-        <div class="doc-upload-btn" onclick="openUploadModal('${pid}','TIG')" style="margin-top:6px;">📤 Aláírt TIG feltöltése</div>`}
+        <div class="doc-upload-btn" onclick="openUploadModal('${escPid(pid)}','TIG')" style="margin-top:6px;">📤 Aláírt TIG feltöltése</div>`}
     </div>`;
     }
     // Többi mappa: normál kezelés
@@ -2916,11 +2919,11 @@ function renderProjectDetail(pid){
         return `
         <div style="display:flex;align-items:center;gap:4px;margin-top:4px;padding:4px 6px;border-radius:3px;background:rgba(45,125,210,0.07);transition:background 0.12s;" onmouseover="this.style.background='rgba(45,125,210,0.14)'" onmouseout="this.style.background='rgba(45,125,210,0.07)'">
           ${nameHtml}
-          <button class="icon-btn edit" style="width:20px;height:20px;font-size:11px;" title="Átnevezés" onclick="openEditDoc('${pid}','${f}',${di})">✏️</button>
-          <button class="icon-btn del"  style="width:20px;height:20px;font-size:11px;" title="Törlés"    onclick="deleteDoc('${pid}','${f}',${di})">🗑️</button>
+          <button class="icon-btn edit" style="width:20px;height:20px;font-size:11px;" title="Átnevezés" onclick="openEditDoc('${escPid(pid)}','${f}',${di})">✏️</button>
+          <button class="icon-btn del"  style="width:20px;height:20px;font-size:11px;" title="Törlés"    onclick="deleteDoc('${escPid(pid)}','${f}',${di})">🗑️</button>
         </div>`;
       }).join('')}
-      <div class="doc-upload-btn" onclick="openUploadModal('${pid}','${f}')">📤 Feltöltés</div>
+      <div class="doc-upload-btn" onclick="openUploadModal('${escPid(pid)}','${f}')">📤 Feltöltés</div>
     </div>`;
   }).join('');
 
@@ -2937,8 +2940,8 @@ function renderProjectDetail(pid){
         <div class="invoice-date">${i.date||''}</div>
       </div>
       <div class="row-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn edit" title="Szerkesztés (összeg felülírható)" onclick="openEditIncomeInvoice('${pid}',${idx})">✏️</button>
-        <button class="icon-btn del"  title="Törlés"      onclick="deleteIncomeInvoice('${pid}',${idx})">🗑️</button>
+        <button class="icon-btn edit" title="Szerkesztés (összeg felülírható)" onclick="openEditIncomeInvoice('${escPid(pid)}',${idx})">✏️</button>
+        <button class="icon-btn del"  title="Törlés"      onclick="deleteIncomeInvoice('${escPid(pid)}',${idx})">🗑️</button>
       </div>
     </div>`).join('');
 
@@ -2954,8 +2957,8 @@ function renderProjectDetail(pid){
         <div class="invoice-date">${i.date||''}</div>
       </div>
       <div class="row-actions" onclick="event.stopPropagation()">
-        <button class="icon-btn edit" title="Szerkesztés" onclick="openEditCostInvoice('${pid}',${idx})">✏️</button>
-        <button class="icon-btn del"  title="Törlés"      onclick="deleteCostInvoice('${pid}',${idx})">🗑️</button>
+        <button class="icon-btn edit" title="Szerkesztés" onclick="openEditCostInvoice('${escPid(pid)}',${idx})">✏️</button>
+        <button class="icon-btn del"  title="Törlés"      onclick="deleteCostInvoice('${escPid(pid)}',${idx})">🗑️</button>
       </div>
     </div>`).join('');
 
@@ -2975,13 +2978,13 @@ function renderProjectDetail(pid){
     </div>
     <span class="status-badge ${st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start">${st.label}</span>
     <div class="detail-actions">
-      ${p.status>0?`<button class="btn btn-secondary" onclick="openRevertModal('${pid}')">◀ Előző státusz</button>`:''}
-      <button class="btn btn-secondary" onclick="openEditProject('${pid}')">✏️ Szerkesztés</button>
-      ${p.status>=4?`<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="enterMunkalapForProject('${pid}')">📋 TIG készítés</button>`:''}
-      <button class="btn btn-secondary" onclick="openArchiveModal('${pid}')" title="Archiválás">📦 Archivál</button>
-      <button class="btn btn-secondary" onclick="downloadProjectZip('${pid}')" title="ZIP csomag letöltése">⬇️ ZIP</button>
-      <button class="btn btn-danger" style="padding:7px 10px;" onclick="deleteProject('${pid}')">🗑️</button>
-      ${!isLast?`<button class="btn btn-advance" onclick="openAdvanceModal('${pid}')">▶ Következő státusz</button>`
+      ${p.status>0?`<button class="btn btn-secondary" onclick="openRevertModal('${escPid(pid)}')">◀ Előző státusz</button>`:''}
+      <button class="btn btn-secondary" onclick="openEditProject('${escPid(pid)}')">✏️ Szerkesztés</button>
+      ${p.status>=4?`<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="enterMunkalapForProject('${escPid(pid)}')">📋 TIG készítés</button>`:''}
+      <button class="btn btn-secondary" onclick="openArchiveModal('${escPid(pid)}')" title="Archiválás">📦 Archivál</button>
+      <button class="btn btn-secondary" onclick="downloadProjectZip('${escPid(pid)}')" title="ZIP csomag letöltése">⬇️ ZIP</button>
+      <button class="btn btn-danger" style="padding:7px 10px;" onclick="deleteProject('${escPid(pid)}')">🗑️</button>
+      ${!isLast?`<button class="btn btn-advance" onclick="openAdvanceModal('${escPid(pid)}')">▶ Következő státusz</button>`
         :'<span class="btn btn-secondary" style="cursor:default">✓ Lezárva</span>'}
     </div>
   </div>
@@ -2996,14 +2999,14 @@ function renderProjectDetail(pid){
       <div class="finance-total" style="color:var(--profit)">${fmt(inc)}</div>
       <div class="finance-label">nettó bevétel</div>
       <div class="invoice-list">${incInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs számla rögzítve.</div>'}</div>
-      <div class="add-btn" onclick="openIncomeInvoiceModal('${pid}')">➕ Kimenő számla hozzáadása</div>
+      <div class="add-btn" onclick="openIncomeInvoiceModal('${escPid(pid)}')">➕ Kimenő számla hozzáadása</div>
     </div>
     <div class="finance-box">
       <div class="finance-box-title">🔴 Szállítói számlák (kiadások)</div>
       <div class="finance-total" style="color:var(--cost)">${fmt(cost)}</div>
       <div class="finance-label">nettó kiadás</div>
       <div class="invoice-list">${costInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs szállítói számla.</div>'}</div>
-      <div class="add-btn" onclick="openCostInvoiceModal('${pid}')">➕ Szállítói számla hozzáadása</div>
+      <div class="add-btn" onclick="openCostInvoiceModal('${escPid(pid)}')">➕ Szállítói számla hozzáadása</div>
     </div>
   </div>
 
@@ -3048,7 +3051,7 @@ function renderUmbrellaSection(p, pid) {
       <span style="font-size:20px;">🗂️</span>
       <div style="flex:1;">
         <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">Ez egy alprojekt – főprojekt:</div>
-        <div style="font-family:var(--mono);font-weight:700;cursor:pointer;color:#3498db;" onclick="showView('project-detail','${p.parentId}')">${p.parentId}${parent?' – '+parent.desc:''}</div>
+        <div style="font-family:var(--mono);font-weight:700;cursor:pointer;color:#3498db;" onclick="showView('project-detail','${escPid(p.parentId)}')">${p.parentId}${parent?' – '+parent.desc:''}</div>
       </div>
     </div>`;
   }
@@ -3088,7 +3091,7 @@ function renderUmbrellaSection(p, pid) {
         const spSt = STATUSES[sp.status]||STATUSES[0];
         const spInc = pIncome(sp), spPro = pProfit(sp);
         const tigCount = typeof tigStore !== 'undefined' ? tigStore.filter(function(t){ return (t.projectRefs||[]).includes(sp.id); }).length : 0;
-        html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #3498db;border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showView('project-detail','${sp.id}')">
+        html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #3498db;border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showView('project-detail','${escPid(sp.id)}')">
           <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3498db;min-width:140px;">${sp.id}</div>
           <div style="flex:1;font-size:12px;">${sp.desc||'–'}</div>
           <span class="status-badge ${spSt.cls}">${spSt.short}</span>
@@ -3098,14 +3101,14 @@ function renderUmbrellaSection(p, pid) {
       });
     }
 
-    html += `<button class="btn btn-secondary" style="margin-top:8px;font-size:12px;" onclick="openNewSubProjectModal('${pid}')">➕ Alprojekt hozzáadása</button>`;
+    html += `<button class="btn btn-secondary" style="margin-top:8px;font-size:12px;" onclick="openNewSubProjectModal('${escPid(pid)}')">➕ Alprojekt hozzáadása</button>`;
     html += '</div>';
   } else {
     // Normál projekt → lehetőség umbrella-vá alakítani + alprojektet adni
     html += `<div style="border:1px dashed var(--border);border-radius:6px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:18px;color:var(--text-dim);">🗂️</span>
       <div style="flex:1;font-size:12px;color:var(--text-dim);">Ez a projekt önálló. Alprojektek hozzáadásával umbrella projektté alakítható.</div>
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;" onclick="openNewSubProjectModal('${pid}')">➕ Alprojekt</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 12px;" onclick="openNewSubProjectModal('${escPid(pid)}')">➕ Alprojekt</button>
     </div>`;
   }
 
@@ -3159,8 +3162,8 @@ function renderPartTigSection(p, pid) {
   });
 
   html += `<div style="display:flex;gap:8px;margin-top:10px;">
-    <button class="btn btn-secondary" style="font-size:12px;" onclick="openMlForProject('${pid}')">📋 Új rész-TIG készítése</button>
-    ${!isCont?`<button class="btn btn-secondary" style="font-size:11px;" onclick="setProjContinuous('${pid}')">🔄 Folyamatos projektté alakítás</button>`:''}
+    <button class="btn btn-secondary" style="font-size:12px;" onclick="openMlForProject('${escPid(pid)}')">📋 Új rész-TIG készítése</button>
+    ${!isCont?`<button class="btn btn-secondary" style="font-size:11px;" onclick="setProjContinuous('${escPid(pid)}')">🔄 Folyamatos projektté alakítás</button>`:''}
   </div>`;
 
   html += '</div>';
@@ -4030,7 +4033,7 @@ function openArchiveBrowser() {
             <span class="status-badge ${st.cls}">${st.short}</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="restoreFromArchive('${p.id}')">↩️ Visszaállítás</button>
-              <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="downloadProjectZip('${p.id}',true)">⬇️ ZIP letöltés</button>
+              <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="downloadProjectZip('${escPid(p.id)}',true)">⬇️ ZIP letöltés</button>
               <button class="btn btn-danger" style="font-size:10px;padding:5px 10px;" onclick="deleteFromArchive('${p.id}')">🗑️</button>
             </div>
           </div>
@@ -8778,7 +8781,7 @@ function renderMlTigDetail(tigId){
   const t=tigStore.find(x=>x.id===tigId);if(!t)return`<div class="empty-state"><div class="em-title">TIG nem található: ${tigId}</div></div>`;
   const sc=t.status==='signed'?'var(--success)':'var(--accent)',sl=t.status==='signed'?'✅ Aláírt':'⏳ Aláírás alatt';
   const sectionsHtml=(t.sections||[]).map((sec,si)=>{const secGross=Math.round((sec.secNet||0)*(1+(t.vatPct||27)/100));const rowsHtml=(sec.rows||[]).map(row=>{const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);return`<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">${row.date?`<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:80px;">${row.date}</span>`:''}<span style="flex:1;color:var(--text);">${row.desc}</span><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">${row.qty} ${row.unit||''}</span><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">${row.rate?Number(row.rate).toLocaleString('hu-HU')+' Ft':'–'}</span><span style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;white-space:nowrap;min-width:100px;text-align:right;">${ln>0?ln.toLocaleString('hu-HU')+' Ft':'–'}</span></div>`;}).join('');return`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:12px 14px;margin-bottom:8px;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;"><span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent2);">SZEKCIÓ ${si+1}</span><span style="font-size:12px;color:var(--text);">${sec.typeLabel||sec.type}</span>${sec.projectLabel?`<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">· ${sec.projectLabel}</span>`:''}</div>${rowsHtml}<div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;"><span style="color:var(--text-dim);">Nettó: <b style="color:var(--text);">${(sec.secNet||0).toLocaleString('hu-HU')} Ft</b></span><span style="color:var(--profit);font-weight:600;">Bruttó: ${secGross.toLocaleString('hu-HU')} Ft</span></div></div>`;}).join('');
-  const linkedProjects=(t.projectRefs||[]).map(pid=>{const p=projects.find(x=>x.id===pid);if(!p)return'';return`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;margin-top:4px;cursor:pointer;" onclick="enterModule('proj');showView('project-detail','${pid}')"><span style="font-family:var(--mono);font-size:11px;color:var(--accent2);">${pid}</span><span style="font-size:12px;color:var(--text);flex:1;">${p.desc||''}</span><span style="font-size:11px;color:var(--text-dim);">Megnyitás →</span></div>`;}).join('');
+  const linkedProjects=(t.projectRefs||[]).map(pid=>{const p=projects.find(x=>x.id===pid);if(!p)return'';return`<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;margin-top:4px;cursor:pointer;" onclick="enterModule('proj');showView('project-detail','${escPid(pid)}')"><span style="font-family:var(--mono);font-size:11px;color:var(--accent2);">${pid}</span><span style="font-size:12px;color:var(--text);flex:1;">${p.desc||''}</span><span style="font-size:11px;color:var(--text-dim);">Megnyitás →</span></div>`;}).join('');
   // Eseménynapló (log)
   const logHtml=(t.log||[]).length ? (t.log).slice().reverse().map(l=>{
     const typeColor=l.type==='edit'?'var(--accent)':l.type==='restore'?'var(--accent2)':l.type==='advance'?'var(--success)':'var(--border)';
