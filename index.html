@@ -2431,7 +2431,7 @@ function showView(v, x){
   else if(v==='szallitok'){ nav('nav-szallitok');    bc([{l:'Szállítók'}]);                           mc().innerHTML=renderSuppliers(); }
   else if(v==='projects'){ nav('nav-projects');      bc([{l:'Projektek'}]);
     projInitYearFilter();
-    mc().innerHTML=renderProjects(projects, x==='closed'); }
+    mc().innerHTML=renderProjects(projects.filter(function(p){ return !p.parentId; }), x==='closed'); }
   else if(v==='trash'){   nav('nav-trash');           bc([{l:'Kuka'}]);                                mc().innerHTML=renderTrash(); updateTrashBadge(); }
   else if(v==='client-projects'){
     const co=clients.find(c=>c.id===x);
@@ -2441,7 +2441,14 @@ function showView(v, x){
   else if(v==='project-detail'){
     currentProjectId=x;
     const p=projects.find(z=>z.id===x), co=p?clients.find(c=>c.id===p.clientId):null;
-    bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:'?',o:`showView('client-projects','${p?p.clientId:''}')`},{l:x}]);
+    if(p && p.parentId) {
+      // Alprojekt: szülő projekt → alprojekt breadcrumb
+      const parentP = projects.find(z=>z.id===p.parentId);
+      const parentCo = parentP ? clients.find(c=>c.id===parentP.clientId) : null;
+      bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:parentCo?parentCo.name:'?',o:`showView('client-projects','${parentP?parentP.clientId:''}')`},{l:p.parentId,o:`showView('project-detail','${p.parentId}')`},{l:x}]);
+    } else {
+      bc([{l:'Megrendelők',o:"showView('megrendelok')"},{l:co?co.name:'?',o:`showView('client-projects','${p?p.clientId:''}')`},{l:x}]);
+    }
     mc().innerHTML=renderProjectDetail(x);
   }
   // ── MUNKALAPKÉSZÍTŐ nézetek ──
@@ -2517,8 +2524,9 @@ function filterInvoicesByDate(invoices){
 function pIncomeFiltered(p)  { return filterInvoicesByDate(p.incomeInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
 function pCostFiltered(p)    { return filterInvoicesByDate(p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
 function renderDashboard(){
-  const tot=projects.length, act=projects.filter(p=>p.status>0&&p.status<8).length,
-        done=projects.filter(p=>p.status===8).length;
+  const mainProjects = projects.filter(p=>!p.parentId);
+  const tot=mainProjects.length, act=mainProjects.filter(p=>p.status>0&&p.status<8).length,
+        done=mainProjects.filter(p=>p.status===8).length;
   const curYear = new Date().getFullYear().toString();
   if(dashboardDateFrom === null && dashboardDateTo === null){
     dashboardDateFrom = curYear + '-01-01';
@@ -2710,7 +2718,7 @@ function renderSuppliers(){
 
 // ── MEGRENDELŐ PROJEKTJEI ─────────────────────────────────────────────────────
 function renderClientProjects(cid){
-  const co=clients.find(c=>c.id===cid), ps=projects.filter(p=>p.clientId===cid);
+  const co=clients.find(c=>c.id===cid), ps=projects.filter(p=>p.clientId===cid && !p.parentId);
   if(!co) return `<div class="empty-state"><div class="em-icon">⚠️</div><div class="em-title">Megrendelő nem található</div></div>`;
   const icon = co.isPrivate ? '👤' : '🏢';
   return `
@@ -2746,8 +2754,8 @@ function renderProjects(list, showClosed, activeType, showAll){
     displayList = showClosed ? closedList : openList;
   }
 
-  const openCount   = projects.filter(p=>p.status !== CLOSED_STATUS).length;
-  const closedCount = projects.filter(p=>p.status === CLOSED_STATUS).length;
+  const openCount   = projects.filter(p=>!p.parentId && p.status !== CLOSED_STATUS).length;
+  const closedCount = projects.filter(p=>!p.parentId && p.status === CLOSED_STATUS).length;
 
   const typeBadge = activeType
     ? `<span style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.5px;padding:2px 8px;border-radius:3px;border:1px solid ${TYPE_COLORS[activeType]};color:${TYPE_COLORS[activeType]};background:${TYPE_COLORS[activeType]}22;">◆ ${TYPE_LABELS[activeType]||activeType}</span>`
@@ -3204,7 +3212,7 @@ window.setProjContinuous = setProjContinuous;
 function openMlForProject(pid) {
   _mlPreselectedProjectId = pid;
   enterModule('ml');
-  setTimeout(function(){ showView('new-tig'); }, 100);
+  setTimeout(function(){ showView('ml-new-tig'); }, 100);
 }
 window.openMlForProject = openMlForProject;
 
@@ -3268,7 +3276,7 @@ function buildStatusDropdown(){
   // One item per status
   const colors = ['#6b7a96','#2d7dd2','#9b59b6','#e8a020','#e05252','#e88a20','#27ae60','#1abc9c','#3498db','#27ae60'];
   STATUSES.forEach((s,i)=>{
-    const cnt = projects.filter(p=>p.status===i).length;
+    const cnt = projects.filter(p=>!p.parentId && p.status===i).length;
     const item = document.createElement('div');
     item.style.cssText = 'padding:8px 12px;cursor:pointer;font-family:var(--mono);font-size:11px;color:var(--text);display:flex;align-items:center;gap:8px;transition:background 0.12s;border-top:1px solid rgba(42,51,71,0.5);';
     item.innerHTML = `<span style="font-size:9px;color:${colors[i]||'#fff'}">●</span><span style="flex:1">${s.short}</span><span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);background:var(--bg);padding:1px 6px;border-radius:10px;">${cnt}</span>`;
@@ -3412,8 +3420,8 @@ function projToggleYear(yr, checked) {
 
 // ── KOMBINÁLT SZŰRŐ ─────────────────────────────────────────────────────────
 function projApplyFilters() {
-  // 1. Év szűrő
-  let filtered = projects.slice();
+  // 1. Év szűrő  (alprojekteket mindig kizárjuk a főlistából)
+  let filtered = projects.filter(function(p){ return !p.parentId; });
   if(_activeYears.length > 0) {
     filtered = filtered.filter(function(p) {
       return _activeYears.some(function(yr) {
@@ -3431,7 +3439,7 @@ function projApplyFilters() {
     filtered = filtered.filter(function(p){ return p.status === _filterStatus; });
   } else if(_activeYears.length === 0) {
     // Nincs év szűrő és nincs státusz szűrő: alapból nyitottak
-    filtered = filtered.filter(function(p){ return p.status !== 7; });
+    filtered = filtered.filter(function(p){ return p.status !== 8; });
   }
   // Ha van év szűrő de nincs státusz szűrő: mindent mutasson (nyitott + lezárt)
 
@@ -3596,8 +3604,9 @@ function createProject(){
     log:[{time:nowStr(),msg:'Projekt létrehozva',type:'create',projectType:typ}]};
   // Alprojekt: szülő linkje + szülő umbrella-vá alakítása
   if(window._pendingParentId) {
-    newP.parentId = window._pendingParentId;
-    const parentProj = projects.find(function(x){ return x.id===window._pendingParentId; });
+    const pendingPid = window._pendingParentId;
+    newP.parentId = pendingPid;
+    const parentProj = projects.find(function(x){ return x.id===pendingPid; });
     if(parentProj && !parentProj.isUmbrella) {
       parentProj.isUmbrella = true;
       parentProj.updatedAt = now;
@@ -3606,7 +3615,7 @@ function createProject(){
       if(window.fbSaveProject) window.fbSaveProject(parentProj).catch(function(e){console.error(e);});
     }
     window._pendingParentId = null;
-    newP.log.push({time:nowStr(), msg:'Alprojekt létrehozva: '+window._pendingParentId||'', type:'create'});
+    newP.log.push({time:nowStr(), msg:'Alprojekt létrehozva: '+pendingPid, type:'create'});
   }
   projects.push(newP);
   if(window.fbSaveProject) window.fbSaveProject(newP).catch(e=>console.error(e));
@@ -4401,6 +4410,13 @@ function openEditProject(pid){
   const cSel = document.getElementById('ep-client');
   cSel.innerHTML = '<option value="__PRIVATE__">👤 Magánszemély</option>' +
     clients.filter(c=>c.id!=='__PRIVATE__').map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  // Ha a clientId nem szerepel a listában, adjuk hozzá ideiglenesen
+  if(p.clientId && p.clientId !== '__PRIVATE__' && !clients.find(c=>c.id===p.clientId)){
+    const opt = document.createElement('option');
+    opt.value = p.clientId;
+    opt.textContent = '⚠️ ' + p.clientId + ' (ismeretlen)';
+    cSel.appendChild(opt);
+  }
   cSel.value = p.clientId;
   document.getElementById('ep-desc').value = p.desc||'';
   document.getElementById('ep-date').value = p.createdAt||'';
@@ -4446,12 +4462,29 @@ function saveProject(){
 function deleteProject(pid){
   const p = projects.find(x=>x.id===pid);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
-  const parentId = p.clientId;
+  const isSubProject = !!p.parentId;
+  const parentId = p.parentId;
   openDeleteConfirm(`Kukába kerül: "${pid}" projekt. 5 nap után automatikusan törlődik.`, ()=>{
     moveToTrash('project', pid, p, pid);
     projects = projects.filter(x=>x.id!==pid);
     if(window.fbDeleteProject) window.fbDeleteProject(pid).catch(e=>console.error(e));
-    showView('projects');
+    // Ha alprojektet töröltünk, ellenőrzük hogy a szülőnek maradt-e még alprojektje
+    if(isSubProject && parentId) {
+      const remainingSubs = projects.filter(x=>x.parentId===parentId);
+      if(remainingSubs.length === 0) {
+        const parent = projects.find(x=>x.id===parentId);
+        if(parent) {
+          parent.isUmbrella = false;
+          parent.updatedAt = new Date().toISOString().split('T')[0];
+          parent.log = parent.log||[];
+          parent.log.push({time:nowStr(), msg:'Umbrella státusz megszűnt (utolsó alprojekt törölve)', type:'advance'});
+          if(window.fbSaveProject) window.fbSaveProject(parent).catch(e=>console.error(e));
+        }
+      }
+      showView('project-detail', parentId);
+    } else {
+      showView('projects');
+    }
   });
 }
 
@@ -7734,7 +7767,7 @@ function showLauncher(){
   const _mgTop = document.getElementById('minigo-topbar');
   if (_mgTop) _mgTop.style.display = '';
   // Update launcher stats
-  const openProj = projects.filter(p=>p.status!==8).length;
+  const openProj = projects.filter(p=>!p.parentId && p.status!==8).length;
   const curYear  = new Date().getFullYear().toString();
   const yearInc  = projects.reduce((s,p)=>{
     return s + (p.incomeInvoices||[]).filter(i=>i.date&&i.date.startsWith(curYear)).reduce((ss,i)=>ss+Number(i.amount),0);
@@ -9620,7 +9653,7 @@ function ido_showView(v){
   var titles={dashboard:'Áttekintés',calendar:'Naptár',checkin:'Munkaidő rögzítése',employees:'Munkavállalók',reports:'Kimutatások',trash:'Kuka'};
   document.getElementById('ido-bc').innerHTML='<span style="color:var(--text)">'+(titles[v]||v)+'</span>';
   var content='';
-  if(v==='dashboard') content=renderDashboard();
+  if(v==='dashboard') content=ido_renderDashboard();
   else if(v==='calendar') content=renderCalendar();
   else if(v==='checkin') content=renderCheckin();
   else if(v==='employees') content=renderEmployees();
@@ -9636,10 +9669,7 @@ function ido_showView(v){
 }
 
 // ── DASHBOARD ──
-function renderDashboard(){
-  var yr=String(new Date().getFullYear());
-  var td=ido_today();
-  var activeEmps=employees.filter(function(e){return !e.deletedAt;});
+function ido_renderDashboard(){
 
   // ── Admin stat tiles: full company view
   var html='';
@@ -10149,7 +10179,7 @@ function renderEmployees(){
   });
   return '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;">'+
     '<button class="btn btn-primary" onclick="openNewEmpModal()">+ Új munkavállaló</button>'+
-    '<button class="btn btn-secondary" onclick="openExportModal()">Export</button>'+
+    '<button class="btn btn-secondary" onclick="ido_openExportModal()">Export</button>'+
     '</div><div class="panel-title">Munkavállalók ('+list.length+')</div>'+
     '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Név / E-mail</th><th>Szerepkör</th><th>Szabadnap</th><th>Göngyölített</th><th>Belépés</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
@@ -10233,7 +10263,7 @@ function renderReports(){
     totalSick+=dayMarks.filter(function(d){return d.empId===e.id&&d.type==='sick'&&d.date.startsWith(String(yr));}).length;
     totalVac+=usedVac(e.id,String(yr));
   });
-  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-secondary" onclick="openExportModal()">Export XLS</button></div>';
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-secondary" onclick="ido_openExportModal()">Export XLS</button></div>';
   html+='<div class="panel-title">'+yr+'. évi statisztika &ndash; összesítő</div>';
   html+='<div class="stat-row" style="margin-bottom:24px;">';
   html+='<div class="stat-card"><div class="stat-val" style="color:'+(totalOT>=0?'#27ae60':'#e05252')+'">'+(totalOT>0?'+':'')+fmtOT(totalOT)+'</div><div class="stat-label">Összes göngyölített túlóra</div></div>';
@@ -11066,11 +11096,11 @@ window._ido_loadData = _ido_loadData;
   _idoExp('goToday', typeof goToday !== 'undefined' ? goToday : null);
   _idoExp('openDayModal', typeof openDayModal !== 'undefined' ? openDayModal : null);
   _idoExp('closeDayModal', typeof closeDayModal !== 'undefined' ? closeDayModal : null);
-  // Export
-  _idoExp('openExportModal', typeof openExportModal !== 'undefined' ? openExportModal : null);
+  // Export (IDO-specific names, ne írják felül a CRM verziókat)
+  _idoExp('ido_openExportModal', typeof openExportModal !== 'undefined' ? openExportModal : null);
   _idoExp('doExport', typeof doExport !== 'undefined' ? doExport : null);
   // Misc
-  _idoExp('updateTrashBadge', typeof updateTrashBadge !== 'undefined' ? updateTrashBadge : null);
+  _idoExp('ido_updateTrashBadge', typeof updateTrashBadge !== 'undefined' ? updateTrashBadge : null);
   // Data bridges
   window._ido_getEmployees = function() { return typeof employees !== 'undefined' ? employees : []; };
   window._ido_getCurrentUser = function() { return ido_currentUser; };
@@ -11474,7 +11504,7 @@ function renderQEditor() {
     return '<option value="' + c.id + '"' + (q.clientId===c.id?' selected':'') + '>' + c.name + '</option>';
   }).join('');
   const projectsOpts = '<option value="">– Új projekt generálása –</option>' +
-    (projects||[]).filter(function(p){return p.status!==7;}).map(function(p) {
+    (projects||[]).filter(function(p){return p.status!==8 && !p.parentId;}).map(function(p) {
       return '<option value="' + p.id + '"' + (q.projectId===p.id?' selected':'') + '>' + p.id + (p.desc?' – '+p.desc.slice(0,40):'') + '</option>';
     }).join('');
 
@@ -12959,7 +12989,7 @@ function rIktatSelectItem(id, name, qty, unit) {
 // ── KIADÁS (ALLOKÁCIÓ) ────────────────────────────────────────────────────────
 function renderRKiad(preItemId) {
   var projOpts = '<option value="">– Nincs projekt –</option>' +
-    (typeof projects !== 'undefined' ? projects.filter(function(p){return p.status!==7;}).map(function(p){
+    (typeof projects !== 'undefined' ? projects.filter(function(p){return p.status!==8 && !p.parentId;}).map(function(p){
       return '<option value="'+p.id+'">'+p.id+(p.desc?' – '+p.desc.slice(0,30):'')+'</option>';
     }).join('') : '');
 
@@ -13623,7 +13653,7 @@ setTimeout(()=>{
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
       <div class="sidebar-label">Exportálás</div>
-      <div class="nav-item" onclick="openExportModal()"><span>&#128202;</span> Export XLS</div>
+      <div class="nav-item" onclick="ido_openExportModal()"><span>&#128202;</span> Export XLS</div>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
