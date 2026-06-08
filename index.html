@@ -1038,8 +1038,8 @@
       </select>
     </div>
     <div class="form-row-2">
-      <div><label class="form-label">Megnevezés_1 (max 20)</label><input class="form-input" id="np-location" maxlength="20" placeholder="pl. HALLER PARKOLÓ" oninput="updateIdPreview()"></div>
-      <div><label class="form-label">Megnevezés_2 (max 20)</label><input class="form-input" id="np-phase" maxlength="20" placeholder="pl. B SZINT" oninput="updateIdPreview()"></div>
+      <div><label class="form-label">Megnevezés_1 (max 20)</label><input class="form-input" id="np-location" maxlength="20" placeholder="pl. HALLER PARKOLÓ" oninput="updateIdPreview()" title="Tiltott karakterek: &quot; ' \` ; \ &lt; &gt;"></div>
+      <div><label class="form-label">Megnevezés_2 (max 20)</label><input class="form-input" id="np-phase" maxlength="20" placeholder="pl. B SZINT" oninput="updateIdPreview()" title="Tiltott karakterek: &quot; ' \` ; \ &lt; &gt;"></div>
     </div>
     <div class="form-row" style="margin-top:10px">
       <label class="form-label">Generált azonosító</label>
@@ -1052,7 +1052,7 @@
       <label for="np-continuous" style="font-size:12px;cursor:pointer;">🔄 Folyamatos projekt <span style="color:var(--text-dim);font-size:10px;">(több rész-TIG, nem zárul le automatikusan)</span></label>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">Mégse</button>
+      <button class="btn btn-secondary" onclick="window._pendingParentId=null; closeModal('newProjectModal')">Mégse</button>
       <button class="btn btn-primary" onclick="createProject()">✓ Létrehozás</button>
     </div>
   </div>
@@ -3175,21 +3175,12 @@ function openNewSubProjectModal(parentId) {
   const parent = projects.find(function(p){ return p.id===parentId; });
   if(!parent) return;
 
-  // Előre kitöltjük a projekt modal-t a szülő adataival
-  _mlPreselectedProjectId = null;
-  const modal = document.getElementById('newProjectModal');
-  if(modal) modal.style.display = 'flex';
-  openNewProjectModal(parent.clientId);
-
-  // Beállítjuk hogy alprojektként mentse
+  // Beállítjuk hogy alprojektként mentse (ELŐBB, mielőtt a modal megnyílik)
   window._pendingParentId = parentId;
 
-  // Ha a szülő folyamatos, az alprojekt is az lesz alapból
-  if(parent.isContinuous || parent.status === STATUS_CONTINUOUS) {
-    setTimeout(function() {
-      // Állapot szekció alapból "Folyamatos" az alprojektnél is
-    }, 100);
-  }
+  // Megnyitjuk a szokásos új projekt modalt, a szülő clientId-jével előtöltve
+  _mlPreselectedProjectId = null;
+  openNewProjectModal(parent.clientId);
 
   if(typeof showToast === 'function') showToast('📌 Alprojekt létrehozása: ' + parentId + ' alá', 'info');
 }
@@ -3526,7 +3517,19 @@ function openNewSupplierModal(){ ['ns-name','ns-contact','ns-type'].forEach(id=>
 // veszi a maximumot, és annál eggyel nagyobbat ajánl – ha az is foglalt, addig lép,
 // amíg szabad ID-t talál. Törlés vagy párhuzamos session sem okozhat duplikátumot.
 function generateSafePid(loc, ph) {
-  const prefix = `${loc}_${ph}_`;
+  // Tiltott karakterek eltávolítása az ID komponensekből
+  // Csak betű, szám, kötőjel, aláhúzás, pont megengedett
+  function sanitizeIdPart(s) {
+    return (s||'')
+      .toUpperCase()
+      .replace(/['"`;\\<>]/g, '')          // idézőjelek és veszélyes karakterek ki
+      .replace(/[^A-ZÁÉÍÓÖŐÚÜŰ0-9\-_.]/g, '_')  // egyéb speciális → aláhúzás
+      .replace(/_+/g, '_')                  // dupla aláhúzás összevonása
+      .replace(/^_|_$/g, '');              // vezető/záró aláhúzás le
+  }
+  const safeLoc = sanitizeIdPart(loc);
+  const safePh  = sanitizeIdPart(ph);
+  const prefix = `${safeLoc}_${safePh}_`;
   // Összegyűjtjük az összes ismert projektet: aktív + archivált + kukában lévő
   const allKnown = [
     ...projects,
@@ -3548,6 +3551,18 @@ function generateSafePid(loc, ph) {
 function updateIdPreview(){
   const cid=document.getElementById('np-company').value;
   const typ=document.getElementById('np-type').value;
+  const locRaw=document.getElementById('np-location').value.trim().toUpperCase();
+  const phRaw=document.getElementById('np-phase').value.trim().toUpperCase();
+  // Valós idejű szanitálás: ha tiltott karakter van, az input értékét azonnal javítjuk
+  const safeChars = /['"`;\\<>]/g;
+  if(safeChars.test(locRaw)){
+    document.getElementById('np-location').value = locRaw.replace(/['"`;\\<>]/g,'');
+    showToast("⚠️ Az ID-ban nem használható: \" ' ` ; \\ < > — automatikusan eltávolítva",'warn');
+  }
+  if(safeChars.test(phRaw)){
+    document.getElementById('np-phase').value = phRaw.replace(/['"`;\\<>]/g,'');
+    showToast("⚠️ Az ID-ban nem használható: \" ' ` ; \\ < > — automatikusan eltávolítva",'warn');
+  }
   const loc=document.getElementById('np-location').value.trim().toUpperCase();
   const ph=document.getElementById('np-phase').value.trim().toUpperCase();
   if(!cid||!typ||!loc||!ph){ document.getElementById('idPreview').textContent='— töltsd ki az összes mezőt —'; return; }
@@ -3578,6 +3593,11 @@ function createProject(){
   const desc=document.getElementById('np-desc').value.trim();
   const projDate=document.getElementById('np-date').value || new Date().toISOString().split('T')[0];
   if(!cid||!typ||!loc||!ph){ showToast('⚠️ Kérlek töltsd ki az összes kötelező mezőt!','warn'); return; }
+  // Biztonsági ellenőrzés: tiltott karakterek az ID mezőkben
+  const forbidden = /['"`;\\<>]/;
+  if(forbidden.test(loc) || forbidden.test(ph)){
+    showToast("⚠️ Az ID nem tartalmazhat: \" ' ` ; \\ < > karaktereket!",'warn'); return;
+  }
   const priv = cid === '__PRIVATE__';
   if(priv && !document.getElementById('np-person-name').value.trim()){ showToast('⚠️ Add meg a magánszemély nevét!','warn'); return; }
 
