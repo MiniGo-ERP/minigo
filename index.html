@@ -11539,7 +11539,7 @@ function generateConsultTIG(){
     +'<div class="meta"><div class="tid">'+tigId+'</div><div class="tdl">Kelt</div><div class="tdv">'+todayDisp+'</div></div></div>'
     +'<div class="parties">'
     +'<div class="pb"><div class="pr">Megrendelő</div><div class="pn">'+fCo+'</div></div>'
-    +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div>'+(fEmpName?'<div class="pt" style="font-weight:600;color:#1a1a2e;">👤 '+fEmpName+'</div>':'')+'<div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
+    +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div><div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
     +'</div>'
     +'<div class="period">📅 Teljesítési időszak: <b>'+periodDisp+'</b></div>'
     +'<table><thead><tr><th>#</th><th>Dátum</th>'+(showProjCol?'<th>Projekt</th>':'')+'<th>Tevékenység leírása</th><th style="text-align:right">Mennyiség</th><th style="text-align:right">Óra / Nap</th>'+(showAmtCol?'<th style="text-align:right">Összeg</th>':'')+'</tr></thead><tbody>'
@@ -11555,9 +11555,9 @@ function generateConsultTIG(){
       if(dailyRateNum>0&&totalDays>0) grandRows+='<tr><td class="gl">Napidíjas: '+totalDays.toLocaleString('hu-HU')+' nap × '+Number(dailyRateNum).toLocaleString('hu-HU')+' Ft/nap</td><td class="gv">'+Math.round(totalDays*dailyRateNum).toLocaleString('hu-HU')+' Ft</td></tr>';
       return '<div class="grand"><table>'+grandRows+'<tr class="gg"><td>Fizetendő nettó összeg</td><td style="text-align:right">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr></table></div>';
     })():'')
-    +'<div class="legal">'+(cs.name||'a Tanácsadó')+(fEmpName?' – '+fEmpName:'')+' mint Megbízott a fenti időszakban felsorolt tanácsadói feladatokat teljesítette. Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Tanácsadóhoz.</div>'
-    +'<div class="sigs" style="grid-template-columns:1fr;">'
-    +'<div><div class="sr">Megrendelő</div><div class="sn">'+fCo+'</div><div class="sl">Aláírás, dátum</div></div>'
+    +'<div class="legal">Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Vállalkozóhoz. Amennyiben ez határidőn belül nem történik meg, a teljesítés elfogadottnak tekinthető, és '+(cs.name||'a Vállalkozó')+' a feltüntetett összegű számlát jogosult kiállítani és Megrendelő részére benyújtani.</div>'
+    +'<div style="display:flex;justify-content:center;margin-top:44px;">'
+    +'<div style="text-align:center;"><div class="sr">Megrendelő</div><div class="sn">'+fCo+'</div><div style="border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;width:200px;margin:0 auto;">Aláírás</div></div>'
     +'</div>'
     +'<footer><span>'+tigId+' · MiniGo · Tanácsadói napló</span><span>'+todayDisp+'</span></footer>'
     +'</body></html>';
