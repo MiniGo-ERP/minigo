@@ -191,13 +191,7 @@
   .log-time { font-family:var(--mono); font-size:10px; color:var(--text-dim); white-space:nowrap; min-width:115px; }
   .log-msg { font-size:12px; color:var(--text); }
 
-  /* EDIT / DELETE icon buttons */
-  .icon-btn { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:4px; border:1px solid transparent; cursor:pointer; font-size:13px; transition:all 0.15s; flex-shrink:0; background:transparent; }
-  .icon-btn:hover { background:var(--surface2); border-color:var(--border); }
-  .icon-btn.edit:hover  { border-color:var(--accent2); color:var(--accent2); }
-  .icon-btn.del:hover   { border-color:var(--danger);  color:var(--danger); }
-  .row-actions { display:flex; gap:3px; align-items:center; opacity:0; transition:opacity 0.15s; }
-  .project-card:hover .row-actions { opacity:1; }
+  /* EDIT / DELETE icon buttons – végleges stílus lentebb (.icon-btn, .row-actions) */
   .card-actions { display:flex; gap:4px; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
   .invoice-item .inv-actions { display:flex; gap:2px; flex-shrink:0; opacity:0; transition:opacity 0.15s; }
   .invoice-item:hover .inv-actions { opacity:1; }
@@ -2396,7 +2390,7 @@ let projects = [
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
 const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
-const fmtS = n => n>=1e6 ? (n/1e6).toFixed(1).replace('.',',')+' M Ft' : n>=1000 ? Math.round(n/1000)+' e Ft' : n+' Ft';
+const fmtS = n => { const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).toFixed(1).replace('.',',')+' M Ft':a>=1000?s+Math.round(a/1000)+' e Ft':n+' Ft'; };
 // Projekt ID-t HTML onclick attribútumba biztonságosan injektáló segédfüggvény
 // (megakadályozza hogy az ID-ban lévő " vagy ' karakterek törjék az attribútumot)
 const escPid = id => (id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -2528,7 +2522,7 @@ function pIncomeFiltered(p)  { return filterInvoicesByDate(p.incomeInvoices||[])
 function pCostFiltered(p)    { return filterInvoicesByDate(p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0); }
 function renderDashboard(){
   const mainProjects = projects.filter(p=>!p.parentId);
-  const tot=mainProjects.length, act=mainProjects.filter(p=>p.status>0&&p.status<8).length,
+  const tot=mainProjects.length, act=mainProjects.filter(p=>p.status!==8).length,
         done=mainProjects.filter(p=>p.status===8).length;
   const curYear = new Date().getFullYear().toString();
   if(dashboardDateFrom === null && dashboardDateTo === null){
@@ -2828,7 +2822,7 @@ function renderProjectRow(p){
 function renderProjectDetail(pid){
   const p=projects.find(x=>x.id===pid);
   if(!p) return '<div class="empty-state"><div class="em-title">Projekt nem található</div></div>';
-  const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status];
+  const co=clients.find(c=>c.id===p.clientId), st=STATUSES[p.status]||STATUSES[0];
   const isLast=p.status>=STATUSES.length-1;
   const inc=pIncome(p), cost=pCost(p), pro=pProfit(p);
   const margin=inc>0?Math.round(pro/inc*100):null;
@@ -3141,10 +3135,10 @@ function renderPartTigSection(p, pid) {
         <span style="color:var(--text-dim);">TIG-ek száma: </span><strong>${linkedTigs.length} db</strong>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-        <span style="color:var(--text-dim);">Összes nettó: </span><strong style="color:var(--profit);">${fmtS(totalNet)} Ft</strong>
+        <span style="color:var(--text-dim);">Összes nettó: </span><strong style="color:var(--profit);">${fmtS(totalNet)}</strong>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-        <span style="color:var(--text-dim);">Összes bruttó: </span><strong>${fmtS(totalGross)} Ft</strong>
+        <span style="color:var(--text-dim);">Összes bruttó: </span><strong>${fmtS(totalGross)}</strong>
       </div>
     </div>`;
   }
@@ -3156,7 +3150,7 @@ function renderPartTigSection(p, pid) {
       <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:20px;">${i+1}.</span>
       <div style="font-family:var(--mono);font-size:12px;font-weight:700;min-width:130px;">${t.id}</div>
       <div style="font-size:11px;color:var(--text-dim);flex:1;">${t.date||'–'}</div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);">Nettó: ${fmtS(t.netTotal||0)} Ft</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);">Nettó: ${fmtS(t.netTotal||0)}</div>
       <button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;" onclick="mlRedownloadDirect('${t.id}')">⬇️</button>
     </div>`;
   });
@@ -3205,7 +3199,7 @@ window.setProjContinuous = setProjContinuous;
 // openMlForProject – TIG készítő megnyitása projektre előválasztva
 function openMlForProject(pid) {
   _mlPreselectedProjectId = pid;
-  enterModule('ml');
+  enterModule('munkalap');
   setTimeout(function(){ showView('ml-new-tig'); }, 100);
 }
 window.openMlForProject = openMlForProject;
@@ -3444,17 +3438,6 @@ function projApplyFilters() {
     });
   }
 
-  // Frissítjük a dashboardDateFrom/To-t az aktív évek alapján
-  if(_activeYears.length > 0) {
-    const sortedYrs = [..._activeYears].sort();
-    dashboardDateFrom = sortedYrs[0] + '-01-01';
-    dashboardDateTo   = sortedYrs[sortedYrs.length-1] + '-12-31';
-  } else {
-    const curYear = new Date().getFullYear().toString();
-    dashboardDateFrom = curYear + '-01-01';
-    dashboardDateTo   = curYear + '-12-31';
-  }
-
   nav('nav-projects');
   bc([{l:'Projektek'}]);
   // Megjelenítés
@@ -3554,7 +3537,7 @@ function updateIdPreview(){
   const locRaw=document.getElementById('np-location').value.trim().toUpperCase();
   const phRaw=document.getElementById('np-phase').value.trim().toUpperCase();
   // Valós idejű szanitálás: ha tiltott karakter van, az input értékét azonnal javítjuk
-  const safeChars = /['"`;\\<>]/g;
+  const safeChars = /['"`;\\<>]/;
   if(safeChars.test(locRaw)){
     document.getElementById('np-location').value = locRaw.replace(/['"`;\\<>]/g,'');
     showToast("⚠️ Az ID-ban nem használható: \" ' ` ; \\ < > — automatikusan eltávolítva",'warn');
@@ -3677,8 +3660,8 @@ function createClient(){
   toggleClientPrivate('ncl');
   const existsAsSupplier = suppliers.some(s=>s.name.toLowerCase()===name.toLowerCase());
   if(!existsAsSupplier){
-    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rogzitve megrendelokent.<br><br>Szeretned <strong>szallitokent / alvallalkozokent</strong> is felvenni ugyanezt a ceget?';
-    document.getElementById('crossRegTitle').textContent = 'Felvegyuk szallitokent is?';
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve megrendelőként.<br><br>Szeretnéd <strong>szállítóként / alvállalkozóként</strong> is felvenni ugyanezt a céget?';
+    document.getElementById('crossRegTitle').textContent = 'Felvegyük szállítóként is?';
     document.getElementById('crossRegConfirmBtn').onclick = () => {
       const sid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_s_'+Date.now();
       const newS={id:sid,name,contact:newC.contact||'',type:''};
@@ -3703,8 +3686,8 @@ function createSupplier(){
   closeModal('newSupplierModal');
   const existsAsClient = clients.some(c=>c.name.toLowerCase()===name.toLowerCase());
   if(!existsAsClient){
-    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rogzitve szallitokent.<br><br>Szeretned <strong>megrendelokent</strong> is felvenni ugyanezt a ceget?';
-    document.getElementById('crossRegTitle').textContent = 'Felvegyuk megrendelokent is?';
+    document.getElementById('crossRegBody').innerHTML = '<strong style="color:var(--accent)">'+name+'</strong> sikeresen rögzítve szállítóként.<br><br>Szeretnéd <strong>megrendelőként</strong> is felvenni ugyanezt a céget?';
+    document.getElementById('crossRegTitle').textContent = 'Felvegyük megrendelőként is?';
     document.getElementById('crossRegConfirmBtn').onclick = () => {
       const cid=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)+'_c_'+Date.now();
       const newC={id:cid,name,contact:newS.contact||'',email:'',counter:0};
@@ -3747,7 +3730,7 @@ function confirmAdvance(){
   closeModal('advanceModal');
   showView('project-detail',pendingAdvanceId);
   // Ha elértük a "TIG aláírásra vár" státuszt, irányítsuk a Munkalapkészítőbe
-  if(p.status === 4){
+  if(p.status === 5){
     setTimeout(()=>{
       if(confirm('📋 A projekt elérte a „TIG aláírásra vár" státuszt.\n\nMegnyitod a Munkalapkészítőt TIG készítéséhez?')){
         enterMunkalapForProject(pendingAdvanceId);
@@ -4232,7 +4215,7 @@ function ciSupplierChange(){
       document.getElementById('ci-ref').value='';
     }
     if(document.getElementById('ci-amount').value==='0'){
-      document.getElementById('ci-amount').value='0';
+      document.getElementById('ci-amount').value='';
     }
     if(document.getElementById('ci-note').value==='Belső munka – nincs külső költség'){
       document.getElementById('ci-note').value='';
