@@ -1294,6 +1294,14 @@
       </select>
     </div>
     <div class="form-row">
+      <label class="form-label">Lekötési típus <span style="font-size:10px;color:var(--text-dim);">(tanácsadási projektekhez)</span></label>
+      <select class="form-input" id="ep-commitment">
+        <option value="">– nincs lekötés / ad hoc –</option>
+        <option value="HETI_1">📅 Heti 1 nap / hó (kedvezményes napidíj)</option>
+        <option value="HETI_2PLUS">📅📅 Heti 2+ nap / hó (emelt kedvezmény)</option>
+      </select>
+    </div>
+    <div class="form-row">
       <label class="form-label">Státusz (manuális korrekció)</label>
       <select class="form-input" id="ep-status"></select>
     </div>
@@ -2807,11 +2815,15 @@ function renderProjectRow(p){
     : '';
   const umbrellaTag = p.isUmbrella ? '<span title="Umbrella projekt" style="font-size:10px;background:rgba(52,152,219,0.12);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 7px;margin-left:4px;">🗂️ Umbrella</span>' : (p.parentId ? '<span title="Alprojekt" style="font-size:10px;background:rgba(52,152,219,0.08);color:#3498db;border:1px solid rgba(52,152,219,0.3);border-radius:10px;padding:1px 7px;margin-left:4px;">↳ Alprojekt</span>' : '');
   const contTag = (p.isContinuous||p.status===STATUS_CONTINUOUS) ? '<span title="Folyamatos" style="font-size:10px;background:rgba(52,152,219,0.1);color:#3498db;border:1px solid #3498db;border-radius:10px;padding:1px 6px;margin-left:4px;">🔄</span>' : '';
+  const CARD_COMMIT = {'HETI_1':['#e67e22','H1'],'HETI_2PLUS':['#9b59b6','H2+']};
+  const commitTag = p.commitment&&CARD_COMMIT[p.commitment]
+    ? `<span title="${p.commitment==='HETI_1'?'Heti 1 nap lekötés':'Heti 2+ nap lekötés'}" style="font-size:9px;padding:1px 6px;border-radius:10px;border:1px solid ${CARD_COMMIT[p.commitment][0]};color:${CARD_COMMIT[p.commitment][0]};background:${CARD_COMMIT[p.commitment][0]}22;margin-left:4px;">📅 ${CARD_COMMIT[p.commitment][1]}</span>`
+    : '';
   return `<div class="project-card" onclick="showView('project-detail','${escPid(p.id)}')">
     <div class="project-id" title="${p.id}">${p.id}</div>
     <div class="project-info">
       <div class="project-company">${p.personName ? `👤 ${p.personName}` : (co?co.name:p.clientId)}</div>
-      <div class="project-name">${p.desc||'–'}${umbrellaTag}${contTag}</div>
+      <div class="project-name">${p.desc||'–'}${umbrellaTag}${contTag}${commitTag}</div>
     </div>
     <div style="display:flex;align-items:center;">${typeBadge}</div>
     <div style="display:flex;align-items:center;"><span class="status-badge ${st.cls}">${st.short}</span></div>
@@ -2832,6 +2844,10 @@ function renderProjectDetail(pid){
   const isLast=p.status>=STATUSES.length-1;
   const inc=pIncome(p), cost=pCost(p), pro=pProfit(p);
   const margin=inc>0?Math.round(pro/inc*100):null;
+  const COMMITMENT_BADGE={'HETI_1':['#e67e22','📅 Heti 1 nap / hó'],'HETI_2PLUS':['#9b59b6','📅📅 Heti 2+ nap / hó']};
+  const commitBadge=p.commitment&&COMMITMENT_BADGE[p.commitment]
+    ?`<span style="font-size:10px;padding:2px 9px;border-radius:10px;border:1px solid ${COMMITMENT_BADGE[p.commitment][0]};color:${COMMITMENT_BADGE[p.commitment][0]};background:${COMMITMENT_BADGE[p.commitment][0]}22;white-space:nowrap;">${COMMITMENT_BADGE[p.commitment][1]}</span>`
+    :'';
   const barW=inc>0?Math.min(100,Math.round(cost/inc*100)):0;
 
   const wf=STATUSES.map((s,i)=>`
@@ -2975,6 +2991,7 @@ function renderProjectDetail(pid){
       <div class="detail-company">${co?co.name:''} &nbsp;·&nbsp; Létrehozva: ${p.createdAt}</div>
       ${p.personName?`<div style="font-size:12px;color:var(--accent2);margin-top:3px;">👤 ${p.personName}${p.personAddress?' · '+p.personAddress:''}</div>`:''}
       ${p.desc?`<div style="font-size:13px;color:var(--text);margin-top:5px">${p.desc}</div>`:''}
+      ${commitBadge?`<div style="margin-top:6px;">${commitBadge}</div>`:''}
     </div>
     <span class="status-badge ${st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start">${st.label}</span>
     <div class="detail-actions">
@@ -4433,6 +4450,7 @@ function openEditProject(pid){
   document.getElementById('ep-desc').value = p.desc||'';
   document.getElementById('ep-date').value = p.createdAt||'';
   document.getElementById('ep-type').value = p.projectType||'';
+  document.getElementById('ep-commitment').value = p.commitment||'';
   document.getElementById('ep-person-name').value = p.personName||'';
   document.getElementById('ep-person-address').value = p.personAddress||'';
   onEditProjClientChange();
@@ -4445,17 +4463,19 @@ function saveProject(){
   const p = projects.find(x=>x.id===editingProjectId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   const newClientId = document.getElementById('ep-client').value;
-  const newDesc     = document.getElementById('ep-desc').value.trim();
-  const newDate     = document.getElementById('ep-date').value;
-  const newType     = document.getElementById('ep-type').value;
-  const newStatus   = Number(document.getElementById('ep-status').value);
-  const priv        = isPrivateClient(newClientId);
+  const newDesc       = document.getElementById('ep-desc').value.trim();
+  const newDate       = document.getElementById('ep-date').value;
+  const newType       = document.getElementById('ep-type').value;
+  const newCommitment = document.getElementById('ep-commitment').value;
+  const newStatus     = Number(document.getElementById('ep-status').value);
+  const priv          = isPrivateClient(newClientId);
   const newPersonName    = priv ? document.getElementById('ep-person-name').value.trim() : '';
   const newPersonAddress = priv ? document.getElementById('ep-person-address').value.trim() : '';
-  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status || newType !== (p.projectType||'') || newDate !== (p.createdAt||'') || newPersonName !== (p.personName||'') || newPersonAddress !== (p.personAddress||'')){
+  if(newClientId !== p.clientId || newDesc !== p.desc || newStatus !== p.status || newType !== (p.projectType||'') || newCommitment !== (p.commitment||'') || newDate !== (p.createdAt||'') || newPersonName !== (p.personName||'') || newPersonAddress !== (p.personAddress||'')){
     p.clientId    = newClientId;
     p.desc        = newDesc;
-    p.projectType = newType || undefined;
+    p.projectType  = newType || undefined;
+    p.commitment   = newCommitment || undefined;
     p.personName    = newPersonName;
     p.personAddress = newPersonAddress;
     if(newDate) p.createdAt = newDate;
@@ -11286,7 +11306,8 @@ function openConsultModal(id){
       var cname=p.personName?('👤 '+p.personName):_consultClientName(p.clientId);
       var t=(p.projectType||'').toUpperCase();
       var typeLabel=t.includes('TANAC')?'💬':(t.includes('SZERV')?'🛠':(t.includes('TELEP')?'🔧':'◆'));
-      sel.innerHTML+='<option value="'+p.id+'"'+(e&&e.projectId===p.id?' selected':'')+'>'+typeLabel+' '+p.id+' – '+cname+(p.desc?' · '+p.desc:'')+' </option>';
+      var commitLabel=p.commitment==='HETI_1'?' [H1 lekötés]':p.commitment==='HETI_2PLUS'?' [H2+ lekötés]':'';
+      sel.innerHTML+='<option value="'+p.id+'"'+(e&&e.projectId===p.id?' selected':'')+'>'+typeLabel+' '+p.id+' – '+cname+(p.desc?' · '+p.desc:'')+commitLabel+'</option>';
     });
   }
   // Megrendelő display
