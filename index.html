@@ -9541,7 +9541,7 @@ let _idoDataLoaded=false;
 let ido_mode='employee'; // 'employee' | 'consult'
 let _consultEditId=null;
 let _consultFilter={clientId:'',from:'',to:''};
-let _consultRptFilter={clientId:'',clientName:'',from:'',to:'',rate:'',onlyUnTigged:true};
+let _consultRptFilter={clientId:'',clientName:'',from:'',to:'',rate:'',dailyRate:'',onlyUnTigged:true};
 
 // ── pending close modal state
 let pendingCloseLogId=null;
@@ -11092,6 +11092,12 @@ function _consultUniqClients(){
   return arr.sort(function(a,b){return a.name.localeCompare(b.name);});
 }
 
+function consultEntryTypeChange(){
+  var isDaily=document.getElementById('cm-type-daily').checked;
+  document.getElementById('cm-hourly-row').style.display=isDaily?'none':'';
+  document.getElementById('cm-daily-row').style.display=isDaily?'':'none';
+}
+
 function consultProjectChange(){
   var sel=document.getElementById('cm-project');
   if(!sel) return;
@@ -11113,7 +11119,8 @@ function renderConsultLog(){
     if(fTo&&e.date>fTo) return false;
     return true;
   }).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
-  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalMin=rows.filter(function(e){return e.entryType!=='daily';}).reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalDays=rows.filter(function(e){return e.entryType==='daily';}).reduce(function(s,e){return s+(parseFloat(e.days)||0);},0);
 
   var clOpts='<option value="">– Összes megrendelő –</option>';
   uniqClients.forEach(function(c){clOpts+='<option value="'+c.id+'"'+(fCl===c.id?' selected':'')+'>'+c.name+'</option>';});
@@ -11136,12 +11143,15 @@ function renderConsultLog(){
     var tiggedCount=rows.filter(function(e){return !!e.tiggedAt;}).length;
     var unTiggedCount=rows.length-tiggedCount;
     html+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">';
-    html+='<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+rows.length+' bejegyzés · összesen: <b style="color:var(--accent);">'+fmtDur(totalMin)+'</b> ('+fmtDurDec(totalMin)+' óra)</span>';
+    var sumParts=[];
+    if(totalMin>0) sumParts.push('<b style="color:var(--accent);">'+fmtDur(totalMin)+'</b> ('+fmtDurDec(totalMin)+' óra)');
+    if(totalDays>0) sumParts.push('<b style="color:#9b59b6;">'+totalDays.toLocaleString('hu-HU')+' nap</b>');
+    html+='<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+rows.length+' bejegyzés · összesen: '+(sumParts.length?sumParts.join(' + '):'–')+'</span>';
     if(tiggedCount>0) html+='<span style="background:#1a4a1a;border:1px solid #2d7a2d;border-radius:10px;padding:2px 10px;font-size:10px;color:#5adf5a;font-family:var(--mono);">✓ '+tiggedCount+' TIG-elt</span>';
     if(unTiggedCount>0) html+='<span style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:2px 10px;font-size:10px;color:var(--text-dim);font-family:var(--mono);">◦ '+unTiggedCount+' feldolgozatlan</span>';
     if(fCl){
       var clName=uniqClients.find(function(c){return c.id===fCl;}); clName=clName?clName.name:fCl;
-      html+='<button class="btn btn-secondary" style="margin-left:auto;padding:5px 14px;font-size:12px;" onclick="_consultRptFilter.clientId=\''+fCl+'\';_consultRptFilter.clientName=\''+clName.replace(/'/g,'')+'\';_consultRptFilter.from=\''+fFrom+'\';_consultRptFilter.to=\''+fTo+'\';_consultRptFilter.rate=\'\';_consultRptFilter.onlyUnTigged=true;ido_showView(\'consult-report\')">📄 Riport / TIG</button>';
+      html+='<button class="btn btn-secondary" style="margin-left:auto;padding:5px 14px;font-size:12px;" onclick="_consultRptFilter.clientId=\''+fCl+'\';_consultRptFilter.clientName=\''+clName.replace(/'/g,'')+'\';_consultRptFilter.from=\''+fFrom+'\';_consultRptFilter.to=\''+fTo+'\';_consultRptFilter.rate=\'\';_consultRptFilter.dailyRate=\'\';_consultRptFilter.onlyUnTigged=true;ido_showView(\'consult-report\')">📄 Riport / TIG</button>';
     }
     html+='</div>';
     html+='<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Állapot</th><th>Dátum</th><th>Projekt</th><th>Megrendelő</th><th>Tevékenység</th><th>Időtartam</th><th></th></tr></thead><tbody>';
@@ -11157,7 +11167,10 @@ function renderConsultLog(){
       html+='<td>'+projLabel+'</td>';
       html+='<td style="font-size:12px;font-weight:600;color:var(--text-bright);">'+clientLabel+'</td>';
       html+='<td style="font-size:12px;max-width:180px;">'+e.activity+'</td>';
-      html+='<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;"><span style="color:var(--accent);font-weight:600;">'+fmtDur(e.durationMin||0)+'</span></td>';
+      var durCell=e.entryType==='daily'
+        ?'<span style="color:#9b59b6;font-weight:600;">📅 '+(parseFloat(e.days)||1).toLocaleString('hu-HU')+' nap</span>'
+        :'<span style="color:var(--accent);font-weight:600;">'+fmtDur(e.durationMin||0)+'</span>';
+      html+='<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">'+durCell+'</td>';
       html+='<td><div class="row-acts"><button class="icon-btn edit" onclick="openConsultModal(\''+e.id+'\')" title="Szerkesztés">✏️</button><button class="icon-btn del" onclick="deleteConsultEntry(\''+e.id+'\')" title="Törlés">🗑️</button></div></td>';
       html+='</tr>';
     });
@@ -11168,7 +11181,7 @@ function renderConsultLog(){
 
 function renderConsultReport(){
   var uniqClients=_consultUniqClients();
-  var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||'', fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'';
+  var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||'', fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'', fDailyRate=_consultRptFilter.dailyRate||'';
   var onlyUnTigged=(_consultRptFilter.onlyUnTigged!==false);
 
   var clOpts='<option value="">– Válassz megrendelőt –</option>';
@@ -11181,7 +11194,8 @@ function renderConsultReport(){
   html+='<div><label class="form-label" style="font-size:11px;">Megrendelő *</label><select class="form-input" style="min-width:180px;padding:5px 10px;font-size:12px;" onchange="_consultRptFilter.clientId=this.value;_consultRptFilter.clientName=this.options[this.selectedIndex].text;ido_showView(\'consult-report\')">'+clOpts+'</select></div>';
   html+='<div><label class="form-label" style="font-size:11px;">Időszak kezdete</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fFrom+'" onchange="_consultRptFilter.from=this.value;ido_showView(\'consult-report\')"></div>';
   html+='<div><label class="form-label" style="font-size:11px;">Időszak vége</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fTo+'" onchange="_consultRptFilter.to=this.value;ido_showView(\'consult-report\')"></div>';
-  html+='<div><label class="form-label" style="font-size:11px;">Óradíj (Ft/h, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 15000" value="'+fRate+'" oninput="_consultRptFilter.rate=this.value;"></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">⏱️ Óradíj (Ft/h, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 15000" value="'+fRate+'" oninput="_consultRptFilter.rate=this.value;"></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">📅 Napidíj (Ft/nap, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 120000" value="'+fDailyRate+'" oninput="_consultRptFilter.dailyRate=this.value;"></div>';
   html+='</div>';
   html+='<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">';
   html+='<input type="checkbox" id="rpt-only-untigged"'+(onlyUnTigged?' checked':'')+' onchange="_consultRptFilter.onlyUnTigged=this.checked;ido_showView(\'consult-report\')" style="width:14px;height:14px;cursor:pointer;">';
@@ -11202,9 +11216,11 @@ function renderConsultReport(){
     return true;
   }).slice().sort(function(a,b){return a.date.localeCompare(b.date);});
 
-  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalMin=rows.filter(function(e){return e.entryType!=='daily';}).reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalDays=rows.filter(function(e){return e.entryType==='daily';}).reduce(function(s,e){return s+(parseFloat(e.days)||0);},0);
   var rateNum=parseFloat(fRate)||0;
-  var totalAmt=rateNum>0?Math.round((totalMin/60)*rateNum):0;
+  var dailyRateNum=parseFloat(fDailyRate)||0;
+  var totalAmt=(rateNum>0?Math.round((totalMin/60)*rateNum):0)+(dailyRateNum>0?Math.round(totalDays*dailyRateNum):0);
 
   if(rows.length===0){
     html+='<div style="color:var(--text-dim);font-size:13px;padding:10px 0;">Nincs bejegyzés a megadott feltételek szerint.</div>';
@@ -11231,18 +11247,28 @@ function renderConsultReport(){
     html+='</div>';
   }
 
-  html+='<div style="overflow-x:auto;margin-bottom:14px;"><table class="data-table"><thead><tr><th>#</th><th>Dátum</th><th>Projekt</th><th>Tevékenység</th><th>Időtartam</th></tr></thead><tbody>';
+  html+='<div style="overflow-x:auto;margin-bottom:14px;"><table class="data-table"><thead><tr><th>#</th><th>Dátum</th><th>Projekt</th><th>Tevékenység</th><th>Teljesítés</th></tr></thead><tbody>';
   rows.forEach(function(e,i){
+    var isDaily=e.entryType==='daily';
+    var teljesites=isDaily
+      ?'<span style="color:#9b59b6;font-weight:600;">📅 '+(parseFloat(e.days)||1).toLocaleString('hu-HU')+' nap</span>'
+      :'<span style="font-weight:600;color:var(--accent);">'+fmtDur(e.durationMin||0)+'</span>';
     html+='<tr><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+(i+1)+'.</td>';
     html+='<td style="font-family:var(--mono);font-size:12px;">'+fmtDate(e.date)+'</td>';
     html+='<td style="font-size:11px;">'+(e.projectId?'<span style="font-family:var(--mono);color:var(--accent2);">'+e.projectId+'</span>':'<span style="color:var(--text-dim);">–</span>')+'</td>';
     html+='<td style="font-size:12px;">'+e.activity+(e.note?'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+e.note+'</div>':'')+'</td>';
-    html+='<td style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);">'+fmtDur(e.durationMin||0)+'</td></tr>';
+    html+='<td style="font-family:var(--mono);font-size:12px;">'+teljesites+'</td></tr>';
   });
   html+='</tbody></table></div>';
   html+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
-  html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);">'+fmtDurDec(totalMin)+' h</div><div style="font-size:11px;color:var(--text-dim);">Összesen ('+fmtDur(totalMin)+')</div></div>';
-  if(totalAmt>0) html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--profit);">'+totalAmt.toLocaleString('hu-HU')+' Ft</div><div style="font-size:11px;color:var(--text-dim);">Nettó ('+fRate+' Ft/h)</div></div>';
+  if(totalMin>0) html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);">'+fmtDurDec(totalMin)+' h</div><div style="font-size:11px;color:var(--text-dim);">⏱️ Összesen ('+fmtDur(totalMin)+')</div></div>';
+  if(totalDays>0) html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#9b59b6;">'+totalDays.toLocaleString('hu-HU')+' nap</div><div style="font-size:11px;color:var(--text-dim);">📅 Napidíjas</div></div>';
+  if(totalAmt>0){
+    var amtParts=[];
+    if(rateNum>0&&totalMin>0) amtParts.push(fmtDurDec(totalMin)+' h × '+Number(rateNum).toLocaleString('hu-HU')+' Ft/h');
+    if(dailyRateNum>0&&totalDays>0) amtParts.push(totalDays.toLocaleString('hu-HU')+' nap × '+Number(dailyRateNum).toLocaleString('hu-HU')+' Ft/nap');
+    html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--profit);">'+totalAmt.toLocaleString('hu-HU')+' Ft</div><div style="font-size:11px;color:var(--text-dim);">Nettó ('+amtParts.join(' + ')+')</div></div>';
+  }
   html+='</div>';
   html+='<button class="btn btn-primary" onclick="generateConsultTIG()">📄 TIG generálása / Előnézet</button>';
   return html;
@@ -11271,10 +11297,16 @@ function openConsultModal(id){
   }
   document.getElementById('cm-date').value=e?e.date:ido_today();
   document.getElementById('cm-activity').value=e?e.activity:'';
+  var typ=e?(e.entryType||'hourly'):'hourly';
+  document.getElementById('cm-type-hourly').checked=(typ==='hourly');
+  document.getElementById('cm-type-daily').checked=(typ==='daily');
+  document.getElementById('cm-hourly-row').style.display=typ==='daily'?'none':'';
+  document.getElementById('cm-daily-row').style.display=typ==='daily'?'':'none';
   var h=e?Math.floor((e.durationMin||0)/60):1;
   var m=e?(e.durationMin||0)%60:0;
   document.getElementById('cm-hours').value=h;
   document.getElementById('cm-mins').value=m;
+  document.getElementById('cm-days').value=e?(e.days||1):1;
   document.getElementById('cm-note').value=e?e.note||'':'';
   document.getElementById('mConsult').classList.add('active');
   document.getElementById('mConsult-title').textContent=id?'✏️ Bejegyzés szerkesztése':'＋ Új tanácsadói bejegyzés';
@@ -11287,34 +11319,43 @@ function saveConsultEntry(){
     var actEl=document.getElementById('cm-activity');
     var hEl=document.getElementById('cm-hours');
     var mEl=document.getElementById('cm-mins');
+    var daysEl=document.getElementById('cm-days');
     var noteEl=document.getElementById('cm-note');
-    if(!dateEl||!projEl||!actEl||!hEl||!mEl){ido_showToast('Hiba: modal elemek nem elérhetők!','warn');return;}
+    var typDaily=document.getElementById('cm-type-daily')&&document.getElementById('cm-type-daily').checked;
+    if(!dateEl||!projEl||!actEl){ido_showToast('Hiba: modal elemek nem elérhetők!','warn');return;}
     var date=dateEl.value;
     var projectId=(projEl.value||'').trim();
     var activity=(actEl.value||'').trim();
-    var h=parseInt(hEl.value)||0;
-    var m=parseInt(mEl.value)||0;
     var note=(noteEl?noteEl.value||'':'').trim();
     if(!date||!projectId||!activity){ido_showToast('Dátum, projekt és tevékenység megadása kötelező!','warn');return;}
-    if(h===0&&m===0){ido_showToast('Az időtartam nem lehet nulla!','warn');return;}
     var allProjs=(typeof projects!=='undefined'?projects:[]);
     var proj=allProjs.find(function(p){return p.id===projectId;});
     var clientId=proj?proj.clientId||'':'';
     var clientName=proj?(proj.personName?('👤 '+proj.personName):_consultClientName(proj.clientId)):'';
     var projectDesc=proj?proj.desc||'':'';
-    var durationMin=h*60+m;
     var uid=ido_currentUser?ido_currentUser.id:'unknown';
+    var entryType=typDaily?'daily':'hourly';
+    var durationMin=0, days=0;
+    if(typDaily){
+      days=parseFloat(daysEl?daysEl.value:1)||1;
+      if(days<=0){ido_showToast('A napok száma nem lehet nulla!','warn');return;}
+    } else {
+      var h=parseInt(hEl?hEl.value:0)||0;
+      var m=parseInt(mEl?mEl.value:0)||0;
+      if(h===0&&m===0){ido_showToast('Az időtartam nem lehet nulla!','warn');return;}
+      durationMin=h*60+m;
+    }
     if(_consultEditId){
       var idx=consultLog.findIndex(function(x){return x.id===_consultEditId;});
       if(idx>=0){
         var updated=consultLog[idx];
         updated.date=date;updated.projectId=projectId;updated.clientId=clientId;
         updated.clientName=clientName;updated.projectDesc=projectDesc;
-        updated.activity=activity;updated.durationMin=durationMin;updated.note=note;
+        updated.activity=activity;updated.entryType=entryType;updated.durationMin=durationMin;updated.days=days;updated.note=note;
         if(window.fbSaveConsultLog) window.fbSaveConsultLog(updated).catch(function(e){console.error('Consult mentési hiba:',e);});
       }
     } else {
-      var entry={id:'cl_'+String(Date.now()),empId:uid,date:date,projectId:projectId,clientId:clientId,clientName:clientName,projectDesc:projectDesc,activity:activity,durationMin:durationMin,note:note,tiggedAt:null,tigId:null,createdAt:new Date().toISOString()};
+      var entry={id:'cl_'+String(Date.now()),empId:uid,date:date,projectId:projectId,clientId:clientId,clientName:clientName,projectDesc:projectDesc,activity:activity,entryType:entryType,durationMin:durationMin,days:days,note:note,tiggedAt:null,tigId:null,createdAt:new Date().toISOString()};
       consultLog.push(entry);
       if(window.fbSaveConsultLog) window.fbSaveConsultLog(entry).catch(function(e){console.error('Consult mentési hiba:',e);});
     }
@@ -11336,7 +11377,7 @@ function deleteConsultEntry(id){
 }
 
 function generateConsultTIG(){
-  var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||fCl, fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'';
+  var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||fCl, fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'', fDailyRate=_consultRptFilter.dailyRate||'';
   var onlyUnTigged=(_consultRptFilter.onlyUnTigged!==false);
   if(!fCl){ido_showToast('Válassz megrendelőt!','warn');return;}
   var fCo=fClName;
@@ -11349,10 +11390,12 @@ function generateConsultTIG(){
   }).slice().sort(function(a,b){return a.date.localeCompare(b.date);});
   if(rows.length===0){ido_showToast('Nincs bejegyzés a kiválasztott feltételekre!','warn');return;}
 
-  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalMin=rows.filter(function(e){return e.entryType!=='daily';}).reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalDays=rows.filter(function(e){return e.entryType==='daily';}).reduce(function(s,e){return s+(parseFloat(e.days)||0);},0);
   var totalH=totalMin/60;
   var rateNum=parseFloat(fRate)||0;
-  var totalAmt=rateNum>0?Math.round(totalH*rateNum):0;
+  var dailyRateNum=parseFloat(fDailyRate)||0;
+  var totalAmt=(rateNum>0?Math.round(totalH*rateNum):0)+(dailyRateNum>0?Math.round(totalDays*dailyRateNum):0);
 
   var cs=companySettings||{};
   var today=ido_today(); var ty=today.slice(0,4),tm=today.slice(5,7),td2=today.slice(8,10);
@@ -11361,19 +11404,29 @@ function generateConsultTIG(){
   var tigId='TIG-K-'+fCo.replace(/\s+/g,'').toUpperCase().slice(0,6)+'-'+today.replace(/-/g,'');
 
   var showProjCol=rows.some(function(e){return !!e.projectId;});
+  var showAmtCol=rateNum>0||dailyRateNum>0;
   var rowsHtml=rows.map(function(e,i){
-    var h=Math.floor((e.durationMin||0)/60),m=(e.durationMin||0)%60;
-    var durStr=h+'h'+(m?' '+m+'m':'');
-    var durDec=(e.durationMin/60).toFixed(2).replace('.',',');
+    var isDaily=e.entryType==='daily';
     var projCell=showProjCol?('<td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;color:#666;">'+(e.projectId||'–')+'</td>'):'';
+    var teljesitesCells,rowAmt=0;
+    if(isDaily){
+      var d=parseFloat(e.days)||1;
+      teljesitesCells='<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;font-weight:600;white-space:nowrap;" colspan="2">'+d.toLocaleString('hu-HU')+' nap</td>';
+      if(dailyRateNum>0) rowAmt=Math.round(d*dailyRateNum);
+    } else {
+      var h=Math.floor((e.durationMin||0)/60),m=(e.durationMin||0)%60;
+      var durStr=h+'h'+(m?' '+m+'m':'');
+      var durDec=(e.durationMin/60).toFixed(2).replace('.',',');
+      teljesitesCells='<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;font-weight:600;white-space:nowrap;">'+durStr+'</td>'
+        +'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;color:#555;white-space:nowrap;">'+durDec+' h</td>';
+      if(rateNum>0) rowAmt=Math.round((e.durationMin/60)*rateNum);
+    }
     return '<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;color:#888;">'+(i+1)+'.</td>'
       +'<td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:nowrap;">'+fmtDate(e.date)+'</td>'
       +projCell
       +'<td style="padding:7px 10px;border-bottom:1px solid #eee;font-size:13px;">'+e.activity+(e.note?'<div style="font-size:11px;color:#888;margin-top:2px;">'+e.note+'</div>':'')+'</td>'
-      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;font-weight:600;white-space:nowrap;">'+durStr+'</td>'
-      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;color:#555;white-space:nowrap;">'+durDec+' h</td>'
-      +(rateNum>0?'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;white-space:nowrap;">'
-        +Math.round((e.durationMin/60)*rateNum).toLocaleString('hu-HU')+' Ft</td>':'')
+      +teljesitesCells
+      +(showAmtCol?'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;white-space:nowrap;">'+(rowAmt>0?rowAmt.toLocaleString('hu-HU')+' Ft':'–')+'</td>':'')
       +'</tr>';
   }).join('');
 
@@ -11403,15 +11456,19 @@ function generateConsultTIG(){
     +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div><div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
     +'</div>'
     +'<div class="period">📅 Teljesítési időszak: <b>'+periodDisp+'</b></div>'
-    +'<table><thead><tr><th>#</th><th>Dátum</th>'+(showProjCol?'<th>Projekt</th>':'')+'<th>Tevékenység leírása</th><th style="text-align:right">Időtartam</th><th style="text-align:right">Óra (dec.)</th>'+(rateNum>0?'<th style="text-align:right">Összeg</th>':'')+'</tr></thead><tbody>'
+    +'<table><thead><tr><th>#</th><th>Dátum</th>'+(showProjCol?'<th>Projekt</th>':'')+'<th>Tevékenység leírása</th><th style="text-align:right">Mennyiség</th><th style="text-align:right">Óra / Nap</th>'+(showAmtCol?'<th style="text-align:right">Összeg</th>':'')+'</tr></thead><tbody>'
     +rowsHtml
     +'<tr class="total-row"><td colspan="'+(showProjCol?4:3)+'" style="padding:10px;border-top:2px solid #1a1a2e;">ÖSSZESEN</td>'
-    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+fmtDur(totalMin)+'</td>'
-    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+fmtDurDec(totalMin)+' h</td>'
-    +(rateNum>0?'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;color:#1a1a2e;">'+totalAmt.toLocaleString('hu-HU')+' Ft</td>':'')
+    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+(totalMin>0?fmtDur(totalMin):'')+' '+(totalDays>0?totalDays.toLocaleString('hu-HU')+' nap':'')+'</td>'
+    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+(totalMin>0?fmtDurDec(totalMin)+' h':'')+'</td>'
+    +(showAmtCol?'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;color:#1a1a2e;">'+(totalAmt>0?totalAmt.toLocaleString('hu-HU')+' Ft':'–')+'</td>':'')
     +'</tr></tbody></table>'
-    +(rateNum>0?'<div class="grand"><table><tr><td class="gl">Nettó összeg ('+fmtDurDec(totalMin)+' h × '+Number(rateNum).toLocaleString('hu-HU')+' Ft/h)</td><td class="gv">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr>'
-      +'<tr class="gg"><td>Fizetendő nettó összeg</td><td style="text-align:right">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr></table></div>':'')
+    +(totalAmt>0?(function(){
+      var grandRows='';
+      if(rateNum>0&&totalMin>0) grandRows+='<tr><td class="gl">Óradíjas: '+fmtDurDec(totalMin)+' h × '+Number(rateNum).toLocaleString('hu-HU')+' Ft/h</td><td class="gv">'+Math.round(totalH*rateNum).toLocaleString('hu-HU')+' Ft</td></tr>';
+      if(dailyRateNum>0&&totalDays>0) grandRows+='<tr><td class="gl">Napidíjas: '+totalDays.toLocaleString('hu-HU')+' nap × '+Number(dailyRateNum).toLocaleString('hu-HU')+' Ft/nap</td><td class="gv">'+Math.round(totalDays*dailyRateNum).toLocaleString('hu-HU')+' Ft</td></tr>';
+      return '<div class="grand"><table>'+grandRows+'<tr class="gg"><td>Fizetendő nettó összeg</td><td style="text-align:right">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr></table></div>';
+    })():'')
     +'<div class="legal">'+(cs.name||'a Tanácsadó')+' mint Megbízott a fenti időszakban felsorolt tanácsadói feladatokat teljesítette. Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Tanácsadóhoz.</div>'
     +'<div class="sigs">'
     +'<div><div class="sr">Megrendelő</div><div class="sn">'+fCo+'</div><div class="sl">Aláírás, dátum</div></div>'
@@ -11569,6 +11626,7 @@ window._ido_loadData = _ido_loadData;
   _idoExp('downloadConsultTIG', downloadConsultTIG);
   _idoExp('markConsultEntriesAsTigged', markConsultEntriesAsTigged);
   _idoExp('consultProjectChange', consultProjectChange);
+  _idoExp('consultEntryTypeChange', consultEntryTypeChange);
   window._consultFilter    = _consultFilter;
   window._consultRptFilter = _consultRptFilter;
   // Data bridges
@@ -14175,8 +14233,19 @@ setTimeout(()=>{
       <div id="cm-client-display" style="padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:13px;color:var(--text-dim);min-height:34px;">–</div>
     </div>
     <div class="form-row"><label class="form-label">Dátum *</label><input class="form-input" id="cm-date" type="date"></div>
+    <div class="form-row">
+      <label class="form-label">Típus *</label>
+      <div style="display:flex;gap:20px;margin-top:5px;">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-bright);">
+          <input type="radio" name="cm-type" id="cm-type-hourly" value="hourly" checked onchange="consultEntryTypeChange()"> ⏱️ Óradíjas
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:var(--text-bright);">
+          <input type="radio" name="cm-type" id="cm-type-daily" value="daily" onchange="consultEntryTypeChange()"> 📅 Napidíjas (egész / fél nap)
+        </label>
+      </div>
+    </div>
     <div class="form-row"><label class="form-label">Tevékenység leírása *</label><input class="form-input" id="cm-activity" placeholder="pl. Teams meeting, Helyszíni konzultáció, Tervezési egyeztetés"></div>
-    <div class="form-row-2">
+    <div id="cm-hourly-row" class="form-row-2">
       <div>
         <label class="form-label">Időtartam – Óra *</label>
         <input class="form-input" id="cm-hours" type="number" min="0" max="24" value="1" placeholder="0">
@@ -14190,6 +14259,18 @@ setTimeout(()=>{
           <option value="45">45 perc</option>
         </select>
       </div>
+    </div>
+    <div id="cm-daily-row" class="form-row" style="display:none;">
+      <label class="form-label">Napok száma *</label>
+      <select class="form-input" id="cm-days">
+        <option value="0.5">0,5 nap (félnap)</option>
+        <option value="1" selected>1 nap</option>
+        <option value="1.5">1,5 nap</option>
+        <option value="2">2 nap</option>
+        <option value="3">3 nap</option>
+        <option value="4">4 nap</option>
+        <option value="5">5 nap</option>
+      </select>
     </div>
     <div class="form-row"><label class="form-label">Megjegyzés (opcionális)</label><input class="form-input" id="cm-note" placeholder="pl. Online Teams-en, résztvevők: ..."></div>
     <div class="modal-actions">
