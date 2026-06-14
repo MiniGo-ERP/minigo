@@ -9676,6 +9676,9 @@ function ido_showView(v){
 
 // ── DASHBOARD ──
 function ido_renderDashboard(){
+  var td=ido_today();
+  var yr=String(new Date().getFullYear());
+  var activeEmps=employees.filter(function(e){return !e.deletedAt;});
 
   // ── Admin stat tiles: full company view
   var html='';
