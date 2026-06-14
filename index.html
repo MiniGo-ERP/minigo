@@ -2013,7 +2013,7 @@ async function doLogout() {
   // IDO modul állapot reset kilépés előtt
   migoUserRole = 'ido_user';
   if(window._ido_setCurrentUser) window._ido_setCurrentUser(null);
-  if(window._ido_loadData) window._ido_loadData([], [], [], []);
+  if(window._ido_loadData) window._ido_loadData([], [], [], [], []);
   // Firebase kijelentkezés
   await signOut(auth);
   // IDO modul kiléptetése ha bent volt
@@ -2190,18 +2190,20 @@ async function loadFromFirestore() {
 
     // IDO modul adatok betöltése Firestore-ból
     try {
-      const [idoEmpSnap, idoLogSnap, idoMarkSnap, idoTrashSnap] = await Promise.all([
+      const [idoEmpSnap, idoLogSnap, idoMarkSnap, idoTrashSnap, idoConsultSnap] = await Promise.all([
         getDocs(collection(db, 'ido_employees')),
         getDocs(collection(db, 'ido_timelog')),
         getDocs(collection(db, 'ido_daymarks')),
         getDocs(collection(db, 'ido_trash')),
+        getDocs(collection(db, 'ido_consult_log')),
       ]);
-      const idoEmps   = idoEmpSnap.empty   ? [] : idoEmpSnap.docs.map(d=>d.data());
-      const idoLogs   = idoLogSnap.empty   ? [] : idoLogSnap.docs.map(d=>d.data());
-      const idoMarks  = idoMarkSnap.empty  ? [] : idoMarkSnap.docs.map(d=>d.data());
-      const idoTrItems= idoTrashSnap.empty ? [] : idoTrashSnap.docs.map(d=>d.data());
+      const idoEmps   = idoEmpSnap.empty    ? [] : idoEmpSnap.docs.map(d=>d.data());
+      const idoLogs   = idoLogSnap.empty    ? [] : idoLogSnap.docs.map(d=>d.data());
+      const idoMarks  = idoMarkSnap.empty   ? [] : idoMarkSnap.docs.map(d=>d.data());
+      const idoTrItems= idoTrashSnap.empty  ? [] : idoTrashSnap.docs.map(d=>d.data());
+      const idoConsult= idoConsultSnap.empty? [] : idoConsultSnap.docs.map(d=>d.data());
       // Átadjuk az IDO IIFE-nek bridge-en keresztül
-      if(window._ido_loadData) window._ido_loadData(idoEmps, idoLogs, idoMarks, idoTrItems);
+      if(window._ido_loadData) window._ido_loadData(idoEmps, idoLogs, idoMarks, idoTrItems, idoConsult);
     } catch(ie){ console.warn('IDO adatok betöltési hiba (nem kritikus):', ie); }
   } catch(e) {
     console.error('Firestore betöltési hiba:', e);
@@ -2260,6 +2262,8 @@ async function fbSaveIdoDayMark(d)   { await setDoc(doc(db,'ido_daymarks',d.id),
 async function fbDelIdoDayMark(id)   { await fbDeleteDocFS(doc(db,'ido_daymarks',id)); }
 async function fbSaveIdoTrashItem(t) { await setDoc(doc(db,'ido_trash',t.id),t); }
 async function fbDelIdoTrashItem(id) { await fbDeleteDocFS(doc(db,'ido_trash',id)); }
+async function fbSaveConsultLog(e)   { await setDoc(doc(db,'ido_consult_log',e.id),e); }
+async function fbDelConsultLog(id)   { await fbDeleteDocFS(doc(db,'ido_consult_log',id)); }
 
 // Export IDO Firebase helpers to window (IDO IIFE használja)
 window.fbSaveIdoEmployee  = fbSaveIdoEmployee;
@@ -2270,6 +2274,8 @@ window.fbSaveIdoDayMark   = fbSaveIdoDayMark;
 window.fbDelIdoDayMark    = fbDelIdoDayMark;
 window.fbSaveIdoTrashItem = fbSaveIdoTrashItem;
 window.fbDelIdoTrashItem  = fbDelIdoTrashItem;
+window.fbSaveConsultLog   = fbSaveConsultLog;
+window.fbDelConsultLog    = fbDelConsultLog;
 
 async function fbSaveEquipment(e)  { await setDoc(doc(db,'equipment',e.id),e); }
 async function fbDelEquipment(id)  { await fbDeleteDocFS(doc(db,'equipment',id)); }
@@ -9526,11 +9532,16 @@ const HU_HOL_SPEC = {'2025':['2025-04-18','2025-04-21','2025-06-09'],'2026':['20
 let ido_currentUser=null, editingId=null;
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth()+1, calEmpId=null;
 
-let employees=[];  // Firestore: 'ido_employees'
-let timeLog=[];    // Firestore: 'ido_timelog'
-let dayMarks=[];   // Firestore: 'ido_daymarks'
-let trash=[];      // Firestore: 'ido_trash'
-let _idoDataLoaded=false; // jelzi hogy a Firestore adat megérkezett
+let employees=[];   // Firestore: 'ido_employees'
+let timeLog=[];     // Firestore: 'ido_timelog'
+let dayMarks=[];    // Firestore: 'ido_daymarks'
+let trash=[];       // Firestore: 'ido_trash'
+let consultLog=[];  // Firestore: 'ido_consult_log'
+let _idoDataLoaded=false;
+let ido_mode='employee'; // 'employee' | 'consult'
+let _consultEditId=null;
+let _consultFilter={company:'',from:'',to:''};
+let _consultRptFilter={company:'',from:'',to:'',rate:''};
 
 // ── pending close modal state
 let pendingCloseLogId=null;
@@ -9656,7 +9667,7 @@ function ido_showView(v){
   var items=document.querySelectorAll('.nav-item');
   for(var i=0;i<items.length;i++) items[i].classList.remove('active');
   var ne=document.getElementById('ido-nav-'+v); if(ne) ne.classList.add('active');
-  var titles={dashboard:'Áttekintés',calendar:'Naptár',checkin:'Munkaidő rögzítése',employees:'Munkavállalók',reports:'Kimutatások',trash:'Kuka'};
+  var titles={dashboard:'Áttekintés',calendar:'Naptár',checkin:'Munkaidő rögzítése',employees:'Munkavállalók',reports:'Kimutatások',trash:'Kuka','consult-log':'Tanácsadói napló','consult-report':'Riport / TIG'};
   document.getElementById('ido-bc').innerHTML='<span style="color:var(--text)">'+(titles[v]||v)+'</span>';
   var content='';
   if(v==='dashboard') content=ido_renderDashboard();
@@ -9666,6 +9677,8 @@ function ido_showView(v){
   else if(v==='reports') content=renderReports();
   else if(v==='trash') content=renderTrash();
   else if(v==='help') content=renderHelp();
+  else if(v==='consult-log') content=renderConsultLog();
+  else if(v==='consult-report') content=renderConsultReport();
   document.getElementById('ido-mc').innerHTML=content;
   updateTrashBadge();
   // Nav highlight
@@ -11032,13 +11045,318 @@ if(cdNote) cdNote.addEventListener('input',function(){
 
 
 // ── FIRESTORE ADATOK FOGADÁSA (MiniGo loadFromFirestore hívja) ─────────────
-function _ido_loadData(emps, logs, marks, trashItems){
-  if(emps.length > 0)   employees = emps;
-  if(logs.length > 0)   timeLog   = logs;
-  if(marks.length > 0)  dayMarks  = marks;
-  if(trashItems.length > 0) trash = trashItems;
+// ═══════════════════════════════════════════════════════════════════════════
+// TANÁCSADÓI NAPLÓ – módváltó + render funkciók
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ido_setMode(m){
+  ido_mode=m;
+  // Sidebar szekciók mutatása/elrejtése
+  document.querySelectorAll('.ido-emp-nav').forEach(function(el){el.style.display=m==='employee'?'':'none';});
+  document.querySelectorAll('.ido-cons-nav').forEach(function(el){el.style.display=m==='consult'?'':'none';});
+  // Módváltó gombok stílusa
+  var eb=document.getElementById('ido-mode-emp'), cb=document.getElementById('ido-mode-cons');
+  if(eb){eb.style.background=m==='employee'?'var(--accent)':'var(--surface2)';eb.style.color=m==='employee'?'#fff':'var(--text-dim)';eb.style.borderColor=m==='employee'?'var(--accent)':'var(--border)';}
+  if(cb){cb.style.background=m==='consult'?'var(--accent)':'var(--surface2)';cb.style.color=m==='consult'?'#fff':'var(--text-dim)';cb.style.borderColor=m==='consult'?'var(--accent)':'var(--border)';}
+  if(m==='employee') ido_showView('dashboard');
+  else ido_showView('consult-log');
+}
+
+function fmtDur(min){var h=Math.floor(min/60),m=min%60;return h+'h'+(m?(' '+m+'m'):'');}
+function fmtDurDec(min){return (min/60).toFixed(2).replace('.',',');}
+
+function _consultUniqCompanies(){
+  var seen={},arr=[];
+  consultLog.forEach(function(e){if(e.company&&!seen[e.company]){seen[e.company]=1;arr.push(e.company);}});
+  return arr.sort();
+}
+
+function renderConsultLog(){
+  var companies=_consultUniqCompanies();
+  var fCo=_consultFilter.company, fFrom=_consultFilter.from, fTo=_consultFilter.to;
+  var rows=consultLog.filter(function(e){
+    if(fCo&&e.company!==fCo) return false;
+    if(fFrom&&e.date<fFrom) return false;
+    if(fTo&&e.date>fTo) return false;
+    return true;
+  }).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+
+  var coOpts='<option value="">– Összes cég –</option>';
+  companies.forEach(function(c){coOpts+='<option value="'+c+'"'+(fCo===c?' selected':'')+'>'+c+'</option>';});
+
+  var html='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">';
+  html+='<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text-bright);letter-spacing:1px;">📋 TANÁCSADÓI NAPLÓ</div>';
+  html+='<button class="btn btn-primary" style="margin-left:auto;" onclick="openConsultModal()">＋ Új bejegyzés</button>';
+  html+='</div>';
+
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end;">';
+  html+='<div><label class="form-label" style="font-size:11px;">Cég</label><select class="form-input" style="min-width:160px;padding:5px 10px;font-size:12px;" onchange="_consultFilter.company=this.value;ido_showView(\'consult-log\')">'+coOpts+'</select></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">Dátumtól</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fFrom+'" onchange="_consultFilter.from=this.value;ido_showView(\'consult-log\')"></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">Dátumig</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fTo+'" onchange="_consultFilter.to=this.value;ido_showView(\'consult-log\')"></div>';
+  if(fCo||fFrom||fTo) html+='<button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="_consultFilter={company:\'\',from:\'\',to:\'\'};ido_showView(\'consult-log\')">✕ Szűrő törlése</button>';
+  html+='</div>';
+
+  if(rows.length===0){
+    html+='<div class="empty-state"><div class="em-icon">📋</div><div class="em-title">Nincs bejegyzés</div><div class="em-desc">Kattints az "Új bejegyzés" gombra az első tanácsadói tétel rögzítéséhez.</div></div>';
+  } else {
+    html+='<div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;"><span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+rows.length+' bejegyzés · összesen: <b style="color:var(--accent);">'+fmtDur(totalMin)+'</b> ('+fmtDurDec(totalMin)+' óra)</span>';
+    if(fCo) html+='<button class="btn btn-secondary" style="margin-left:auto;padding:5px 14px;font-size:12px;" onclick="_consultRptFilter={company:\''+fCo+'\',from:\''+fFrom+'\',to:\''+fTo+'\',rate:\'\'};ido_showView(\'consult-report\')">📄 Riport / TIG</button>';
+    html+='</div>';
+    html+='<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Dátum</th><th>Cég / Megrendelő</th><th>Tevékenység</th><th>Időtartam</th><th>Megjegyzés</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(e){
+      html+='<tr>';
+      html+='<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">'+fmtDate(e.date)+'</td>';
+      html+='<td><span style="font-size:12px;font-weight:600;color:var(--text-bright);">'+e.company+'</span></td>';
+      html+='<td style="font-size:12px;max-width:200px;">'+e.activity+'</td>';
+      html+='<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;"><span style="color:var(--accent);font-weight:600;">'+fmtDur(e.durationMin||0)+'</span></td>';
+      html+='<td style="font-size:11px;color:var(--text-dim);max-width:160px;">'+(e.note||'–')+'</td>';
+      html+='<td><div class="row-acts"><button class="icon-btn edit" onclick="openConsultModal(\''+e.id+'\')" title="Szerkesztés">✏️</button><button class="icon-btn del" onclick="deleteConsultEntry(\''+e.id+'\')" title="Törlés">🗑️</button></div></td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+  return html;
+}
+
+function renderConsultReport(){
+  var companies=_consultUniqCompanies();
+  var fCo=_consultRptFilter.company, fFrom=_consultRptFilter.from, fTo=_consultRptFilter.to, fRate=_consultRptFilter.rate||'';
+
+  var coOpts='<option value="">– Válassz céget –</option>';
+  companies.forEach(function(c){coOpts+='<option value="'+c+'"'+(fCo===c?' selected':'')+'>'+c+'</option>';});
+
+  var html='<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text-bright);letter-spacing:1px;margin-bottom:16px;">📄 RIPORT / TIG GENERÁLÁS</div>';
+
+  html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Szűrési feltételek</div>';
+  html+='<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">';
+  html+='<div><label class="form-label" style="font-size:11px;">Megrendelő cég *</label><select class="form-input" style="min-width:180px;padding:5px 10px;font-size:12px;" onchange="_consultRptFilter.company=this.value;ido_showView(\'consult-report\')">'+coOpts+'</select></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">Időszak kezdete</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fFrom+'" onchange="_consultRptFilter.from=this.value;ido_showView(\'consult-report\')"></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">Időszak vége</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fTo+'" onchange="_consultRptFilter.to=this.value;ido_showView(\'consult-report\')"></div>';
+  html+='<div><label class="form-label" style="font-size:11px;">Óradíj (Ft/h, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 15000" value="'+fRate+'" oninput="_consultRptFilter.rate=this.value;"></div>';
+  html+='</div></div>';
+
+  if(!fCo){
+    html+='<div style="color:var(--text-dim);font-size:13px;padding:20px 0;">Válassz megrendelő céget a riport előnézetéhez.</div>';
+    return html;
+  }
+
+  var rows=consultLog.filter(function(e){
+    if(e.company!==fCo) return false;
+    if(fFrom&&e.date<fFrom) return false;
+    if(fTo&&e.date>fTo) return false;
+    return true;
+  }).slice().sort(function(a,b){return a.date.localeCompare(b.date);});
+
+  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalH=totalMin/60;
+  var rateNum=parseFloat(fRate)||0;
+  var totalAmt=rateNum>0?Math.round(totalH*rateNum):0;
+
+  if(rows.length===0){
+    html+='<div style="color:var(--text-dim);font-size:13px;padding:10px 0;">Nincs bejegyzés a megadott feltételek szerint.</div>';
+    return html;
+  }
+
+  html+='<div class="panel-title" style="margin-bottom:8px;">Előnézet – '+fCo+' ('+rows.length+' tétel)</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:14px;"><table class="data-table"><thead><tr><th>#</th><th>Dátum</th><th>Tevékenység</th><th>Időtartam</th></tr></thead><tbody>';
+  rows.forEach(function(e,i){
+    html+='<tr><td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">'+(i+1)+'.</td>';
+    html+='<td style="font-family:var(--mono);font-size:12px;">'+fmtDate(e.date)+'</td>';
+    html+='<td style="font-size:12px;">'+e.activity+(e.note?'<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">'+e.note+'</div>':'')+'</td>';
+    html+='<td style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);">'+fmtDur(e.durationMin||0)+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  html+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
+  html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);">'+fmtDurDec(totalMin)+' h</div><div style="font-size:11px;color:var(--text-dim);">Összesen ledolgozott ('+fmtDur(totalMin)+')</div></div>';
+  if(totalAmt>0) html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 16px;"><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--profit);">'+totalAmt.toLocaleString('hu-HU')+' Ft</div><div style="font-size:11px;color:var(--text-dim);">Nettó összeg ('+fRate+' Ft/h)</div></div>';
+  html+='</div>';
+  html+='<button class="btn btn-primary" onclick="generateConsultTIG()">📄 TIG generálása / Előnézet</button>';
+  return html;
+}
+
+function openConsultModal(id){
+  _consultEditId=id||null;
+  var e=id?consultLog.find(function(x){return x.id===id;}):null;
+  document.getElementById('cm-date').value=e?e.date:ido_today();
+  document.getElementById('cm-company').value=e?e.company:'';
+  document.getElementById('cm-activity').value=e?e.activity:'';
+  var h=e?Math.floor((e.durationMin||0)/60):1;
+  var m=e?(e.durationMin||0)%60:0;
+  document.getElementById('cm-hours').value=h;
+  document.getElementById('cm-mins').value=m;
+  document.getElementById('cm-note').value=e?e.note||'':'';
+  // Company datalist feltöltése
+  var dl=document.getElementById('cm-company-list');
+  if(dl){dl.innerHTML='';_consultUniqCompanies().forEach(function(c){var opt=document.createElement('option');opt.value=c;dl.appendChild(opt);});}
+  document.getElementById('mConsult').classList.add('active');
+  document.getElementById('mConsult-title').textContent=id?'✏️ Bejegyzés szerkesztése':'＋ Új tanácsadói bejegyzés';
+}
+
+function saveConsultEntry(){
+  var date=document.getElementById('cm-date').value;
+  var company=(document.getElementById('cm-company').value||'').trim();
+  var activity=(document.getElementById('cm-activity').value||'').trim();
+  var h=parseInt(document.getElementById('cm-hours').value)||0;
+  var m=parseInt(document.getElementById('cm-mins').value)||0;
+  var note=(document.getElementById('cm-note').value||'').trim();
+  if(!date||!company||!activity){ido_showToast('Dátum, cég és tevékenység megadása kötelező!','warn');return;}
+  if(h===0&&m===0){ido_showToast('Az időtartam nem lehet nulla!','warn');return;}
+  var durationMin=h*60+m;
+  if(_consultEditId){
+    var idx=consultLog.findIndex(function(x){return x.id===_consultEditId;});
+    if(idx>=0){
+      consultLog[idx].date=date;consultLog[idx].company=company;consultLog[idx].activity=activity;
+      consultLog[idx].durationMin=durationMin;consultLog[idx].note=note;
+      if(window.fbSaveConsultLog) window.fbSaveConsultLog(consultLog[idx]).catch(function(e){console.error(e);});
+    }
+  } else {
+    var entry={id:'cl_'+Date.now(),empId:ido_currentUser.id,date:date,company:company,activity:activity,durationMin:durationMin,note:note,createdAt:new Date().toISOString()};
+    consultLog.push(entry);
+    if(window.fbSaveConsultLog) window.fbSaveConsultLog(entry).catch(function(e){console.error(e);});
+  }
+  ido_closeModal('mConsult');
+  ido_showToast('Bejegyzés mentve','ok');
+  ido_showView('consult-log');
+}
+
+function deleteConsultEntry(id){
+  if(!confirm('Biztosan törlöd ezt a bejegyzést?')) return;
+  consultLog=consultLog.filter(function(e){return e.id!==id;});
+  if(window.fbDelConsultLog) window.fbDelConsultLog(id).catch(function(e){console.error(e);});
+  ido_showToast('Bejegyzés törölve','ok');
+  ido_showView('consult-log');
+}
+
+function generateConsultTIG(){
+  var fCo=_consultRptFilter.company, fFrom=_consultRptFilter.from, fTo=_consultRptFilter.to, fRate=_consultRptFilter.rate||'';
+  if(!fCo){ido_showToast('Válassz megrendelő céget!','warn');return;}
+  var rows=consultLog.filter(function(e){
+    if(e.company!==fCo) return false;
+    if(fFrom&&e.date<fFrom) return false;
+    if(fTo&&e.date>fTo) return false;
+    return true;
+  }).slice().sort(function(a,b){return a.date.localeCompare(b.date);});
+  if(rows.length===0){ido_showToast('Nincs bejegyzés a kiválasztott feltételekre!','warn');return;}
+
+  var totalMin=rows.reduce(function(s,e){return s+(e.durationMin||0);},0);
+  var totalH=totalMin/60;
+  var rateNum=parseFloat(fRate)||0;
+  var totalAmt=rateNum>0?Math.round(totalH*rateNum):0;
+
+  var cs=companySettings||{};
+  var today=ido_today(); var ty=today.slice(0,4),tm=today.slice(5,7),td2=today.slice(8,10);
+  var todayDisp=ty+'. '+tm+'. '+td2+'.';
+  var periodDisp=(fFrom||'–')+' – '+(fTo||'–');
+  var tigId='TIG-K-'+fCo.replace(/\s+/g,'').toUpperCase().slice(0,6)+'-'+today.replace(/-/g,'');
+
+  var rowsHtml=rows.map(function(e,i){
+    var h=Math.floor((e.durationMin||0)/60),m=(e.durationMin||0)%60;
+    var durStr=h+'h'+(m?' '+m+'m':'');
+    var durDec=(e.durationMin/60).toFixed(2).replace('.',',');
+    return '<tr><td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px;color:#888;">'+(i+1)+'.</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:12px;white-space:nowrap;">'+fmtDate(e.date)+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;font-size:13px;">'+e.activity+(e.note?'<div style="font-size:11px;color:#888;margin-top:2px;">'+e.note+'</div>':'')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;font-weight:600;white-space:nowrap;">'+durStr+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;color:#555;white-space:nowrap;">'+durDec+' h</td>'
+      +(rateNum>0?'<td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-size:12px;white-space:nowrap;">'
+        +Math.round((e.durationMin/60)*rateNum).toLocaleString('hu-HU')+' Ft</td>':'')
+      +'</tr>';
+  }).join('');
+
+  var CSS='* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;}'
+    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;}'
+    +'h1{font-size:22px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .sub{font-size:13px;color:#555;margin-top:3px;}'
+    +'.meta{text-align:right;font-family:monospace;} .tid{font-size:14px;font-weight:700;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:13px;font-weight:600;}'
+    +'.parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;}'
+    +'.pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;}'
+    +'.period{background:#f0f4ff;border-left:4px solid #1a1a2e;padding:8px 14px;border-radius:0 4px 4px 0;margin-bottom:20px;font-size:12px;color:#444;}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:0;}'
+    +'thead tr{background:#1a1a2e;color:#fff;} th{padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;}'
+    +'.total-row{background:#f8f8f8;font-weight:700;}'
+    +'.grand{margin-top:20px;border:2px solid #1a1a2e;border-radius:6px;overflow:hidden;}'
+    +'.grand table{width:100%;border-collapse:collapse;} .gl{color:#555;font-size:12px;padding:8px 14px;} .gv{text-align:right;font-weight:600;padding:8px 14px;} .gg{background:#1a1a2e;color:#fff;} .gg td{padding:12px 14px;font-size:16px;font-weight:700;}'
+    +'.legal{margin-top:22px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px;padding:12px 16px;font-size:11px;color:#444;line-height:1.7;}'
+    +'.sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:44px;}'
+    +'.sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;}'
+    +'footer{margin-top:22px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;}'
+    +'@media print{body{padding:18px 24px;} .no-print{display:none;}}';
+
+  var html='<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Tanácsadói TIG – '+tigId+'</title><style>'+CSS+'</style></head><body>'
+    +'<div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1><div class="sub">Tanácsadói / konzultációs teljesítés</div></div>'
+    +'<div class="meta"><div class="tid">'+tigId+'</div><div class="tdl">Kelt</div><div class="tdv">'+todayDisp+'</div></div></div>'
+    +'<div class="parties">'
+    +'<div class="pb"><div class="pr">Megrendelő</div><div class="pn">'+fCo+'</div></div>'
+    +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div><div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
+    +'</div>'
+    +'<div class="period">📅 Teljesítési időszak: <b>'+periodDisp+'</b></div>'
+    +'<table><thead><tr><th>#</th><th>Dátum</th><th>Tevékenység leírása</th><th style="text-align:right">Időtartam</th><th style="text-align:right">Óra (dec.)</th>'+(rateNum>0?'<th style="text-align:right">Összeg</th>':'')+'</tr></thead><tbody>'
+    +rowsHtml
+    +'<tr class="total-row"><td colspan="3" style="padding:10px;border-top:2px solid #1a1a2e;">ÖSSZESEN</td>'
+    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+fmtDur(totalMin)+'</td>'
+    +'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;">'+fmtDurDec(totalMin)+' h</td>'
+    +(rateNum>0?'<td style="padding:10px;text-align:right;border-top:2px solid #1a1a2e;font-family:monospace;color:#1a1a2e;">'+totalAmt.toLocaleString('hu-HU')+' Ft</td>':'')
+    +'</tr></tbody></table>'
+    +(rateNum>0?'<div class="grand"><table><tr><td class="gl">Nettó összeg ('+fmtDurDec(totalMin)+' h × '+Number(rateNum).toLocaleString('hu-HU')+' Ft/h)</td><td class="gv">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr>'
+      +'<tr class="gg"><td>Fizetendő nettó összeg</td><td style="text-align:right">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr></table></div>':'')
+    +'<div class="legal">'+(cs.name||'a Tanácsadó')+' mint Megbízott a fenti időszakban felsorolt tanácsadói feladatokat teljesítette. Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Tanácsadóhoz.</div>'
+    +'<div class="sigs">'
+    +'<div><div class="sr">Megrendelő</div><div class="sn">'+fCo+'</div><div class="sl">Aláírás, dátum</div></div>'
+    +'<div><div class="sr">Szolgáltató / Tanácsadó</div><div class="sn">'+(cs.name||'–')+'</div><div class="sl">Aláírás, dátum</div></div>'
+    +'</div>'
+    +'<footer><span>'+tigId+' · MiniGo · Tanácsadói napló</span><span>'+todayDisp+'</span></footer>'
+    +'</body></html>';
+
+  // Preview iframe modalban
+  var m=document.getElementById('consultTigPreviewModal');
+  if(!m){
+    m=document.createElement('div');m.id='consultTigPreviewModal';m.className='modal-overlay';
+    m.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;width:92vw;max-width:900px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);">'
+      +'<div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">'
+      +'<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);letter-spacing:1px;">👁️ TANÁCSADÓI TIG ELŐNÉZET</div>'
+      +'<div style="margin-left:auto;display:flex;gap:8px;">'
+      +'<button class="btn btn-secondary" onclick="document.getElementById(\'consultTigPreviewModal\').classList.remove(\'active\')">✕ Bezárás</button>'
+      +'<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="downloadConsultTIG()">⬇️ PDF letöltés</button>'
+      +'</div></div>'
+      +'<div style="flex:1;overflow:hidden;"><iframe id="consultTigFrame" style="width:100%;height:100%;min-height:70vh;border:none;background:#fff;"></iframe></div>'
+      +'</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click',function(e){if(e.target===m)m.classList.remove('active');});
+  }
+  window._consultTigHtml=html;
+  window._consultTigId=tigId;
+  m.classList.add('active');
+  var frame=document.getElementById('consultTigFrame');
+  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  frame.src=url;
+  setTimeout(function(){URL.revokeObjectURL(url);},5000);
+}
+
+function downloadConsultTIG(){
+  var html=window._consultTigHtml||'';
+  var id=window._consultTigId||'TIG-K';
+  if(!html) return;
+  var fname=id+'_'+ido_today().replace(/-/g,'')+'.pdf';
+  try {
+    generateTigPdf(html,fname).catch(function(){
+      var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=id+'.html';a.click();
+    });
+  } catch(ex){
+    var blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=id+'.html';a.click();
+  }
+}
+
+function _ido_loadData(emps, logs, marks, trashItems, consultItems){
+  if(emps.length > 0)         employees  = emps;
+  if(logs.length > 0)         timeLog    = logs;
+  if(marks.length > 0)        dayMarks   = marks;
+  if(trashItems.length > 0)   trash      = trashItems;
+  if(consultItems && consultItems.length > 0) consultLog = consultItems;
   _idoDataLoaded = true;
-  // Ha már bent van a felhasználó, frissítsük a nézetet
   if(ido_currentUser && window.ido_showView) window.ido_showView('dashboard');
 }
 window._ido_loadData = _ido_loadData;
@@ -11110,6 +11428,15 @@ window._ido_loadData = _ido_loadData;
   _idoExp('doExport', typeof doExport !== 'undefined' ? doExport : null);
   // Misc
   _idoExp('ido_updateTrashBadge', typeof updateTrashBadge !== 'undefined' ? updateTrashBadge : null);
+  // Tanácsadói napló
+  _idoExp('ido_setMode', ido_setMode);
+  _idoExp('openConsultModal', openConsultModal);
+  _idoExp('saveConsultEntry', saveConsultEntry);
+  _idoExp('deleteConsultEntry', deleteConsultEntry);
+  _idoExp('generateConsultTIG', generateConsultTIG);
+  _idoExp('downloadConsultTIG', downloadConsultTIG);
+  window._consultFilter    = _consultFilter;
+  window._consultRptFilter = _consultRptFilter;
   // Data bridges
   window._ido_getEmployees = function() { return typeof employees !== 'undefined' ? employees : []; };
   window._ido_getCurrentUser = function() { return ido_currentUser; };
@@ -13646,7 +13973,14 @@ setTimeout(()=>{
   <div class="sidebar">
 
     <div style="padding:4px 14px 6px;"><span class="module-badge">&#9201; Időnyilvántartás</span></div>
-    <div class="sidebar-section">
+    <div style="padding:8px 14px 10px;">
+      <div style="display:flex;gap:5px;">
+        <button id="ido-mode-emp" onclick="ido_setMode('employee')" style="flex:1;padding:6px 4px;font-size:11px;font-family:var(--mono);font-weight:600;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;">&#128084; Alkalmazotti</button>
+        <button id="ido-mode-cons" onclick="ido_setMode('consult')" style="flex:1;padding:6px 4px;font-size:11px;font-family:var(--mono);font-weight:600;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer;">&#128188; Tanácsadói</button>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section ido-emp-nav">
       <div class="sidebar-label">Navigáció</div>
       <div class="nav-item active" id="ido-nav-dashboard" onclick="ido_showView('dashboard')"><span>&#128202;</span> Áttekintés</div>
       <div class="nav-item" id="ido-nav-calendar" onclick="ido_showView('calendar')"><span>&#128197;</span> Naptár</div>
@@ -13654,17 +13988,28 @@ setTimeout(()=>{
       <div class="nav-item admin-only" id="ido-nav-employees" onclick="ido_showView('employees')"><span>&#128101;</span> Munkavállalók</div>
       <div class="nav-item admin-only" id="ido-nav-reports" onclick="ido_showView('reports')"><span>&#128200;</span> Kimutatások</div>
     </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
+    <div class="sidebar-divider ido-emp-nav"></div>
+    <div class="sidebar-section ido-emp-nav">
       <div class="sidebar-label">Gyors műveletek</div>
       <div class="nav-item admin-only" onclick="openNewEmpModal()"><span>&#10133;</span> Új munkavállaló</div>
     </div>
-    <div class="sidebar-divider"></div>
-    <div class="sidebar-section">
+    <div class="sidebar-divider ido-emp-nav"></div>
+    <div class="sidebar-section ido-emp-nav">
       <div class="sidebar-label">Exportálás</div>
       <div class="nav-item" onclick="ido_openExportModal()"><span>&#128202;</span> Export XLS</div>
     </div>
-    <div class="sidebar-divider"></div>
+    <div class="sidebar-divider ido-emp-nav"></div>
+    <div class="sidebar-section ido-cons-nav" style="display:none;">
+      <div class="sidebar-label">Tanácsadói napló</div>
+      <div class="nav-item" id="ido-nav-consult-log" onclick="ido_showView('consult-log')"><span>&#128203;</span> Napló</div>
+      <div class="nav-item" id="ido-nav-consult-report" onclick="ido_showView('consult-report')"><span>&#128196;</span> Riport / TIG</div>
+    </div>
+    <div class="sidebar-divider ido-cons-nav" style="display:none;"></div>
+    <div class="sidebar-section ido-cons-nav" style="display:none;">
+      <div class="sidebar-label">Gyors műveletek</div>
+      <div class="nav-item" onclick="openConsultModal()"><span>&#10133;</span> Új bejegyzés</div>
+    </div>
+    <div class="sidebar-divider ido-cons-nav" style="display:none;"></div>
     <div class="sidebar-section">
       <div class="nav-item" id="ido-nav-help" onclick="ido_showView('help')" style="color:var(--accent);"><span>&#10067;</span> Súgó / Használati útmutató</div>
     </div>
@@ -13679,6 +14024,42 @@ setTimeout(()=>{
     <div class="content" id="ido-mc"></div>
   </div>
 </div>
+</div>
+
+<!-- MODAL: CONSULT ENTRY -->
+<div class="modal-overlay" id="mConsult">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title" id="mConsult-title">&#10133; Új tanácsadói bejegyzés</div>
+    <div class="form-row-2">
+      <div><label class="form-label">Dátum *</label><input class="form-input" id="cm-date" type="date"></div>
+      <div>
+        <label class="form-label">Cég / Megrendelő *</label>
+        <input class="form-input" id="cm-company" list="cm-company-list" placeholder="pl. Acme Kft">
+        <datalist id="cm-company-list"></datalist>
+      </div>
+    </div>
+    <div class="form-row"><label class="form-label">Tevékenység leírása *</label><input class="form-input" id="cm-activity" placeholder="pl. Teams meeting, Helyszíni konzultáció"></div>
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Időtartam – Óra *</label>
+        <input class="form-input" id="cm-hours" type="number" min="0" max="24" value="1" placeholder="0">
+      </div>
+      <div>
+        <label class="form-label">Perc</label>
+        <select class="form-input" id="cm-mins">
+          <option value="0">0 perc</option>
+          <option value="15">15 perc</option>
+          <option value="30">30 perc</option>
+          <option value="45">45 perc</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label class="form-label">Megjegyzés (opcionális)</label><input class="form-input" id="cm-note" placeholder="pl. Online, projekt: XY"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="ido_closeModal('mConsult')">Mégse</button>
+      <button class="btn btn-primary" onclick="saveConsultEntry()">&#10003; Mentés</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: NEW EMP -->
