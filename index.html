@@ -11233,23 +11233,31 @@ function renderConsultLog(){
 }
 
 function renderConsultReport(){
+  var isAdmin=_consultIsAdmin();
   var uniqClients=_consultUniqClients();
+  var activeEmps=_consultActiveEmps();
   var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||'', fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'', fDailyRate=_consultRptFilter.dailyRate||'';
+  var fEmp=isAdmin?(_consultRptFilter.empId||''):(ido_currentUser?ido_currentUser.id:'');
+  var fEmpName=fEmp?_consultEmpName(fEmp):'';
   var onlyUnTigged=(_consultRptFilter.onlyUnTigged!==false);
 
   var clOpts='<option value="">– Válassz megrendelőt –</option>';
   uniqClients.forEach(function(c){clOpts+='<option value="'+c.id+'"'+(fCl===c.id?' selected':'')+'>'+c.name+'</option>';});
+  var empOpts='<option value="">– Összes tanácsadó –</option>';
+  activeEmps.forEach(function(e){empOpts+='<option value="'+e.id+'"'+(fEmp===e.id?' selected':'')+'>'+(e.lastName+' '+e.firstName).trim()+'</option>';});
 
   var html='<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text-bright);letter-spacing:1px;margin-bottom:16px;">📄 RIPORT / TIG GENERÁLÁS</div>';
   html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px;">';
   html+='<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Szűrési feltételek</div>';
   html+='<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">';
+  if(isAdmin) html+='<div><label class="form-label" style="font-size:11px;">👤 Tanácsadó</label><select class="form-input" style="min-width:160px;padding:5px 10px;font-size:12px;" onchange="_consultRptFilter.empId=this.value;ido_showView(\'consult-report\')">'+empOpts+'</select></div>';
   html+='<div><label class="form-label" style="font-size:11px;">Megrendelő *</label><select class="form-input" style="min-width:180px;padding:5px 10px;font-size:12px;" onchange="_consultRptFilter.clientId=this.value;_consultRptFilter.clientName=this.options[this.selectedIndex].text;ido_showView(\'consult-report\')">'+clOpts+'</select></div>';
   html+='<div><label class="form-label" style="font-size:11px;">Időszak kezdete</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fFrom+'" onchange="_consultRptFilter.from=this.value;ido_showView(\'consult-report\')"></div>';
   html+='<div><label class="form-label" style="font-size:11px;">Időszak vége</label><input type="date" class="form-input" style="padding:5px 10px;font-size:12px;" value="'+fTo+'" onchange="_consultRptFilter.to=this.value;ido_showView(\'consult-report\')"></div>';
   html+='<div><label class="form-label" style="font-size:11px;">⏱️ Óradíj (Ft/h, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 15000" value="'+fRate+'" oninput="_consultRptFilter.rate=this.value;"></div>';
   html+='<div><label class="form-label" style="font-size:11px;">📅 Napidíj (Ft/nap, opcionális)</label><input type="number" class="form-input" style="width:130px;padding:5px 10px;font-size:12px;" placeholder="pl. 120000" value="'+fDailyRate+'" oninput="_consultRptFilter.dailyRate=this.value;"></div>';
   html+='</div>';
+  if(!isAdmin&&fEmpName) html+='<div style="margin-top:10px;font-size:12px;color:var(--text-dim);">👤 Tanácsadó: <b style="color:var(--text-bright);">'+fEmpName+'</b></div>';
   html+='<div style="margin-top:12px;display:flex;align-items:center;gap:8px;">';
   html+='<input type="checkbox" id="rpt-only-untigged"'+(onlyUnTigged?' checked':'')+' onchange="_consultRptFilter.onlyUnTigged=this.checked;ido_showView(\'consult-report\')" style="width:14px;height:14px;cursor:pointer;">';
   html+='<label for="rpt-only-untigged" style="font-size:12px;color:var(--text-bright);cursor:pointer;">Csak a még <b>nem TIG-elt</b> bejegyzések (ajánlott)</label>';
@@ -11262,6 +11270,7 @@ function renderConsultReport(){
   }
 
   var rows=consultLog.filter(function(e){
+    if(fEmp&&(e.empId||'')!==fEmp) return false;
     if((e.clientId||e.company||'')!==fCl) return false;
     if(fFrom&&e.date<fFrom) return false;
     if(fTo&&e.date>fTo) return false;
@@ -11450,11 +11459,15 @@ function deleteConsultEntry(id){
 }
 
 function generateConsultTIG(){
+  var isAdmin=_consultIsAdmin();
   var fCl=_consultRptFilter.clientId||'', fClName=_consultRptFilter.clientName||fCl, fFrom=_consultRptFilter.from||'', fTo=_consultRptFilter.to||'', fRate=_consultRptFilter.rate||'', fDailyRate=_consultRptFilter.dailyRate||'';
+  var fEmp=isAdmin?(_consultRptFilter.empId||''):(ido_currentUser?ido_currentUser.id:'');
+  var fEmpName=fEmp?_consultEmpName(fEmp):'';
   var onlyUnTigged=(_consultRptFilter.onlyUnTigged!==false);
   if(!fCl){ido_showToast('Válassz megrendelőt!','warn');return;}
   var fCo=fClName;
   var rows=consultLog.filter(function(e){
+    if(fEmp&&(e.empId||'')!==fEmp) return false;
     if((e.clientId||e.company||'')!==fCl) return false;
     if(fFrom&&e.date<fFrom) return false;
     if(fTo&&e.date>fTo) return false;
@@ -11526,7 +11539,7 @@ function generateConsultTIG(){
     +'<div class="meta"><div class="tid">'+tigId+'</div><div class="tdl">Kelt</div><div class="tdv">'+todayDisp+'</div></div></div>'
     +'<div class="parties">'
     +'<div class="pb"><div class="pr">Megrendelő</div><div class="pn">'+fCo+'</div></div>'
-    +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div><div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
+    +'<div class="pb"><div class="pr">Szolgáltató / Tanácsadó</div><div class="pn">'+(cs.name||'–')+'</div>'+(fEmpName?'<div class="pt" style="font-weight:600;color:#1a1a2e;">👤 '+fEmpName+'</div>':'')+'<div class="pt">Adószám: '+(cs.taxnr||'–')+'</div><div class="pa">'+(cs.address||'')+'</div></div>'
     +'</div>'
     +'<div class="period">📅 Teljesítési időszak: <b>'+periodDisp+'</b></div>'
     +'<table><thead><tr><th>#</th><th>Dátum</th>'+(showProjCol?'<th>Projekt</th>':'')+'<th>Tevékenység leírása</th><th style="text-align:right">Mennyiség</th><th style="text-align:right">Óra / Nap</th>'+(showAmtCol?'<th style="text-align:right">Összeg</th>':'')+'</tr></thead><tbody>'
@@ -11542,10 +11555,9 @@ function generateConsultTIG(){
       if(dailyRateNum>0&&totalDays>0) grandRows+='<tr><td class="gl">Napidíjas: '+totalDays.toLocaleString('hu-HU')+' nap × '+Number(dailyRateNum).toLocaleString('hu-HU')+' Ft/nap</td><td class="gv">'+Math.round(totalDays*dailyRateNum).toLocaleString('hu-HU')+' Ft</td></tr>';
       return '<div class="grand"><table>'+grandRows+'<tr class="gg"><td>Fizetendő nettó összeg</td><td style="text-align:right">'+totalAmt.toLocaleString('hu-HU')+' Ft</td></tr></table></div>';
     })():'')
-    +'<div class="legal">'+(cs.name||'a Tanácsadó')+' mint Megbízott a fenti időszakban felsorolt tanácsadói feladatokat teljesítette. Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Tanácsadóhoz.</div>'
-    +'<div class="sigs">'
+    +'<div class="legal">'+(cs.name||'a Tanácsadó')+(fEmpName?' – '+fEmpName:'')+' mint Megbízott a fenti időszakban felsorolt tanácsadói feladatokat teljesítette. Megrendelő a teljesítést igazolja, és vállalja, hogy a Teljesítési Igazolást az átadástól számított 5 munkanapon belül aláírva visszajuttatja a Tanácsadóhoz.</div>'
+    +'<div class="sigs" style="grid-template-columns:1fr;">'
     +'<div><div class="sr">Megrendelő</div><div class="sn">'+fCo+'</div><div class="sl">Aláírás, dátum</div></div>'
-    +'<div><div class="sr">Szolgáltató / Tanácsadó</div><div class="sn">'+(cs.name||'–')+'</div><div class="sl">Aláírás, dátum</div></div>'
     +'</div>'
     +'<footer><span>'+tigId+' · MiniGo · Tanácsadói napló</span><span>'+todayDisp+'</span></footer>'
     +'</body></html>';
