@@ -11066,10 +11066,10 @@ function fmtDur(min){var h=Math.floor(min/60),m=min%60;return h+'h'+(m?(' '+m+'m
 function fmtDurDec(min){return (min/60).toFixed(2).replace('.',',');}
 
 function _consultProjects(){
-  // Csak TANACSADAS és SZERVIZ típusú projektek, nem töröltek
-  var allowed=['TANACSADAS','SZERVIZ'];
+  // Csak TANACSADAS és SZERVIZ típusú, nem törölt, nem zárt (STATUS_CLOSED=8) projektek
   return (typeof projects!=='undefined'?projects:[]).filter(function(p){
     if(p.deletedAt) return false;
+    if(p.status === STATUS_CLOSED) return false;
     var t=(p.projectType||'').toUpperCase();
     if(t.includes('TANAC')) return true;
     if(t.includes('SZERV')) return true;
