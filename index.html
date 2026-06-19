@@ -792,9 +792,9 @@
   <div class="topbar-right">
     <span id="clockDisplay"></span>
     <button id="sensitiveToggleBtn" onclick="toggleSensitive()" title="Pénzügyi adatok megjelenítése"
-      style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;cursor:pointer;transition:all 0.15s;line-height:1;"
-      onmouseover="this.style.borderColor='var(--accent2)'"
-      onmouseout="this.style.borderColor='var(--border)'">🔒</button>
+      style="background:rgba(232,160,32,0.15);border:1px solid var(--accent);border-radius:4px;padding:5px 10px;font-size:13px;cursor:pointer;transition:all 0.15s;line-height:1;color:var(--accent);font-family:var(--mono);font-size:10px;font-weight:600;display:flex;align-items:center;gap:5px;"
+      onmouseover="this.style.background='rgba(232,160,32,0.3)'"
+      onmouseout="this.style.background='rgba(232,160,32,0.15)'"><span id="sensitiveToggleIcon">🔒</span> <span id="sensitiveToggleLabel">REJTVE</span></button>
     <div class="user-badge" id="userBadge">👤 admin</div>
     <button onclick="doLogout()" title="Kijelentkezés"
       style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all 0.15s;"
@@ -2522,10 +2522,7 @@ function maskRaw(str) {
 function toggleSensitive() {
   _sensitiveVisible = !_sensitiveVisible;
   localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
-  // Frissíti a gomb ikonját
-  var btn = document.getElementById('sensitiveToggleBtn');
-  if(btn) btn.textContent = _sensitiveVisible ? '👁' : '🔒';
-  btn && (btn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése');
+  _updateSensitiveBtn();
   // Újrarendeli az aktuális nézetet
   if(typeof showView === 'function') {
     var active = document.querySelector('.sidebar-item.active');
@@ -2539,6 +2536,22 @@ function toggleSensitive() {
       if(v) showView(v);
       else showView('dashboard');
     } else showView('dashboard');
+  }
+}
+
+function _updateSensitiveBtn() {
+  var icon  = document.getElementById('sensitiveToggleIcon');
+  var label = document.getElementById('sensitiveToggleLabel');
+  var btn   = document.getElementById('sensitiveToggleBtn');
+  if(icon)  icon.textContent  = _sensitiveVisible ? '👁' : '🔒';
+  if(label) label.textContent = _sensitiveVisible ? 'LÁTHATÓ' : 'REJTVE';
+  if(btn){
+    btn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése';
+    btn.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)';
+    btn.style.borderColor = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
+    btn.style.color = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
+    btn.onmouseover = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.3)' : 'rgba(232,160,32,0.3)'; };
+    btn.onmouseout  = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)'; };
   }
 }
 window.toggleSensitive = toggleSensitive;
@@ -7974,8 +7987,7 @@ function showLauncher(){
   // Carousel frissítés
   if(typeof window.launcherCarouselRefresh === 'function') window.launcherCarouselRefresh();
   // Sensitive toggle gomb ikon inicializálása
-  var sBtn = document.getElementById('sensitiveToggleBtn');
-  if(sBtn){ sBtn.textContent = _sensitiveVisible ? '👁' : '🔒'; sBtn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése'; }
+  if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
   // Ha projekt modul aktív, frissítsük az év szűrőt
   if(typeof activeModule !== 'undefined' && activeModule === 'proj') {
     if(typeof projInitYearFilter === 'function') setTimeout(projInitYearFilter, 100);
