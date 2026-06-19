@@ -8471,9 +8471,10 @@ function renderMlDashboard() {
 
 function renderTigRow(t) {
   const isDraft=t.status==='draft';
-  const sc=t.status==='signed'?'var(--success)':isDraft?'var(--accent)':'var(--accent)';
-  const sl=t.status==='signed'?'✅ Aláírt':isDraft?'📝 Piszkozat':'⏳ Aláírás alatt';
-  const borderClr=isDraft?'var(--accent)':'var(--border)';
+  const isSigned=t.status==='signed';
+  const sc=isSigned?'var(--success)':isDraft?'var(--accent)':'var(--accent2)';
+  const sl=isSigned?'✅ Aláírt':isDraft?'📝 Piszkozat':'⏳ Aláírás alatt';
+  const borderClr=isDraft?'var(--accent)':isSigned?'rgba(39,174,96,0.4)':'var(--border)';
   const amountEl=isDraft?`<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:80px;text-align:right;">–</div>`:`<div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${fmt(t.grossTotal||0)}</div>`;
   return `<div style="background:var(--surface);border:1px solid ${borderClr};border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.15s;" onclick="showView('ml-tig-detail','${t.id}')" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='${borderClr}'">${isDraft?`<div style="font-size:15px;flex-shrink:0;">📝</div>`:''}<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent2);min-width:120px;">${t.id}</div><div style="flex:1;"><div style="font-size:13px;color:var(--text-bright);font-weight:500;">${t.clientName||'–'}</div><div style="font-size:11px;color:var(--text-dim);">${(t.sections||[]).length} szekció · ${t.desc||''}</div></div>${amountEl}<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">${t.date||''}</div><span style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid ${sc};color:${sc};">${sl}</span></div>`;
 }
@@ -8905,8 +8906,9 @@ function renderMlTigDetail(tigId){
 function mlMarkSigned(tigId){
   const t=tigStore.find(x=>x.id===tigId);if(!t)return;
   if(t.status==='signed'){showToast('⚠️ Ez a TIG már aláírt.','warn');return;}
-  const user=auth?.currentUser?.email?.split('@')[0]||'ismeretlen';
+  // Set status synchronously first to prevent double-signing race condition
   t.status='signed';
+  const user=auth?.currentUser?.email?.split('@')[0]||'ismeretlen';
   t.log=t.log||[];
   t.log.push({time:nowStr(),msg:`TIG aláírtnak jelölve`,type:'advance',by:user});
   fbSaveTig(t).catch(e=>console.error(e));
@@ -8966,6 +8968,8 @@ function mlDeleteTig(tigId){
     fbSaveTigTrash(trashItem).catch(e=>console.error(e));
     tigStore=tigStore.filter(x=>x.id!==tigId);
     fbDeleteTig(tigId).catch(e=>console.error(e));
+    // Ha a törölt TIG volt az aktív piszkozat, töröljük a referenciát
+    if(_mlDraftId===tigId){ _mlDraftId=null; _mlDraftData=null; }
     updateMlLauncherStats();
     showToast(`🗑️ ${tigId} a kukába került.`,'warn');
     showView('ml-tigs');
@@ -9185,7 +9189,7 @@ function mlEditRowChange(si,rowIdx,field,val){const sec=_mlEditSections[si];if(s
 function mlEditRemoveRow(si,rowIdx){const sec=_mlEditSections[si];if(sec)sec.rows[rowIdx]=null;const el=document.getElementById(`ml-edit-row-${si}-${rowIdx}`);if(el)el.remove();mlEditRecalc();}
 
 function mlEditRecalc(){
-  // Get vatPct from current TIG being edited
+  // Get vatPct from current TIG being edited - _mlEditingId is set in showView('ml-edit-tig')
   const t=_mlEditingId?tigStore.find(x=>x.id===_mlEditingId):null;
   const vatPct=(t?.vatPct||27)/100;
   let grandNet=0;
@@ -9223,10 +9227,11 @@ async function mlSaveEditTig(tigId){
     const activeRows=sec.rows.filter(Boolean).filter(r=>r.desc&&(parseFloat(r.rate)||0)>0);
     const secNet=activeRows.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.rate)||0),0);
     grandNet+=secNet;
-    const typeLabel=TIG_TYPES.find(x=>x.key===sec.type)?.label||sec.type||t.sections[sec.id]?.typeLabel||'';
+    const typeLabel=TIG_TYPES.find(x=>x.key===sec.type)?.label||sec.type||'';
     const projObj=sec.projectId?projects.find(p=>p.id===sec.projectId):null;
-    return{type:sec.type||t.sections[sec.id]?.type||'',typeLabel,projectId:sec.projectId||'',
-      projectLabel:projObj?.desc||t.sections[sec.id]?.projectLabel||'',rows:activeRows,secNet};
+    const origSec=(t.sections||[])[sec.id]; // sec.id = original index in _mlEditSections, matches t.sections index on load
+    return{type:sec.type||origSec?.type||'',typeLabel,projectId:sec.projectId||'',
+      projectLabel:projObj?.desc||origSec?.projectLabel||'',rows:activeRows,secNet};
   });
   const grandGross=Math.round(grandNet*vatMult);
 
@@ -9267,8 +9272,7 @@ async function mlSaveDraftTig(){
   const creator=auth?.currentUser?.email?.split('@')[0]||'ismeretlen';
   const btn=document.querySelector('button[onclick="mlSaveDraftTig()"]');
   if(btn){btn.disabled=true;btn.textContent='⏳ Mentés...';}
-  try{
-    if(_mlDraftId&&_mlDraftId===tigId){
+  try{    if(_mlDraftId&&_mlDraftId===tigId){
       const existing=tigStore.find(t=>t.id===tigId);
       if(existing){existing.clientId=clientId;existing.clientName=co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||'');existing.privatePersonName=privatePersonName;existing.privatePersonAddress=privatePersonAddress;existing.date=tigDate;existing.vatPct=vatPct;existing.desc=desc;existing.sections=activeSections;existing.projectRefs=[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))];existing.updatedAt=new Date().toISOString().split('T')[0];existing.log=existing.log||[];existing.log.push({time:nowStr(),msg:'Piszkozat frissítve',type:'draft',by:creator});await fbSaveTig(existing);showToast('💾 Piszkozat frissítve!');return;}
     }
@@ -14512,7 +14516,10 @@ function renderGDashboard() {
     html += '<div style="flex:1;min-width:0;">';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">';
     html += '<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);">'+escH(p.name)+'</div>';
-    if(p.status){ html += '<span class="status-badge s-3" style="font-size:9px;">'+escH(p.status)+'</span>'; }
+    if(p.status){
+      var pSt = GANTT_STATUSES.find(function(s){return s.id===p.status;});
+      if(pSt) html += '<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid '+pSt.color+';color:'+pSt.color+';background:'+pSt.color+'22;">'+pSt.label+'</span>';
+    }
     html += '</div>';
     if(p.desc) html += '<div style="font-size:12px;color:var(--text-dim);">'+escH(p.desc)+'</div>';
     html += '<div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--text-dim);">';
@@ -14624,7 +14631,6 @@ function renderGChart() {
   }
 
   var chartW = LEFT_COL + totalDays * DAY_W;
-  var chartH = HEADER_H + tasks.length * ROW_H + 10;
 
   html += '<div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:6px;">';
   html += '<div style="min-width:'+chartW+'px;">';
@@ -14798,6 +14804,7 @@ function renderGMembers() {
 
 // ── KUKA ──────────────────────────────────────────────────────────
 function renderGTrash() {
+  gLoad();
   var html = '<div style="max-width:900px;">';
   html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--danger);margin-bottom:16px;">🗑️ Gantt Kuka</div>';
   if(_gTrash.length===0){
@@ -14848,7 +14855,7 @@ function ganttOpenNewProjectModal() {
   html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gp-note" placeholder="opcionális"></div>';
   html += '<div class="modal-actions">';
   html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttProjModal\').remove()">Mégse</button>';
-  html += '<button class="btn btn-primary" onclick="ganttSaveProject(null)">✓ Létrehozás</button>';
+  html += '<button class="btn btn-primary" onclick="ganttSaveProject(\'\')">✓ Létrehozás</button>';
   html += '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 }
@@ -14880,6 +14887,7 @@ function ganttOpenEditProjectModal(pid) {
 window.ganttOpenEditProjectModal = ganttOpenEditProjectModal;
 
 function ganttSaveProject(editId) {
+  editId = editId || null; // normalize '' → null
   var name  = (document.getElementById('gp-name')||{}).value||'';
   var desc  = (document.getElementById('gp-desc')||{}).value||'';
   var start = (document.getElementById('gp-start')||{}).value||'';
@@ -14926,6 +14934,7 @@ function ganttDeleteProject(pid) {
   if(_gActivePid===pid) _gActivePid = _gProjects[0] ? _gProjects[0].id : null;
   gSync();
   updateGanttLauncherStats();
+  ganttUpdateTrashBadge();
   ganttShowView('dashboard');
 }
 window.ganttDeleteProject = ganttDeleteProject;
@@ -14933,6 +14942,7 @@ window.ganttDeleteProject = ganttDeleteProject;
 // ── FELADAT MODAL ─────────────────────────────────────────────────
 function ganttOpenTaskModal(tid) {
   gLoad();
+  if(!tid && !_gActivePid){ alert('Válassz projektet a feladat létrehozása előtt!'); return; }
   var t = tid ? _gTasks.find(function(x){return x.id===tid;}) : null;
   var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
   var parentTasks = _gTasks.filter(function(x){return x.projectId===_gActivePid && x.type==='phase' && !x.deletedAt && (!t || x.id!==tid);});
@@ -14981,6 +14991,7 @@ function ganttOpenTaskModal(tid) {
 window.ganttOpenTaskModal = ganttOpenTaskModal;
 
 function ganttSaveTask(editId) {
+  editId = editId || null; // normalize '' → null
   var name    = (document.getElementById('gt-name')||{}).value||'';
   var type    = (document.getElementById('gt-type')||{}).value||'task';
   var status  = (document.getElementById('gt-status')||{}).value||'tervezett';
@@ -15023,6 +15034,7 @@ function ganttDeleteTask(tid) {
   gSync();
   fbDT(tid); fbGTr(tr);
   updateGanttLauncherStats();
+  ganttUpdateTrashBadge();
   ganttShowView(_gView);
 }
 window.ganttDeleteTask = ganttDeleteTask;
@@ -15030,6 +15042,7 @@ window.ganttDeleteTask = ganttDeleteTask;
 // ── RÉSZTVEVŐ MODAL ───────────────────────────────────────────────
 function ganttOpenMemberModal(mid) {
   gLoad();
+  if(!mid && !_gActivePid){ alert('Válassz projektet a résztvevő felvétele előtt!'); return; }
   var m = mid ? _gMembers.find(function(x){return x.id===mid;}) : null;
   var html = '<div class="modal-overlay active" id="ganttMemberModal" style="z-index:200;">';
   html += '<div class="modal" style="width:460px;">';
@@ -15050,6 +15063,7 @@ function ganttOpenMemberModal(mid) {
 window.ganttOpenMemberModal = ganttOpenMemberModal;
 
 function ganttSaveMember(editId) {
+  editId = editId || null; // normalize '' → null
   var name  = (document.getElementById('gm-name')||{}).value||'';
   var role  = (document.getElementById('gm-role')||{}).value||'';
   var email = (document.getElementById('gm-email')||{}).value||'';
@@ -15086,6 +15100,7 @@ function ganttDeleteMember(mid) {
   _gTrash.push(tr);
   gSync();
   fbDM(mid); fbGTr(tr);
+  ganttUpdateTrashBadge();
   ganttShowView('members');
 }
 window.ganttDeleteMember = ganttDeleteMember;
@@ -15102,6 +15117,7 @@ function ganttRestoreTrash(trid) {
   fbDTr(trid);
   gSync();
   if(typeof showToast==='function') showToast('↩️ Visszaállítva!');
+  ganttUpdateTrashBadge();
   ganttShowView('trash');
 }
 window.ganttRestoreTrash = ganttRestoreTrash;
@@ -15248,7 +15264,6 @@ function ganttExportPDF() {
         svgRows += escH(bl)+'</text>';
       }
     }
-    // Ma vonal
   });
   var todayOff = pStart ? gDaysDiff(pStart, new Date().toISOString().slice(0,10)) : -1;
   var todayLine = '';
