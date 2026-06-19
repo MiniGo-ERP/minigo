@@ -252,6 +252,7 @@
 
   /* (launcher grid responsive handled in carousel CSS above) */
 
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
   ::-webkit-scrollbar { width:5px; height:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
@@ -14625,6 +14626,7 @@ function renderProjectSelector(currentView) {
 // ── GANTT CHART NÉZET ─────────────────────────────────────────────
 // Nézet mód: 'week' vagy 'month'
 var _gChartMode = 'week';
+var _gUnsaved   = false;  // van-e mentetlen változás
 
 function renderGChart() {
   gLoad();
@@ -14665,13 +14667,21 @@ function renderGChart() {
 
   // Toolbar
   html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
+  // Vissza gomb
+  html += '<button class="btn btn-secondary" onclick="ganttBackToDashboard()" style="padding:5px 10px;font-size:11px;">◀ Projektek</button>';
   html += '<button class="btn btn-primary" onclick="ganttOpenTaskModal(null)" style="padding:6px 12px;font-size:11px;">➕ Feladat</button>';
-  // Nézet váltó
+  // Zoom / nézet váltó: Nap / Hét / Hónap
   html += '<div style="display:flex;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-left:4px;">';
-  html += '<button onclick="ganttSetChartMode(\'week\')" id="gcm-week" style="padding:5px 12px;font-family:var(--mono);font-size:10px;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;background:'+(_gChartMode==='week'?'var(--accent)':'var(--surface2)')+';color:'+(_gChartMode==='week'?'#0f1117':'var(--text-dim)')+';">Hét</button>';
-  html += '<button onclick="ganttSetChartMode(\'month\')" id="gcm-month" style="padding:5px 12px;font-family:var(--mono);font-size:10px;font-weight:600;border:none;border-left:1px solid var(--border);cursor:pointer;transition:all 0.15s;background:'+(_gChartMode==='month'?'var(--accent)':'var(--surface2)')+';color:'+(_gChartMode==='month'?'#0f1117':'var(--text-dim)')+';">Hónap</button>';
+  var modes = [{id:'day',label:'Nap'},{id:'week',label:'Hét'},{id:'month',label:'Hónap'}];
+  modes.forEach(function(m, mi){
+    var active = _gChartMode === m.id;
+    html += '<button onclick="ganttSetChartMode(\''+m.id+'\')" style="padding:5px 12px;font-family:var(--mono);font-size:10px;font-weight:600;border:none;'+(mi>0?'border-left:1px solid var(--border);':'')+';cursor:pointer;transition:all 0.15s;background:'+(active?'var(--accent)':'var(--surface2)')+';color:'+(active?'#0f1117':'var(--text-dim)')+';">'+m.label+'</button>';
+  });
   html += '</div>';
-  html += '<div style="margin-left:auto;display:flex;gap:6px;">';
+  // Mentés + export jobbra
+  html += '<div style="margin-left:auto;display:flex;gap:6px;align-items:center;">';
+  if(_gUnsaved) html += '<span style="font-family:var(--mono);font-size:9px;color:var(--accent);animation:pulse 1.5s infinite;">● mentetlen</span>';
+  html += '<button class="btn btn-primary" onclick="ganttSaveAll()" style="padding:5px 12px;font-size:10px;">💾 Mentés</button>';
   html += '<button class="btn btn-secondary" onclick="ganttExportXLS()" style="padding:5px 10px;font-size:10px;">📊 XLS</button>';
   html += '<button class="btn btn-secondary" onclick="ganttExportPDF()" style="padding:5px 10px;font-size:10px;">📄 PDF</button>';
   html += '</div></div>';
@@ -14701,7 +14711,7 @@ function renderGChart() {
   if(totalDays < 14) { projEnd = gAddDays(projStart, 13); totalDays = 14; }
 
   // ── Oszlop szélesség nézet szerint ──
-  var COL_W = _gChartMode === 'week' ? 28 : 36; // px / nap (heti: 28, havi: 36 ahol minden hónaposzlop fix)
+  var COL_W = _gChartMode==='day' ? 48 : _gChartMode==='week' ? 28 : 14;
   var LEFT_W = 280; // bal panel szélessége px
   var ROW_H  = 36;
   var HEADER_H1 = 28; // hónap fejléc sor
@@ -14714,7 +14724,25 @@ function renderGChart() {
   var headerTop = [];    // felső fejléc cella: {label, startDay, spanDays}
   var headerBot = [];    // alsó fejléc cella: {label, startDay, spanDays, isWeekend}
 
-  if(_gChartMode === 'week'){
+  if(_gChartMode === 'day'){
+    // Nap mód – felső: hónapok, alsó: napok számával
+    var dd = new Date(projStart+'T00:00:00');
+    var lastMd = '';
+    for(var ddi=0; ddi<totalDays; ddi++){
+      var mdk = dd.getFullYear()+'-'+dd.getMonth();
+      var mdl = dd.toLocaleDateString('hu-HU',{month:'long',year:'numeric'});
+      if(mdk !== lastMd){
+        if(lastMd) headerTop[headerTop.length-1].spanDays = ddi - headerTop[headerTop.length-1].startDay;
+        headerTop.push({label:mdl, startDay:ddi, spanDays:1});
+        lastMd = mdk;
+      }
+      var dow0 = dd.getDay();
+      var isWe = dow0===0||dow0===6;
+      headerBot.push({label:String(dd.getDate()), startDay:ddi, spanDays:1, isWeekend:isWe});
+      dd.setDate(dd.getDate()+1);
+    }
+    if(headerTop.length) headerTop[headerTop.length-1].spanDays = totalDays - headerTop[headerTop.length-1].startDay;
+  } else if(_gChartMode === 'week'){
     // Felső: hónapok
     var d = new Date(projStart+'T00:00:00');
     var lastMonth = '';
@@ -15036,8 +15064,16 @@ function renderGChart() {
 
 function ganttTaskTypeChange() {
   var type = (document.getElementById('gt-type')||{}).value;
-  var row  = document.getElementById('gt-progress-row');
-  if(row) row.style.display = (type==='milestone') ? 'none' : '';
+  // Progress sor - mérföldkőnél rejtve
+  var progRow = document.getElementById('gt-progress-row');
+  if(progRow) progRow.style.display = (type==='milestone') ? 'none' : '';
+  // Dátum sorok váltása
+  var msRow   = document.getElementById('gt-milestone-date-row');
+  var taskRow = document.getElementById('gt-task-date-row');
+  if(msRow)   msRow.style.display   = (type==='milestone') ? '' : 'none';
+  if(taskRow) taskRow.style.display = (type==='milestone') ? 'none' : '';
+  // Auto-dátum hint frissítése az új típushoz
+  ganttDepPredChanged();
 }
 window.ganttTaskTypeChange = ganttTaskTypeChange;
 
@@ -15444,13 +15480,159 @@ function gPropagateDeps(changedTaskId) {
 }
 window.gPropagateDeps = gPropagateDeps;
 
+function ganttBackToDashboard() {
+  if(_gUnsaved){
+    if(confirm('Van mentetlen változás. Mentsd el mielőtt visszalépsz?')){
+      ganttSaveAll();
+    }
+  }
+  _gUnsaved = false;
+  ganttShowView('dashboard');
+}
+window.ganttBackToDashboard = ganttBackToDashboard;
+
+function ganttSaveAll() {
+  gLoad();
+  var projectTasks = _gTasks.filter(function(t){ return t.projectId===_gActivePid && !t.deletedAt; });
+  projectTasks.forEach(function(t){ fbGT(t); });
+  var ap = _gProjects.find(function(p){ return p.id===_gActivePid; });
+  if(ap) fbGP(ap);
+  _gUnsaved = false;
+  if(typeof showToast==='function') showToast('💾 Projekt mentve!');
+  // Újrarendeli a chartot → "mentetlen" badge eltűnik
+  if(_gView==='chart') ganttShowView('chart');
+}
+window.ganttSaveAll = ganttSaveAll;
+
 // ── FELADAT MODAL ─────────────────────────────────────────────────
 function ganttOpenTaskModal(tid) {
   gLoad();
   if(!tid && !_gActivePid){ alert('Válassz projektet a feladat létrehozása előtt!'); return; }
   var t = tid ? _gTasks.find(function(x){return x.id===tid;}) : null;
+  var isMilestone = t ? t.type==='milestone' : false;
   var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
-  var parentTasks = _gTasks.filter(function(x){return x.projectId===_gActivePid && x.type==='phase' && !x.deletedAt && (!t || x.id!==tid);});
+  var parentTasks = _gTasks.filter(function(x){return x.projectId===_gActivePid && x.type==='phase' && !x.deletedAt && (!t||x.id!==tid);});
+  var depCandidates = _gTasks.filter(function(x){return x.projectId===_gActivePid && !x.deletedAt && (!t||x.id!==tid);});
+  window._ganttDepCandidates = depCandidates;
+
+  // Meglévő tartam kiszámítása szerkesztéshez
+  var existingDur = t && t.startDate && t.endDate ? gDaysDiff(t.startDate, t.endDate) : 0;
+  var currentDeps = t ? (t.deps||[]) : [];
+
+  var html = '<div class="modal-overlay active" id="ganttTaskModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">';
+  html += '<div class="modal-title">'+(t?'✏️ Feladat szerkesztése':'📌 Új feladat / mérföldkő')+'</div>';
+
+  // Név + típus
+  html += '<div class="form-row"><label class="form-label">Megnevezés *</label>';
+  html += '<input class="form-input" id="gt-name" value="'+escH(t?t.name:'')+'" placeholder="pl. Helyszíni felmérés – Cegléd"></div>';
+
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Típus</label><select class="form-input" id="gt-type" onchange="ganttTaskTypeChange()">';
+  GANTT_TASK_TYPES.forEach(function(x){ html += '<option value="'+x.id+'"'+((t&&t.type===x.id)||(!t&&x.id==='task')?' selected':'')+'>'+x.icon+' '+x.label+'</option>'; });
+  html += '</select></div>';
+  html += '<div><label class="form-label">Státusz</label><select class="form-input" id="gt-status" onchange="ganttStatusChange()">';
+  GANTT_STATUSES.forEach(function(s){ html += '<option value="'+s.id+'"'+(t&&t.status===s.id?' selected':'')+'>'+s.label+'</option>'; });
+  html += '</select></div></div>';
+
+  // ── Előfeltétel(ek) – ELŐSZÖR kérdezzük, mert befolyásolja a dátumokat ──
+  if(depCandidates.length > 0){
+    html += '<div class="form-row"><label class="form-label">⛓ Előfeltétel(ek) – Finish-to-Start</label>';
+    html += '<div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">Ha megadsz előfeltételt, a kezdődátum automatikusan számítható az előfeladat végéből.</div>';
+    html += '<div id="gt-deps-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">';
+    currentDeps.forEach(function(dep, di){
+      html += '<div style="display:flex;align-items:center;gap:6px;" id="gt-dep-row-'+di+'">';
+      html += '<select class="form-input" id="gt-dep-pred-'+di+'" style="flex:1;" onchange="ganttDepPredChanged()">';
+      html += '<option value="">– Válassz feladatot –</option>';
+      depCandidates.forEach(function(x){ html += '<option value="'+x.id+'"'+(x.id===dep.predId?' selected':'')+'>'+escH(x.name)+'</option>'; });
+      html += '</select>';
+      html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">lag:</span>';
+      html += '<input type="number" class="form-input" id="gt-dep-lag-'+di+'" value="'+(dep.lag||0)+'" min="0" max="365" style="width:54px;text-align:center;" onchange="ganttDepPredChanged()" title="Várakozási napok">';
+      html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">nap</span>';
+      html += '<button onclick="this.parentElement.remove();ganttDepPredChanged()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;" onclick="ganttAddDepRow()">➕ Előfeltétel hozzáadása</button>';
+    html += '</div>';
+  }
+
+  // ── Auto-dátum ajánlat panel (előfeltétel választás után jelenik meg) ──
+  html += '<div id="gt-auto-date-hint" style="display:none;background:rgba(45,125,210,0.1);border:1px solid rgba(45,125,210,0.3);border-radius:6px;padding:10px 12px;margin-bottom:10px;">';
+  html += '<div style="font-family:var(--mono);font-size:10px;color:var(--accent2);margin-bottom:6px;">💡 Automatikus dátum az előfeltételből:</div>';
+  html += '<div style="font-size:11px;color:var(--text);" id="gt-auto-date-text"></div>';
+  html += '<div style="display:flex;gap:6px;margin-top:8px;">';
+  html += '<button class="btn btn-primary" style="padding:4px 10px;font-size:10px;" onclick="ganttApplyAutoDate()">✓ Igen, ezt alkalmazom</button>';
+  html += '<button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;" onclick="document.getElementById(\'gt-auto-date-hint\').style.display=\'none\'">Nem, manuálisan adom meg</button>';
+  html += '</div></div>';
+
+  // ── Dátumok ──
+  // Mérföldkőnél: csak 1 dátum (mikor van) + előfeltételtől X nappal
+  html += '<div id="gt-date-section">';
+  html += '<div id="gt-milestone-date-row" style="'+(isMilestone?'':'display:none;')+'">';
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">🏁 Mérföldkő dátuma *</label><input class="form-input" type="date" id="gt-milestone-date" value="'+(t&&t.startDate?t.startDate:'')+'"></div>';
+  html += '<div id="gt-ms-from-pred-row"><label class="form-label">VAGY előfeltételtől (nap)</label>';
+  html += '<input type="number" class="form-input" id="gt-ms-lag-days" min="0" placeholder="pl. 0" style="text-align:center;" onchange="ganttMsLagChanged()">';
+  html += '</div></div></div>';
+
+  // Normál feladatnál: kezdés + tartam VAGY befejezés
+  html += '<div id="gt-task-date-row" style="'+(isMilestone?'display:none;':'')+'">';
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Kezdési dátum *</label><input class="form-input" type="date" id="gt-start" value="'+(t&&t.startDate?t.startDate:'')+'"></div>';
+  html += '<div><label class="form-label">Befejezési dátum</label><input class="form-input" type="date" id="gt-end" value="'+(t&&t.endDate?t.endDate:'')+'" onchange="ganttEndDateChanged()"></div>';
+  html += '</div>';
+  // Tartam megadás (alternatíva a befejezési dátumhoz)
+  html += '<div style="display:flex;align-items:center;gap:8px;margin:6px 0;">';
+  html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">VAGY tartam:</span>';
+  html += '<input type="number" class="form-input" id="gt-dur-val" min="1" placeholder="pl. 14" style="width:70px;text-align:center;" value="'+(existingDur||'')+'" onchange="ganttDurChanged()">';
+  html += '<select class="form-input" id="gt-dur-unit" style="width:100px;" onchange="ganttDurChanged()">';
+  html += '<option value="day">nap</option>';
+  html += '<option value="week">hét</option>';
+  html += '<option value="month">hónap</option>';
+  html += '</select>';
+  html += '<span style="font-family:var(--mono);font-size:9px;color:var(--text-dim);" id="gt-dur-hint"></span>';
+  html += '</div></div>';
+  html += '</div>'; // gt-date-section
+
+  // Progress csúszka – mérföldkőnél rejtve
+  var progressVal = t ? (t.progress||0) : 0;
+  html += '<div id="gt-progress-row" class="form-row" style="'+(isMilestone?'display:none;':'')+'">';
+  html += '<label class="form-label">Haladás – <span id="gt-progress-label">'+progressVal+'</span>%</label>';
+  html += '<input type="range" id="gt-progress" min="0" max="100" step="5" value="'+progressVal+'" style="width:100%;accent-color:var(--accent2);" oninput="document.getElementById(\'gt-progress-label\').textContent=this.value">';
+  html += '<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>';
+  html += '</div>';
+
+  // Felelős
+  if(members.length === 0){
+    html += '<div class="form-row"><label class="form-label">Felelős résztvevő</label>';
+    html += '<div style="font-size:11px;color:var(--accent);background:rgba(232,160,32,0.1);border:1px solid rgba(232,160,32,0.3);border-radius:5px;padding:8px 10px;">⚠️ Még nincs résztvevő ebben a projektben. <span class="bc-link" style="cursor:pointer;" onclick="document.getElementById(\'ganttTaskModal\').remove();ganttShowView(\'members\')">→ Résztvevők felvitele</span></div>';
+    html += '</div>';
+  } else {
+    html += '<div class="form-row"><label class="form-label">Felelős résztvevő</label><select class="form-input" id="gt-member">';
+    html += '<option value="">– Nincs –</option>';
+    members.forEach(function(m){ html += '<option value="'+m.id+'"'+(t&&t.memberId===m.id?' selected':'')+'>'+escH(m.name)+(m.role?' ('+escH(m.role)+')':'')+'</option>'; });
+    html += '</select></div>';
+  }
+
+  // Szülő fázis
+  if(parentTasks.length > 0){
+    html += '<div class="form-row"><label class="form-label">Szülő fázis (opcionális)</label><select class="form-input" id="gt-parent">';
+    html += '<option value="">– Nincs –</option>';
+    parentTasks.forEach(function(x){ html += '<option value="'+x.id+'"'+(t&&t.parentId===x.id?' selected':'')+'>📁 '+escH(x.name)+'</option>'; });
+    html += '</select></div>';
+  }
+
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label>';
+  html += '<input class="form-input" id="gt-note" value="'+escH(t?t.note||'':'')+'" placeholder="opcionális"></div>';
+
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttTaskModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" data-tid="'+(tid||'')+'" onclick="ganttSaveTask(this.dataset.tid||null)">✓ Mentés</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.ganttOpenTaskModal = ganttOpenTaskModal;
 
   var html = '<div class="modal-overlay active" id="ganttTaskModal" style="z-index:200;">';
   html += '<div class="modal" style="width:520px;">';
@@ -15482,55 +15664,6 @@ function ganttOpenTaskModal(tid) {
   html += '</div>';
 
   html += '<div class="form-row"><label class="form-label">Felelős résztvevő</label><select class="form-input" id="gt-member">';
-  html += '<option value="">– Nincs –</option>';
-  members.forEach(function(m){ html += '<option value="'+m.id+'"'+(t&&t.memberId===m.id?' selected':'')+'>'+escH(m.name)+(m.role?' ('+escH(m.role)+')':'')+'</option>'; });
-  html += '</select></div>';
-
-  if(parentTasks.length > 0){
-    html += '<div class="form-row"><label class="form-label">Szülő fázis (opcionális)</label><select class="form-input" id="gt-parent">';
-    html += '<option value="">– Nincs –</option>';
-    parentTasks.forEach(function(x){ html += '<option value="'+x.id+'"'+(t&&t.parentId===x.id?' selected':'')+'>📁 '+escH(x.name)+'</option>'; });
-    html += '</select></div>';
-  }
-
-  // ── Függőségek (Finish-to-Start) ──
-  var depCandidates = _gTasks.filter(function(x){
-    return x.projectId===_gActivePid && !x.deletedAt && (!t || x.id!==tid);
-  });
-  if(depCandidates.length > 0){
-    var currentDeps = t ? (t.deps||[]) : [];
-    html += '<div class="form-row"><label class="form-label">⛓ Előfeltétel(ek) – Finish-to-Start</label>';
-    html += '<div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">Ez a feladat csak az alábbi feladatok befejezése után kezdődhet.</div>';
-    html += '<div id="gt-deps-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">';
-    currentDeps.forEach(function(dep, di){
-      var pred = depCandidates.find(function(x){return x.id===dep.predId;});
-      html += '<div style="display:flex;align-items:center;gap:6px;" id="gt-dep-row-'+di+'">';
-      html += '<select class="form-input" id="gt-dep-pred-'+di+'" style="flex:1;">';
-      html += '<option value="">– Válassz feladatot –</option>';
-      depCandidates.forEach(function(x){ html += '<option value="'+x.id+'"'+(x.id===dep.predId?' selected':'')+'>'+escH(x.name)+'</option>'; });
-      html += '</select>';
-      html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">+ lag:</span>';
-      html += '<input type="number" class="form-input" id="gt-dep-lag-'+di+'" value="'+(dep.lag||0)+'" min="0" max="365" style="width:60px;text-align:center;" title="Várakozási napok a befejezés után">';
-      html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">nap</span>';
-      html += '<button onclick="document.getElementById(\'gt-dep-row-'+di+'\').remove()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>';
-      html += '</div>';
-    });
-    html += '</div>';
-    html += '<button class="btn btn-secondary" style="padding:4px 10px;font-size:10px;" onclick="ganttAddDepRow()">➕ Előfeltétel hozzáadása</button>';
-    html += '</div>';
-    // Jelöltek eltárolása globálisan a modálhoz
-    window._ganttDepCandidates = depCandidates;
-  }
-
-  html += '<div class="form-row"><label class="form-label">Megjegyzés</label>';
-  html += '<input class="form-input" id="gt-note" value="'+escH(t?t.note||'':'')+'" placeholder="opcionális"></div>';
-
-  html += '<div class="modal-actions">';
-  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttTaskModal\').remove()">Mégse</button>';
-  html += '<button class="btn btn-primary" data-tid="'+(tid||'')+'" onclick="ganttSaveTask(this.dataset.tid||null)">✓ Mentés</button>';
-  html += '</div></div></div>';
-  document.body.insertAdjacentHTML('beforeend', html);
-}
 window.ganttOpenTaskModal = ganttOpenTaskModal;
 
 function ganttAddDepRow() {
@@ -15545,55 +15678,165 @@ function ganttAddDepRow() {
     return '<option value="'+x.id+'">'+escH(x.name)+'</option>';
   }).join('');
   row.innerHTML =
-    '<select class="form-input" id="gt-dep-pred-'+idx+'" style="flex:1;"><option value="">– Válassz feladatot –</option>'+opts+'</select>'+
-    '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">+ lag:</span>'+
-    '<input type="number" class="form-input" id="gt-dep-lag-'+idx+'" value="0" min="0" max="365" style="width:60px;text-align:center;" title="Várakozási napok">'+
+    '<select class="form-input" id="gt-dep-pred-'+idx+'" style="flex:1;" onchange="ganttDepPredChanged()"><option value="">– Válassz feladatot –</option>'+opts+'</select>'+
+    '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">lag:</span>'+
+    '<input type="number" class="form-input" id="gt-dep-lag-'+idx+'" value="0" min="0" max="365" style="width:54px;text-align:center;" onchange="ganttDepPredChanged()">'+
     '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);">nap</span>'+
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>';
+    '<button onclick="this.parentElement.remove();ganttDepPredChanged()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>';
   list.appendChild(row);
 }
 window.ganttAddDepRow = ganttAddDepRow;
 
+// Előfeltétel változott → ajánlja az auto-dátumot
+function ganttDepPredChanged() {
+  var candidates = window._ganttDepCandidates || [];
+  var list = document.getElementById('gt-deps-list');
+  if(!list) return;
+  // Legkésőbbi előfeltétel vége + lag
+  var latestEnd = null;
+  var latestLag = 0;
+  Array.from(list.querySelectorAll('select[id^="gt-dep-pred-"]')).forEach(function(sel, i){
+    var predId = sel.value;
+    if(!predId) return;
+    var pred = candidates.find(function(x){ return x.id===predId; });
+    if(!pred || !pred.endDate) return;
+    var lagEl = list.querySelectorAll('input[id^="gt-dep-lag-"]')[i];
+    var lag = lagEl ? parseInt(lagEl.value)||0 : 0;
+    var proposed = gAddDays(pred.endDate, lag+1);
+    if(!latestEnd || proposed > latestEnd){ latestEnd = proposed; latestLag = lag; }
+  });
+  var hint = document.getElementById('gt-auto-date-hint');
+  var hintText = document.getElementById('gt-auto-date-text');
+  var type = (document.getElementById('gt-type')||{}).value;
+  if(latestEnd && hint){
+    if(type==='milestone'){
+      if(hintText) hintText.innerHTML = '🏁 Mérföldkő dátuma: <strong>'+gDateFmt(latestEnd)+'</strong> (előfeltétel vége + '+(latestLag+1)+' nap)';
+    } else {
+      if(hintText) hintText.innerHTML = '▶ Kezdési dátum: <strong>'+gDateFmt(latestEnd)+'</strong> (előfeltétel vége + '+(latestLag+1)+' nap)';
+    }
+    hint.style.display = '';
+    window._ganttAutoDate = latestEnd;
+  } else {
+    if(hint) hint.style.display = 'none';
+    window._ganttAutoDate = null;
+  }
+}
+window.ganttDepPredChanged = ganttDepPredChanged;
+
+// Auto-dátum alkalmazása
+function ganttApplyAutoDate() {
+  var d = window._ganttAutoDate;
+  if(!d) return;
+  var type = (document.getElementById('gt-type')||{}).value;
+  if(type==='milestone'){
+    var msDate = document.getElementById('gt-milestone-date');
+    if(msDate) msDate.value = d;
+  } else {
+    var startEl = document.getElementById('gt-start');
+    if(startEl) startEl.value = d;
+    // Ha van tartam megadva, számítsuk ki a végdátumot
+    ganttDurChanged();
+  }
+  var hint = document.getElementById('gt-auto-date-hint');
+  if(hint) hint.style.display = 'none';
+}
+window.ganttApplyAutoDate = ganttApplyAutoDate;
+
+// Tartam változott → számítja a végdátumot
+function ganttDurChanged() {
+  var startEl = document.getElementById('gt-start');
+  var durVal  = parseInt((document.getElementById('gt-dur-val')||{}).value||0);
+  var durUnit = (document.getElementById('gt-dur-unit')||{}).value||'day';
+  var endEl   = document.getElementById('gt-end');
+  var hint    = document.getElementById('gt-dur-hint');
+  if(!startEl || !startEl.value || !durVal || durVal <= 0) return;
+  var days = durUnit==='week' ? durVal*7 : durUnit==='month' ? durVal*30 : durVal;
+  var endDate = gAddDays(startEl.value, days-1);
+  if(endEl) endEl.value = endDate;
+  if(hint)  hint.textContent = '→ '+gDateFmt(endDate);
+}
+window.ganttDurChanged = ganttDurChanged;
+
+// Befejező dátum változott → frissíti a tartam mezőt
+function ganttEndDateChanged() {
+  var startEl = document.getElementById('gt-start');
+  var endEl   = document.getElementById('gt-end');
+  var durValEl= document.getElementById('gt-dur-val');
+  var hint    = document.getElementById('gt-dur-hint');
+  if(!startEl||!endEl||!startEl.value||!endEl.value) return;
+  var days = gDaysDiff(startEl.value, endEl.value)+1;
+  if(durValEl) durValEl.value = days;
+  if(hint) hint.textContent = days+' nap';
+}
+window.ganttEndDateChanged = ganttEndDateChanged;
+
+// Mérföldkő: előfeltételtől X nappal lag mező
+function ganttMsLagChanged() {
+  var lagEl = document.getElementById('gt-ms-lag-days');
+  if(!lagEl || !lagEl.value) return;
+  // Ha van auto-dátum alap, az auto dátumtól számít
+  var base = window._ganttAutoDate;
+  if(!base){
+    // Ha nincs auto-dátum, de van előfeltétel, kiszámítjuk
+    ganttDepPredChanged();
+    base = window._ganttAutoDate;
+  }
+  if(base){
+    var d = gAddDays(base, parseInt(lagEl.value)||0);
+    var msDate = document.getElementById('gt-milestone-date');
+    if(msDate) msDate.value = d;
+  }
+}
+window.ganttMsLagChanged = ganttMsLagChanged;
+
+
+
 function ganttSaveTask(editId) {
-  editId = editId || null; // normalize '' → null
+  editId = editId || null;
   var name    = (document.getElementById('gt-name')||{}).value||'';
   var type    = (document.getElementById('gt-type')||{}).value||'task';
   var status  = (document.getElementById('gt-status')||{}).value||'tervezett';
-  var start   = (document.getElementById('gt-start')||{}).value||'';
-  var end     = (document.getElementById('gt-end')||{}).value||'';
   var memberId= (document.getElementById('gt-member')||{}).value||'';
-  var parentId= ((document.getElementById('gt-parent')||{}).value)||'';
+  var parentId= (document.getElementById('gt-parent')||{}).value||'';
   var note    = (document.getElementById('gt-note')||{}).value||'';
   var progress= parseInt((document.getElementById('gt-progress')||{}).value||0);
-  // Ha kész státusz → 100%, ha tervezett → 0%
   if(status==='kesz') progress=100;
   if(status==='tervezett') progress=0;
 
-  // Függőségek összegyűjtése
+  // Dátumok – mérföldkő vs normál feladat
+  var start, end;
+  if(type==='milestone'){
+    var msDate = (document.getElementById('gt-milestone-date')||{}).value||'';
+    if(!msDate){ alert('Add meg a mérföldkő dátumát!'); return; }
+    start = msDate; end = msDate;
+  } else {
+    start = (document.getElementById('gt-start')||{}).value||'';
+    end   = (document.getElementById('gt-end')||{}).value||'';
+    if(start && !end){
+      var durVal  = parseInt((document.getElementById('gt-dur-val')||{}).value||0);
+      var durUnit = (document.getElementById('gt-dur-unit')||{}).value||'day';
+      if(durVal){ var days2 = durUnit==='week'?durVal*7:durUnit==='month'?durVal*30:durVal; end = gAddDays(start, days2-1); }
+    }
+    if(!start||!end){ alert('Add meg a kezdési és befejezési dátumot (vagy tartamot)!'); return; }
+  }
+
+  // Függőségek
   var deps = [];
   var depList = document.getElementById('gt-deps-list');
   if(depList){
-    var rows = depList.querySelectorAll('[id^="gt-dep-row-"]');
-    rows.forEach(function(row, i){
+    depList.querySelectorAll('[id^="gt-dep-row-"]').forEach(function(row){
       var predSel = row.querySelector('select[id^="gt-dep-pred-"]');
       var lagInp  = row.querySelector('input[id^="gt-dep-lag-"]');
-      var predId  = predSel ? predSel.value : '';
-      var lag     = lagInp  ? parseInt(lagInp.value)||0 : 0;
+      var predId  = predSel?predSel.value:'';
+      var lag     = lagInp?parseInt(lagInp.value)||0:0;
       if(predId) deps.push({predId:predId, lag:lag, type:'FS'});
     });
   }
-
-  // Körkörös függőség ellenőrzés
-  if(deps.length > 0 && editId) {
-    var tempTasks = _gTasks.map(function(x){
-      return x.id===editId ? Object.assign({},x,{deps:deps}) : x;
-    });
-    if(gHasCycle(tempTasks, editId)) {
-      alert('⚠️ Körkörös függőség! Ez a beállítás A → B → A típusú hurkot hozna létre. Kérjük válassz másik előfeltételt.');
-      return;
-    }
+  if(!name){ alert('Add meg a feladat nevét!'); return; }
+  if(deps.length>0 && editId){
+    var tempTasks = _gTasks.map(function(x){ return x.id===editId?Object.assign({},x,{deps:deps}):x; });
+    if(gHasCycle(tempTasks, editId)){ alert('⚠️ Körkörös függőség! Válassz másik előfeltételt.'); return; }
   }
-  if(!start||!end){ alert('Add meg a kezdési és befejezési dátumot!'); return; }
   gLoad();
   var t;
   if(editId){
@@ -15605,25 +15848,19 @@ function ganttSaveTask(editId) {
     t = {id:'gt_'+Date.now(), projectId:_gActivePid, name, type, status, startDate:start, endDate:end, memberId, parentId, note, progress, deps, createdAt:gNow(), updatedAt:gNow()};
     _gTasks.push(t);
   }
-  gSync();
-  fbGT(t);
-
-  // Függőség propagáció
+  gSync(); fbGT(t); _gUnsaved=false;
   var propagated = gPropagateDeps(t.id);
-
   updateGanttLauncherStats();
   var modal = document.getElementById('ganttTaskModal');
   if(modal) modal.remove();
-
-  // Toast: egy üzenet, összevonva
   if(typeof showToast==='function'){
-    if(propagated > 0) showToast('✅ Feladat mentve · ⛓ '+propagated+' kapcsolódó feladat dátuma frissítve!');
+    if(propagated>0) showToast('✅ Feladat mentve · ⛓ '+propagated+' kapcsolódó feladat frissítve!');
     else showToast('✅ Feladat mentve!');
   }
-
   ganttShowView(_gView==='chart'?'chart':'tasks');
 }
 window.ganttSaveTask = ganttSaveTask;
+
 
 function ganttDeleteTask(tid) {
   if(!confirm('Törlöd ezt a feladatot?')) return;
@@ -15635,6 +15872,7 @@ function ganttDeleteTask(tid) {
   _gTrash.push(tr);
   gSync();
   fbDT(tid); fbGTr(tr);
+  _gUnsaved = true;
   updateGanttLauncherStats();
   ganttUpdateTrashBadge();
   ganttShowView(_gView);
