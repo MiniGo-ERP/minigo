@@ -198,44 +198,54 @@
   .danger-bar { background:rgba(224,82,82,0.08); border:1px solid var(--danger); border-radius:6px; padding:11px 14px; display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--text); }
 
   /* MODULE LAUNCHER */
-  .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:24px; overflow:hidden; flex-direction:column; }
-  .launcher-header { text-align:center; margin-bottom:28px; flex-shrink:0; }
+  .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:20px 24px; overflow:hidden; flex-direction:column; }
+  .launcher-header { text-align:center; margin-bottom:20px; flex-shrink:0; }
 
   /* Carousel wrapper */
   .launcher-carousel-wrap { width:100%; max-width:1100px; position:relative; }
-  .launcher-carousel-track-outer { overflow:hidden; width:100%; }
-  .launcher-carousel-track { display:flex; gap:16px; transition:transform 0.35s cubic-bezier(0.4,0,0.2,1); will-change:transform; padding:6px 2px 10px; }
+  .launcher-carousel-track-outer { overflow:hidden; width:100%; min-height:320px; }
 
-  /* Tile – fixed width so exactly N fit */
-  .module-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px 22px; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:10px; flex:0 0 calc(33.333% - 11px); min-width:240px; max-width:340px; }
+  /* Track: 2 soros grid lapok egymás alatt, függőlegesen lapozunk */
+  .launcher-carousel-track {
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
+    gap:14px;
+    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1);
+    will-change: transform;
+    padding: 4px 2px 4px;
+  }
+
+  /* Tile */
+  .module-tile { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 18px; cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; gap:8px; box-sizing:border-box; min-width:0; }
   .module-tile:hover:not(.tile-disabled) { border-color:var(--accent); background:var(--surface2); transform:translateY(-2px); box-shadow:0 8px 32px rgba(0,0,0,0.3); }
   .module-tile.tile-disabled { opacity:0.45; cursor:default; }
-  .tile-icon { font-size:32px; line-height:1; }
+  .tile-icon { font-size:28px; line-height:1; }
   .tile-tag { font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:2px; text-transform:uppercase; padding:2px 8px; border-radius:3px; width:fit-content; }
   .tile-tag.live { background:rgba(39,174,96,0.15); color:var(--success); border:1px solid var(--success); }
   .tile-tag.soon { background:rgba(107,122,150,0.15); color:var(--text-dim); border:1px solid var(--border); }
-  .tile-title { font-family:var(--mono); font-size:15px; font-weight:600; color:var(--text-bright); }
-  .tile-desc { font-size:11px; color:var(--text-dim); line-height:1.55; }
+  .tile-title { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--text-bright); }
+  .tile-desc { font-size:11px; color:var(--text-dim); line-height:1.5; }
   .tile-accent { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:12px 0 0 12px; }
-  .tile-stats { display:flex; gap:14px; margin-top:2px; }
-  .tile-stat-val { font-family:var(--mono); font-size:15px; font-weight:600; color:var(--text-bright); }
+  .tile-stats { display:flex; gap:12px; margin-top:2px; }
+  .tile-stat-val { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--text-bright); }
   .tile-stat-label { font-size:10px; color:var(--text-dim); margin-top:1px; }
   .tile-locked { position:absolute; top:12px; right:12px; font-size:16px; opacity:0.5; }
 
-  /* Nav arrows */
-  .launcher-arrow { position:absolute; top:50%; transform:translateY(-50%); width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text); transition:all 0.15s; z-index:10; user-select:none; flex-shrink:0; }
+  /* Függőleges lapozó nyilak */
+  .launcher-arrow { width:32px; height:32px; background:var(--surface2); border:1px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text); transition:all 0.15s; z-index:10; user-select:none; margin:0 auto; }
   .launcher-arrow:hover { background:var(--surface); border-color:var(--accent); color:var(--accent); }
   .launcher-arrow.hidden { opacity:0; pointer-events:none; }
-  .launcher-arrow-left  { left:-20px; }
-  .launcher-arrow-right { right:-20px; }
+  .launcher-arrow-up   { margin-bottom:8px; }
+  .launcher-arrow-down { margin-top:8px; }
 
-  /* Dot indicators */
-  .launcher-dots { display:flex; gap:6px; justify-content:center; margin-top:14px; }
+  /* Dot indicators (oldalszám jelző) */
+  .launcher-dots { display:flex; gap:6px; justify-content:center; margin-top:12px; }
   .launcher-dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:all 0.2s; cursor:pointer; }
   .launcher-dot.active { background:var(--accent); width:18px; border-radius:3px; }
 
-  @media (max-width:900px) { .module-tile { flex:0 0 calc(50% - 8px); } }
-  @media (max-width:600px) { .module-tile { flex:0 0 calc(100% - 4px); min-width:0; padding:18px 16px; } .launcher-arrow { display:none; } }
+  @media (max-width:900px) { .launcher-carousel-track { grid-template-columns: repeat(2,1fr); } }
+  @media (max-width:580px) { .launcher-carousel-track { grid-template-columns: 1fr; } .launcher-arrow { display:none; } }
   .module-badge { font-family:var(--mono); font-size:9px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; padding:4px 10px; border-radius:3px; margin:10px 14px 4px; display:block; }
   .mod-badge-proj { background:rgba(45,125,210,0.12); color:var(--accent2); border:1px solid rgba(45,125,210,0.3); }
   .mod-badge-rel  { background:rgba(232,160,32,0.12); color:var(--accent); border:1px solid rgba(232,160,32,0.3); }
@@ -800,10 +810,8 @@
   </div>
 
   <div class="launcher-carousel-wrap">
-    <!-- Bal nyíl -->
-    <div class="launcher-arrow launcher-arrow-left hidden" id="launcher-arrow-left" onclick="launcherScroll(-1)">‹</div>
-    <!-- Jobbnyíl -->
-    <div class="launcher-arrow launcher-arrow-right" id="launcher-arrow-right" onclick="launcherScroll(1)">›</div>
+    <!-- Felső nyíl -->
+    <div class="launcher-arrow launcher-arrow-up hidden" id="launcher-arrow-left" onclick="launcherScroll(-1)" title="Előző oldal">▲</div>
 
     <div class="launcher-carousel-track-outer">
       <div class="launcher-grid launcher-carousel-track" id="launcher-track">
@@ -917,6 +925,9 @@
     </div><!-- /track-outer -->
 
     <!-- Dot indikátorok -->
+    <!-- Alsó nyíl -->
+    <div class="launcher-arrow launcher-arrow-down" id="launcher-arrow-right" onclick="launcherScroll(1)" title="Következő oldal">▼</div>
+
     <div class="launcher-dots" id="launcher-dots"></div>
   </div><!-- /carousel-wrap -->
 </div><!-- /moduleLauncher -->
@@ -7909,7 +7920,7 @@ function showLauncher(){
   // Quote launcher stats
   if(typeof updateQuoteLauncherStats === 'function') updateQuoteLauncherStats();
   if(typeof updateRaktarLauncherStats === 'function') updateRaktarLauncherStats();
-  // Carousel frissítés (ha már látható a launcher)
+  // Carousel frissítés
   if(typeof window.launcherCarouselRefresh === 'function') window.launcherCarouselRefresh();
   // Ha projekt modul aktív, frissítsük az év szűrőt
   if(typeof activeModule !== 'undefined' && activeModule === 'proj') {
@@ -15946,9 +15957,11 @@ window.ganttExportPDF = ganttExportPDF;
 })(); // end GANTT MODULE
 
 
-// ── LAUNCHER CAROUSEL ────────────────────────────────────────────────────────
+// ── LAUNCHER CAROUSEL – 2 soros lapozás (6 tile / oldal) ─────────────────────
 (function() {
-  var _lcStep = 0;
+  var _lcPage  = 0;
+  var COLS     = 3;   // oszlopok száma (desktop)
+  var ROWS     = 2;   // látható sorok száma
 
   function lcGetTiles() {
     return Array.from(document.querySelectorAll('#launcher-track .module-tile')).filter(function(el){
@@ -15956,75 +15969,91 @@ window.ganttExportPDF = ganttExportPDF;
     });
   }
 
-  function lcCalcVisible() {
+  function lcCalcCols() {
     var w = window.innerWidth;
-    if (w < 600) return 1;
-    if (w < 900) return 2;
-    return 3;
+    if(w < 600) return 1;
+    if(w < 900) return 2;
+    return COLS;
   }
 
   function lcUpdate() {
     var tiles = lcGetTiles();
-    if (tiles.length === 0) return;
-    var vis     = lcCalcVisible();
-    var maxStep = Math.max(0, tiles.length - vis);
-    if (_lcStep > maxStep) _lcStep = maxStep;
+    var track = document.getElementById('launcher-track');
+    if(!track || tiles.length === 0) return;
 
-    // Track eltolás – az első tile szélességéből számítjuk
-    var tileW  = tiles[0].offsetWidth;
-    var offset = _lcStep * (tileW + 16);
-    var track  = document.getElementById('launcher-track');
-    if (track) track.style.transform = 'translateX(-' + offset + 'px)';
+    var cols    = lcCalcCols();
+    var perPage = cols * ROWS;
+    var pages   = Math.ceil(tiles.length / perPage);
+    if(_lcPage >= pages) _lcPage = Math.max(0, pages - 1);
 
-    // Nyilak láthatósága
+    // Tile magasság: a legtöbb tile maximuma (grid-auto-rows:1fr miatt egyenlők, de biztonság)
+    var maxTileH = 0;
+    tiles.forEach(function(t){ if(t.offsetHeight > maxTileH) maxTileH = t.offsetHeight; });
+    var tileH   = maxTileH || 160;
+    var gap     = 14;   // egyezik CSS gap:14px értékkel
+    var trackPad= 8;    // CSS padding: 4px top + 4px bottom
+    var pageH   = (tileH + gap) * ROWS + trackPad;
+    var offset  = _lcPage * pageH;
+
+    track.style.transform = 'translateY(-' + offset + 'px)';
+
+    // Track outer magassága: pontosan 2 sor + padding
+    var visH = tileH * ROWS + gap * (ROWS - 1) + trackPad;
+    var outer = document.querySelector('.launcher-carousel-track-outer');
+    if(outer) outer.style.height = visH + 'px';
+
+    // Nyilak – fel/le lapozás
     var arL = document.getElementById('launcher-arrow-left');
     var arR = document.getElementById('launcher-arrow-right');
-    if (arL) arL.classList.toggle('hidden', _lcStep <= 0);
-    if (arR) arR.classList.toggle('hidden', _lcStep >= maxStep);
+    if(arL) { arL.textContent = '▲'; arL.classList.toggle('hidden', _lcPage <= 0); }
+    if(arR) { arR.textContent = '▼'; arR.classList.toggle('hidden', _lcPage >= pages - 1); }
 
-    // Dot indikátorok
+    // Dot-ok
     var dotsEl = document.getElementById('launcher-dots');
-    if (!dotsEl) return;
-    var pageCount = maxStep + 1;
-    if (pageCount <= 1) { dotsEl.innerHTML = ''; return; }
+    if(!dotsEl) return;
+    if(pages <= 1) { dotsEl.innerHTML = ''; return; }
     var html = '';
-    for (var i = 0; i <= maxStep; i++) {
-      html += '<div class="launcher-dot' + (i === _lcStep ? ' active' : '') +
+    for(var i = 0; i < pages; i++) {
+      html += '<div class="launcher-dot' + (i === _lcPage ? ' active' : '') +
               '" onclick="window._lcGoTo(' + i + ')"></div>';
     }
     dotsEl.innerHTML = html;
   }
 
   window._lcGoTo = function(idx) {
-    var tiles   = lcGetTiles();
-    var maxStep = Math.max(0, tiles.length - lcCalcVisible());
-    _lcStep = Math.max(0, Math.min(idx, maxStep));
+    var tiles  = lcGetTiles();
+    var cols   = lcCalcCols();
+    var pages  = Math.ceil(tiles.length / (cols * ROWS));
+    _lcPage    = Math.max(0, Math.min(idx, pages - 1));
     lcUpdate();
   };
 
   window.launcherScroll = function(dir) {
-    var tiles   = lcGetTiles();
-    var maxStep = Math.max(0, tiles.length - lcCalcVisible());
-    _lcStep = Math.max(0, Math.min(_lcStep + dir, maxStep));
+    var tiles  = lcGetTiles();
+    var cols   = lcCalcCols();
+    var pages  = Math.ceil(tiles.length / (cols * ROWS));
+    _lcPage    = Math.max(0, Math.min(_lcPage + dir, pages - 1));
     lcUpdate();
   };
 
-  // Touch / swipe
-  var _txStart = 0;
+  // Touch / swipe – függőlegesen lapoz
+  var _tyStart = 0;
   document.addEventListener('touchstart', function(e) {
-    if (document.getElementById('moduleLauncher').style.display === 'none') return;
-    _txStart = e.touches[0].clientX;
+    var l = document.getElementById('moduleLauncher');
+    if(!l || l.style.display === 'none') return;
+    _tyStart = e.touches[0].clientY;
   }, {passive:true});
   document.addEventListener('touchend', function(e) {
-    if (document.getElementById('moduleLauncher').style.display === 'none') return;
-    var dx = _txStart - e.changedTouches[0].clientX;
-    if (Math.abs(dx) > 40) window.launcherScroll(dx > 0 ? 1 : -1);
+    var l = document.getElementById('moduleLauncher');
+    if(!l || l.style.display === 'none') return;
+    var dy = _tyStart - e.changedTouches[0].clientY;
+    if(Math.abs(dy) > 40) window.launcherScroll(dy > 0 ? 1 : -1);
   }, {passive:true});
 
   window.addEventListener('resize', function() { lcUpdate(); });
 
-  // showLauncher után frissítés – setTimeout kell mert a launcher display:flex-re vált
-  window.launcherCarouselRefresh = function() { _lcStep = 0; setTimeout(lcUpdate, 60); };
+  // showLauncher után – setTimeout kell, mert display:flex-re vált
+  window.launcherCarouselRefresh = function() { _lcPage = 0; setTimeout(lcUpdate, 60); };
 
   setTimeout(lcUpdate, 100);
 })();
