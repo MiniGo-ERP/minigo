@@ -14981,7 +14981,7 @@ function ganttOpenTaskModal(tid) {
   }
 
   html += '<div class="form-row"><label class="form-label">Megjegyzés</label>';
-  html += '<input class="form-input" id="gt-note" value="'+escH(t?t.note||'')+'" placeholder="opcionális"></div>';
+  html += '<input class="form-input" id="gt-note" value="'+escH(t?t.note||'':'')+'" placeholder="opcionális"></div>';
 
   html += '<div class="modal-actions">';
   html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttTaskModal\').remove()">Mégse</button>';
@@ -15049,12 +15049,12 @@ function ganttOpenMemberModal(mid) {
   html += '<div class="modal" style="width:460px;">';
   html += '<div class="modal-title">'+(m?'✏️ Résztvevő szerkesztése':'👤 Új résztvevő')+'</div>';
   html += '<div class="form-row"><label class="form-label">Név *</label><input class="form-input" id="gm-name" value="'+escH(m?m.name:'')+'" placeholder="pl. Kovács Péter"></div>';
-  html += '<div class="form-row"><label class="form-label">Titulus / Feladatkör *</label><input class="form-input" id="gm-role" value="'+escH(m?m.role||'')+'" placeholder="pl. Projektmenedzser, Helyszíni mérnök, Megbízó képviselő"></div>';
+  html += '<div class="form-row"><label class="form-label">Titulus / Feladatkör *</label><input class="form-input" id="gm-role" value="'+escH(m?m.role||'':'')+'" placeholder="pl. Projektmenedzser, Helyszíni mérnök, Megbízó képviselő"></div>';
   html += '<div class="form-row-2">';
-  html += '<div><label class="form-label">Email</label><input class="form-input" type="email" id="gm-email" value="'+escH(m?m.email||'')+'" placeholder="nev@ceg.hu"></div>';
-  html += '<div><label class="form-label">Telefon</label><input class="form-input" id="gm-phone" value="'+escH(m?m.phone||'')+'" placeholder="+36 30 ..."></div>';
+  html += '<div><label class="form-label">Email</label><input class="form-input" type="email" id="gm-email" value="'+escH(m?m.email||'':'')+'" placeholder="nev@ceg.hu"></div>';
+  html += '<div><label class="form-label">Telefon</label><input class="form-input" id="gm-phone" value="'+escH(m?m.phone||'':'')+'" placeholder="+36 30 ..."></div>';
   html += '</div>';
-  html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gm-note" value="'+escH(m?m.note||'')+'" placeholder="opcionális"></div>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gm-note" value="'+escH(m?m.note||'':'')+'" placeholder="opcionális"></div>';
   html += '<div class="modal-actions">';
   html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttMemberModal\').remove()">Mégse</button>';
   html += '<button class="btn btn-primary" data-mid="'+(mid||'')+'" onclick="ganttSaveMember(this.dataset.mid||null)">✓ Mentés</button>';
