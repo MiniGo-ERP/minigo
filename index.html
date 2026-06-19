@@ -856,6 +856,21 @@
         </div>
       </div>
 
+      <!-- GANTT ÜTEMTERV – admin only -->
+      <div class="module-tile" id="tile-gantt" onclick="window.enterGanttModule()">
+        <div class="tile-accent" style="background:#16a085"></div>
+        <div class="tile-icon">📅</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="tile-title">Gantt Ütemterv</div>
+          <span class="tile-tag live">Aktív</span>
+        </div>
+        <div class="tile-desc">Projekt ütemtervek kezelése – feladatok, mérföldkövek, résztvevők, XLS és PDF export.</div>
+        <div class="tile-stats">
+          <div><span class="tile-stat-val" id="tstat-gantt-projs">–</span><span class="tile-stat-label">projekt</span></div>
+          <div><span class="tile-stat-val" id="tstat-gantt-tasks">–</span><span class="tile-stat-label">feladat</span></div>
+        </div>
+      </div>
+
       <!-- ÜRES MODUL – admin only -->
       <div class="module-tile" id="tile-ures" onclick="window.enterRaktarModule()">
         <div class="tile-accent" style="background:#16a085"></div>
@@ -2196,6 +2211,22 @@ async function loadFromFirestore() {
       };
     } catch(qe){ console.warn('Quote betöltési hiba:', qe); window._quoteStore=[]; window._quoteItems=[]; window._quoteSettings={}; }
 
+    // Gantt adatok betöltése
+    try {
+      const [gpSnap, gtSnap, gmSnap, gtrSnap] = await Promise.all([
+        getDocs(collection(db, 'gantt_projects')),
+        getDocs(collection(db, 'gantt_tasks')),
+        getDocs(collection(db, 'gantt_members')),
+        getDocs(collection(db, 'gantt_trash')),
+      ]);
+      window._ganttProjects = gpSnap.empty ? [] : gpSnap.docs.map(d=>d.data());
+      window._ganttTasks    = gtSnap.empty ? [] : gtSnap.docs.map(d=>d.data());
+      window._ganttMembers  = gmSnap.empty ? [] : gmSnap.docs.map(d=>d.data());
+      window._ganttTrash    = gtrSnap.empty? [] : gtrSnap.docs.map(d=>d.data());
+      if(window.updateGanttLauncherStats) window.updateGanttLauncherStats();
+    } catch(ge){ console.warn('Gantt betöltési hiba:', ge);
+      window._ganttProjects=[]; window._ganttTasks=[]; window._ganttMembers=[]; window._ganttTrash=[]; }
+
     // IDO modul adatok betöltése Firestore-ból
     try {
       const [idoEmpSnap, idoLogSnap, idoMarkSnap, idoTrashSnap, idoConsultSnap] = await Promise.all([
@@ -2247,6 +2278,25 @@ window.fbSaveRaktarLog   = fbSaveRaktarLog;
 window.fbDelRaktarLog    = fbDelRaktarLog;
 window.fbSaveRaktarTrash = fbSaveRaktarTrash;
 window.fbDelRaktarTrash  = fbDelRaktarTrash;
+
+// ── GANTT FIREBASE HELPERS ──────────────────────────────────────────────────
+async function fbSaveGanttProject(p)  { await setDoc(doc(db,'gantt_projects',p.id),p); }
+async function fbDelGanttProject(id)  { await fbDeleteDocFS(doc(db,'gantt_projects',id)); }
+async function fbSaveGanttTask(t)     { await setDoc(doc(db,'gantt_tasks',t.id),t); }
+async function fbDelGanttTask(id)     { await fbDeleteDocFS(doc(db,'gantt_tasks',id)); }
+async function fbSaveGanttMember(m)   { await setDoc(doc(db,'gantt_members',m.id),m); }
+async function fbDelGanttMember(id)   { await fbDeleteDocFS(doc(db,'gantt_members',id)); }
+async function fbSaveGanttTrash(t)    { await setDoc(doc(db,'gantt_trash',t.id),t); }
+async function fbDelGanttTrash(id)    { await fbDeleteDocFS(doc(db,'gantt_trash',id)); }
+
+window.fbSaveGanttProject = fbSaveGanttProject;
+window.fbDelGanttProject  = fbDelGanttProject;
+window.fbSaveGanttTask    = fbSaveGanttTask;
+window.fbDelGanttTask     = fbDelGanttTask;
+window.fbSaveGanttMember  = fbSaveGanttMember;
+window.fbDelGanttMember   = fbDelGanttMember;
+window.fbSaveGanttTrash   = fbSaveGanttTrash;
+window.fbDelGanttTrash    = fbDelGanttTrash;
 
 // ── ÁRAJÁNLATKÉSZÍTŐ FIREBASE HELPERS ──────────────────────────────────────
 async function fbSaveQuote(q)         { await setDoc(doc(db,'quotes',q.id),q); }
@@ -9433,6 +9483,7 @@ function enterModule(mod) {
   const projSec = document.getElementById('sidebar-proj-section');
   const relSec  = document.getElementById('sidebar-rel-section');
   const mlSec   = document.getElementById('sidebar-ml-section');
+  const ganttSec= document.getElementById('sidebar-gantt-section');
   const switcher = document.getElementById('sidebarModuleSwitcher');
   const modIcon  = document.getElementById('sidebarModuleIcon');
   const modName  = document.getElementById('sidebarModuleName');
@@ -9440,6 +9491,7 @@ function enterModule(mod) {
   if(projSec) projSec.style.display = 'none';
   if(relSec)  relSec.style.display  = 'none';
   if(mlSec)   mlSec.style.display   = 'none';
+  if(ganttSec)ganttSec.style.display= 'none';
 
   if(mod === 'proj'){
     if(projSec)  projSec.style.display = '';
@@ -9460,6 +9512,12 @@ function enterModule(mod) {
     if(modName)  modName.textContent   = 'Munkalapk\u00e9sz\u00edt\u0151';
     document.getElementById('activeModuleLabel').textContent = 'MUNKALAPK\u00c9SZ\u00cdT\u0150';
     showView('ml-dashboard');
+  } else if(mod === 'gantt'){
+    if(ganttSec) ganttSec.style.display = '';
+    if(modIcon)  modIcon.textContent    = '\u{1F4C5}';
+    if(modName)  modName.textContent    = 'Gantt \u00dctemterv';
+    document.getElementById('activeModuleLabel').textContent = 'GANTT \u00dcTEMTERV';
+    if(window.ganttShowView) window.ganttShowView('dashboard');
   }
 }
 
@@ -14313,6 +14371,973 @@ window.rEditAlkat        = rEditAlkat;
 window.rDelAlkat         = rDelAlkat;
 
 })(); // end RAKTAR MODULE
+
+
+// ══════════════════════════════════════════════════════════════════
+// GANTT ÜTEMTERV MODUL
+// ══════════════════════════════════════════════════════════════════
+(function() {
+'use strict';
+
+// ── ÁLLAPOT ───────────────────────────────────────────────────────
+var _gProjects = [];
+var _gTasks    = [];
+var _gMembers  = [];
+var _gTrash    = [];
+var _gActivePid= null; // aktív projekt ID
+var _gView     = 'dashboard';
+
+var GANTT_STATUSES = [
+  {id:'tervezett',    label:'Tervezett',    color:'#6b7a96'},
+  {id:'folyamatban',  label:'Folyamatban',  color:'#2d7dd2'},
+  {id:'kesz',         label:'Kész',         color:'#27ae60'},
+  {id:'keslekedik',   label:'Késlekedik',   color:'#e05252'},
+  {id:'felfuggesztett',label:'Felfüggesztett',color:'#e8a020'},
+];
+var GANTT_TASK_TYPES = [
+  {id:'phase',       label:'Fázis',         icon:'📁'},
+  {id:'task',        label:'Feladat',       icon:'📌'},
+  {id:'milestone',   label:'Mérföldkő',     icon:'🏁'},
+];
+
+function gNow() { return new Date().toISOString(); }
+function gDateFmt(d) { if(!d) return '–'; try{ return new Date(d).toLocaleDateString('hu-HU'); } catch(e){ return d; } }
+function gDaysDiff(a, b) {
+  if(!a||!b) return 0;
+  return Math.round((new Date(b)-new Date(a))/(1000*60*60*24));
+}
+function gAddDays(dateStr, days) {
+  var d = new Date(dateStr);
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
+
+// ── DATA BRIDGE ───────────────────────────────────────────────────
+function gLoad() {
+  _gProjects = window._ganttProjects || [];
+  _gTasks    = window._ganttTasks    || [];
+  _gMembers  = window._ganttMembers  || [];
+  _gTrash    = window._ganttTrash    || [];
+}
+function gSync() {
+  window._ganttProjects = _gProjects;
+  window._ganttTasks    = _gTasks;
+  window._ganttMembers  = _gMembers;
+  window._ganttTrash    = _gTrash;
+}
+
+// ── FIREBASE SAVE ─────────────────────────────────────────────────
+function fbGP(p)  { if(window.fbSaveGanttProject) window.fbSaveGanttProject(p).catch(function(e){console.error(e);}); }
+function fbDP(id) { if(window.fbDelGanttProject)  window.fbDelGanttProject(id).catch(function(e){console.error(e);}); }
+function fbGT(t)  { if(window.fbSaveGanttTask)    window.fbSaveGanttTask(t).catch(function(e){console.error(e);}); }
+function fbDT(id) { if(window.fbDelGanttTask)     window.fbDelGanttTask(id).catch(function(e){console.error(e);}); }
+function fbGM(m)  { if(window.fbSaveGanttMember)  window.fbSaveGanttMember(m).catch(function(e){console.error(e);}); }
+function fbDM(id) { if(window.fbDelGanttMember)   window.fbDelGanttMember(id).catch(function(e){console.error(e);}); }
+function fbGTr(t) { if(window.fbSaveGanttTrash)   window.fbSaveGanttTrash(t).catch(function(e){console.error(e);}); }
+function fbDTr(id){ if(window.fbDelGanttTrash)    window.fbDelGanttTrash(id).catch(function(e){console.error(e);}); }
+
+// ── CONTENT AREA ──────────────────────────────────────────────────
+function gmc() { return document.getElementById('mainContent'); }
+function gbc(text) {
+  var bc = document.getElementById('breadcrumb');
+  if(bc) bc.innerHTML = '<span class="bc-link" onclick="enterModule(\'gantt\')">Gantt</span> <span class="bc-sep">›</span> <span class="bc-active">'+text+'</span>';
+}
+
+// ── SIDEBAR HIGHLIGHT ─────────────────────────────────────────────
+function gNav(view) {
+  var views = ['dashboard','chart','tasks','members','trash'];
+  views.forEach(function(v){
+    var el = document.getElementById('nav-gantt-'+v);
+    if(el) el.classList.toggle('active', v===view);
+  });
+}
+
+// ── SHOWVIEW ──────────────────────────────────────────────────────
+function ganttShowView(view) {
+  gLoad();
+  _gView = view;
+  gNav(view);
+  var mc = gmc();
+  if(!mc) return;
+  if(view==='dashboard') { gbc('Áttekintés');  mc.innerHTML = renderGDashboard(); }
+  else if(view==='chart')    { gbc('Gantt nézet'); mc.innerHTML = renderGChart(); }
+  else if(view==='tasks')    { gbc('Feladatok');   mc.innerHTML = renderGTasks(); }
+  else if(view==='members')  { gbc('Résztvevők');  mc.innerHTML = renderGMembers(); }
+  else if(view==='trash')    { gbc('Kuka');        mc.innerHTML = renderGTrash(); }
+}
+window.ganttShowView = ganttShowView;
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+function renderGDashboard() {
+  var projs = _gProjects.filter(function(p){ return !p.deletedAt; });
+  var tasks = _gTasks.filter(function(t){ return !t.deletedAt; });
+
+  var html = '<div style="max-width:1100px;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">';
+  html += '<div class="panel-title" style="margin:0;">📅 Gantt – Áttekintés</div>';
+  html += '<button class="btn btn-primary" onclick="ganttOpenNewProjectModal()">➕ Új projekt</button>';
+  html += '</div>';
+
+  if(projs.length===0){
+    html += '<div class="empty-state"><div class="em-icon">📅</div><div class="em-title">Még nincs Gantt projekt</div><div style="margin-top:8px;font-size:12px;">Hozz létre egy új projektet a fenti gombbal!</div></div>';
+    html += '</div>';
+    return html;
+  }
+
+  // KPI
+  var totalTasks = tasks.length;
+  var doneTasks  = tasks.filter(function(t){return t.status==='kesz';}).length;
+  var lateTasks  = tasks.filter(function(t){
+    return t.status!=='kesz' && t.endDate && t.endDate < new Date().toISOString().slice(0,10);
+  }).length;
+  html += '<div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">';
+  html += '<div class="stat-card"><div class="stat-val" style="color:#2d7dd2">'+projs.length+'</div><div class="stat-label">projekt</div></div>';
+  html += '<div class="stat-card"><div class="stat-val">'+totalTasks+'</div><div class="stat-label">feladat összesen</div></div>';
+  html += '<div class="stat-card"><div class="stat-val" style="color:#27ae60">'+doneTasks+'</div><div class="stat-label">befejezett</div></div>';
+  html += '<div class="stat-card"><div class="stat-val" style="color:#e05252">'+lateTasks+'</div><div class="stat-label">késlekedő</div></div>';
+  html += '</div>';
+
+  // Projekt kártyák
+  html += '<div class="panel-title">Projektek</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+  projs.forEach(function(p){
+    var ptasks = tasks.filter(function(t){return t.projectId===p.id;});
+    var pdone  = ptasks.filter(function(t){return t.status==='kesz';}).length;
+    var pct    = ptasks.length ? Math.round(pdone/ptasks.length*100) : 0;
+    var late   = ptasks.filter(function(t){
+      return t.status!=='kesz' && t.endDate && t.endDate < new Date().toISOString().slice(0,10);
+    }).length;
+    html += '<div class="card" style="cursor:default;display:flex;align-items:center;gap:16px;padding:14px 18px;" onmouseenter="this.style.borderColor=\'var(--accent2)\'" onmouseleave="this.style.borderColor=\'var(--border)\'">';
+    html += '<div class="card-accent-line" style="opacity:1;background:#16a085;"></div>';
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">';
+    html += '<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);">'+escH(p.name)+'</div>';
+    if(p.status){ html += '<span class="status-badge s-3" style="font-size:9px;">'+escH(p.status)+'</span>'; }
+    html += '</div>';
+    if(p.desc) html += '<div style="font-size:12px;color:var(--text-dim);">'+escH(p.desc)+'</div>';
+    html += '<div style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--text-dim);">';
+    html += '<span>📅 '+gDateFmt(p.startDate)+' – '+gDateFmt(p.endDate)+'</span>';
+    html += '<span>📌 '+ptasks.length+' feladat</span>';
+    if(late) html += '<span style="color:#e05252;">⚠️ '+late+' késlekedik</span>';
+    html += '</div>';
+    // Progress bar
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">';
+    html += '<div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;">';
+    html += '<div style="width:'+pct+'%;height:100%;background:#27ae60;border-radius:2px;"></div></div>';
+    html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);min-width:32px;">'+pct+'%</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;flex-shrink:0;">';
+    html += '<button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="ganttSelectProject(\''+p.id+'\');ganttShowView(\'chart\')">📅 Gantt</button>';
+    html += '<button class="btn btn-secondary" style="padding:5px 10px;font-size:10px;" onclick="ganttOpenEditProjectModal(\''+p.id+'\')">✏️</button>';
+    html += '<button class="btn btn-danger" style="padding:5px 10px;font-size:10px;" onclick="ganttDeleteProject(\''+p.id+'\')">🗑️</button>';
+    html += '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+// ── PROJEKT VÁLASZTÓ ──────────────────────────────────────────────
+function ganttSelectProject(pid) {
+  _gActivePid = pid;
+}
+window.ganttSelectProject = ganttSelectProject;
+
+function renderProjectSelector(currentView) {
+  var projs = _gProjects.filter(function(p){return !p.deletedAt;});
+  if(projs.length===0) return '<div style="color:var(--text-dim);font-size:12px;margin-bottom:14px;">⚠️ Nincs Gantt projekt. <span class="bc-link" onclick="ganttOpenNewProjectModal()" style="cursor:pointer;">Hozz létre egyet!</span></div>';
+  var sel = _gActivePid || (projs[0] && projs[0].id);
+  if(!_gActivePid && projs[0]) _gActivePid = projs[0].id;
+
+  var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">';
+  html += '<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;">PROJEKT:</span>';
+  html += '<select class="form-input" style="max-width:320px;padding:5px 10px;" onchange="ganttSelectProject(this.value);ganttShowView(\''+currentView+'\');">';
+  projs.forEach(function(p){
+    html += '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+escH(p.name)+'</option>';
+  });
+  html += '</select>';
+  var ap = projs.find(function(p){return p.id===sel;});
+  if(ap && ap.startDate && ap.endDate){
+    html += '<span style="font-size:11px;color:var(--text-dim);">'+gDateFmt(ap.startDate)+' – '+gDateFmt(ap.endDate)+'</span>';
+  }
+  html += '</div>';
+  return html;
+}
+
+// ── GANTT CHART NÉZET ─────────────────────────────────────────────
+function renderGChart() {
+  gLoad();
+  var projs = _gProjects.filter(function(p){return !p.deletedAt;});
+  var html = '<div style="max-width:1300px;">';
+  html += renderProjectSelector('chart');
+
+  if(!_gActivePid || projs.length===0){
+    html += '<div class="empty-state"><div class="em-icon">📅</div><div class="em-title">Válassz projektet</div></div></div>';
+    return html;
+  }
+
+  var ap = _gProjects.find(function(p){return p.id===_gActivePid;});
+  if(!ap){ html += '<div class="empty-state"><div class="em-icon">⚠️</div><div class="em-title">Projekt nem található</div></div></div>'; return html; }
+
+  var tasks = _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
+    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">';
+  html += '<button class="btn btn-primary" onclick="ganttOpenTaskModal(null)">➕ Feladat</button>';
+  html += '<button class="btn btn-secondary" onclick="ganttExportXLS()">📊 XLS</button>';
+  html += '<button class="btn btn-secondary" onclick="ganttExportPDF()">📄 PDF</button>';
+  html += '</div>';
+
+  if(tasks.length===0){
+    html += '<div class="empty-state"><div class="em-icon">📌</div><div class="em-title">Nincsenek feladatok</div><div style="margin-top:6px;font-size:12px;">Adj hozzá az "➕ Feladat" gombbal!</div></div>';
+    html += '</div>';
+    return html;
+  }
+
+  // Dátum tartomány meghatározása
+  var projStart = ap.startDate || tasks[0].startDate;
+  var projEnd   = ap.endDate   || tasks[tasks.length-1].endDate;
+  if(!projStart) projStart = new Date().toISOString().slice(0,10);
+  if(!projEnd)   projEnd   = gAddDays(projStart, 90);
+
+  var totalDays = gDaysDiff(projStart, projEnd) + 1;
+  if(totalDays < 1) totalDays = 1;
+
+  // Gantt SVG-szerű HTML chart
+  var LEFT_COL = 220;
+  var DAY_W    = Math.max(2, Math.min(20, Math.floor(900/totalDays)));
+  var ROW_H    = 32;
+  var HEADER_H = 40;
+
+  // Hónapok generálása
+  var months = [];
+  var cur = new Date(projStart);
+  var end = new Date(projEnd);
+  while(cur <= end){
+    var mn = cur.getFullYear()+'-'+(cur.getMonth()+1);
+    var label = cur.toLocaleDateString('hu-HU',{month:'short',year:'numeric'});
+    if(!months.length || months[months.length-1].key !== mn){
+      months.push({key:mn, label:label, startOff: gDaysDiff(projStart, cur.toISOString().slice(0,10))});
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+
+  var chartW = LEFT_COL + totalDays * DAY_W;
+  var chartH = HEADER_H + tasks.length * ROW_H + 10;
+
+  html += '<div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:6px;">';
+  html += '<div style="min-width:'+chartW+'px;">';
+
+  // Header
+  html += '<div style="display:flex;border-bottom:1px solid var(--border);">';
+  html += '<div style="width:'+LEFT_COL+'px;min-width:'+LEFT_COL+'px;padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;border-right:1px solid var(--border);">FELADAT / MÉRFÖLDKŐ</div>';
+  html += '<div style="flex:1;overflow:hidden;position:relative;height:'+HEADER_H+'px;">';
+  months.forEach(function(m, mi){
+    var nextOff = mi+1 < months.length ? months[mi+1].startOff : totalDays;
+    var w = (nextOff - m.startOff) * DAY_W;
+    html += '<div style="position:absolute;left:'+(m.startOff*DAY_W)+'px;width:'+w+'px;height:100%;border-right:1px solid var(--border);display:flex;align-items:center;padding-left:6px;font-family:var(--mono);font-size:10px;color:var(--text-dim);">'+m.label+'</div>';
+  });
+  // Ma vonal
+  var todayOff = gDaysDiff(projStart, new Date().toISOString().slice(0,10));
+  if(todayOff>=0 && todayOff<=totalDays){
+    html += '<div style="position:absolute;left:'+(todayOff*DAY_W)+'px;top:0;bottom:0;width:1px;background:#e8a020;opacity:0.6;z-index:2;"></div>';
+  }
+  html += '</div></div>';
+
+  // Sorok
+  tasks.forEach(function(t, ti){
+    var isMilestone = t.type==='milestone';
+    var isPhase     = t.type==='phase';
+    var st  = GANTT_STATUSES.find(function(s){return s.id===t.status;})||GANTT_STATUSES[0];
+    var tStart = t.startDate || projStart;
+    var tEnd   = t.endDate   || tStart;
+    var startOff = Math.max(0, gDaysDiff(projStart, tStart));
+    var dur = Math.max(1, gDaysDiff(tStart, tEnd)+1);
+    var barW = isMilestone ? 16 : dur * DAY_W;
+    var barLeft = startOff * DAY_W;
+
+    html += '<div style="display:flex;border-bottom:1px solid var(--border);height:'+ROW_H+'px;" onmouseenter="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseleave="this.style.background=\'\'">';
+    // Bal oszlop
+    html += '<div style="width:'+LEFT_COL+'px;min-width:'+LEFT_COL+'px;padding:0 12px;display:flex;align-items:center;gap:6px;border-right:1px solid var(--border);">';
+    var indent = t.parentId ? '12px' : '0px';
+    html += '<div style="margin-left:'+indent+';flex:1;min-width:0;">';
+    html += '<div style="font-size:11px;font-weight:'+(isPhase?'600':'400')+';color:'+(isPhase?'var(--text-bright)':'var(--text)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
+    if(isPhase)     html += '📁 ';
+    else if(isMilestone) html += '🏁 ';
+    else            html += '📌 ';
+    html += escH(t.name)+'</div></div>';
+    html += '<div style="display:flex;gap:3px;flex-shrink:0;">';
+    html += '<button class="icon-btn edit" title="Szerkesztés" onclick="ganttOpenTaskModal(\''+t.id+'\')">✏️</button>';
+    html += '<button class="icon-btn del" title="Törlés" onclick="ganttDeleteTask(\''+t.id+'\')">🗑️</button>';
+    html += '</div></div>';
+    // Chart area
+    html += '<div style="flex:1;position:relative;overflow:hidden;">';
+    // Hónap határok
+    months.forEach(function(m, mi){
+      if(mi>0){
+        html += '<div style="position:absolute;left:'+(m.startOff*DAY_W)+'px;top:0;bottom:0;width:1px;background:rgba(42,51,71,0.8);"></div>';
+      }
+    });
+    // Ma vonal
+    if(todayOff>=0 && todayOff<=totalDays){
+      html += '<div style="position:absolute;left:'+(todayOff*DAY_W)+'px;top:0;bottom:0;width:1px;background:#e8a020;opacity:0.4;"></div>';
+    }
+    // Sáv
+    if(isMilestone){
+      html += '<div title="'+escH(t.name)+'" style="position:absolute;left:'+(barLeft-8)+'px;top:8px;width:16px;height:16px;background:'+st.color+';transform:rotate(45deg);border-radius:2px;" onclick="ganttOpenTaskModal(\''+t.id+'\')"></div>';
+    } else {
+      html += '<div title="'+escH(t.name)+' ('+gDateFmt(tStart)+' – '+gDateFmt(tEnd)+')" style="position:absolute;left:'+barLeft+'px;top:6px;width:'+barW+'px;height:20px;background:'+st.color+';border-radius:3px;opacity:0.85;cursor:pointer;display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;" onclick="ganttOpenTaskModal(\''+t.id+'\')">';
+      if(barW > 40) html += '<span style="font-size:9px;color:#fff;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;">'+escH(t.name)+'</span>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  // Jelmagyarázat
+  html += '<div style="display:flex;gap:14px;padding:10px 12px;border-top:1px solid var(--border);flex-wrap:wrap;">';
+  GANTT_STATUSES.forEach(function(s){
+    html += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-dim);">';
+    html += '<div style="width:12px;height:12px;border-radius:2px;background:'+s.color+';"></div>'+s.label+'</div>';
+  });
+  html += '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-dim);"><div style="width:12px;height:2px;background:#e8a020;"></div>Ma</div>';
+  html += '</div>';
+  html += '</div></div>';
+  html += '</div>';
+  return html;
+}
+
+// ── FELADATOK LISTA ───────────────────────────────────────────────
+function renderGTasks() {
+  gLoad();
+  var html = '<div style="max-width:1100px;">';
+  html += renderProjectSelector('tasks');
+
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+  html += '<div class="panel-title" style="margin:0;">📋 Feladatok</div>';
+  html += '<button class="btn btn-primary" onclick="ganttOpenTaskModal(null)">➕ Új feladat</button>';
+  html += '</div>';
+
+  if(!_gActivePid){ html += '<div class="empty-state"><div class="em-icon">📌</div><div class="em-title">Válassz projektet</div></div></div>'; return html; }
+
+  var tasks = _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
+    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+
+  if(tasks.length===0){
+    html += '<div class="empty-state"><div class="em-icon">📌</div><div class="em-title">Nincsenek feladatok</div></div>';
+    html += '</div>'; return html;
+  }
+
+  html += '<div style="overflow-x:auto;"><table class="data-table" style="width:100%"><thead><tr>';
+  html += '<th>Típus</th><th>Feladat neve</th><th>Kezdés</th><th>Befejezés</th><th>Felelős</th><th>Státusz</th><th>Megjegyzés</th><th></th>';
+  html += '</tr></thead><tbody>';
+
+  tasks.forEach(function(t){
+    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{icon:'📌',label:'Feladat'};
+    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:'–',color:'#6b7a96'};
+    var mem     = _gMembers.find(function(m){return m.id===t.memberId && !m.deletedAt;});
+    var isLate  = t.status!=='kesz' && t.endDate && t.endDate < new Date().toISOString().slice(0,10);
+    html += '<tr style="'+(isLate?'background:rgba(224,82,82,0.05);':'')+'">';
+    html += '<td style="text-align:center;">'+typeObj.icon+'</td>';
+    html += '<td style="font-weight:'+(t.type==='phase'?600:400)+';color:'+(t.type==='phase'?'var(--text-bright)':'var(--text)')+';">'+(t.parentId?'&nbsp;&nbsp;':'')+escH(t.name)+'</td>';
+    html += '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">'+(isLate?'⚠️ ':'')+gDateFmt(t.startDate)+'</td>';
+    html += '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">'+gDateFmt(t.endDate)+'</td>';
+    html += '<td style="font-size:11px;">'+(mem ? escH(mem.name)+'<div style="font-size:9px;color:var(--text-dim);">'+escH(mem.role||'')+'</div>' : '<span style="color:var(--text-dim);">–</span>')+'</td>';
+    html += '<td><span style="font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:3px;border:1px solid '+stObj.color+';color:'+stObj.color+';background:'+stObj.color+'22;">'+stObj.label+'</span></td>';
+    html += '<td style="font-size:11px;color:var(--text-dim);">'+escH(t.note||'')+'</td>';
+    html += '<td><div class="row-actions" style="opacity:1;">';
+    html += '<button class="icon-btn edit" onclick="ganttOpenTaskModal(\''+t.id+'\')">✏️</button>';
+    html += '<button class="icon-btn del" onclick="ganttDeleteTask(\''+t.id+'\')">🗑️</button>';
+    html += '</div></td></tr>';
+  });
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+// ── RÉSZTVEVŐK ────────────────────────────────────────────────────
+function renderGMembers() {
+  gLoad();
+  var html = '<div style="max-width:900px;">';
+  html += renderProjectSelector('members');
+
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">';
+  html += '<div class="panel-title" style="margin:0;">👥 Résztvevők</div>';
+  html += '<button class="btn btn-primary" onclick="ganttOpenMemberModal(null)">➕ Résztvevő felvétele</button>';
+  html += '</div>';
+
+  if(!_gActivePid){ html += '<div class="empty-state"><div class="em-icon">👥</div><div class="em-title">Válassz projektet</div></div></div>'; return html; }
+
+  var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
+
+  if(members.length===0){
+    html += '<div class="empty-state"><div class="em-icon">👤</div><div class="em-title">Nincs résztvevő</div><div style="font-size:12px;margin-top:6px;">Vegyél fel résztvevőt az "➕" gombbal!</div></div>';
+    html += '</div>'; return html;
+  }
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">';
+  members.forEach(function(m){
+    html += '<div class="card" style="cursor:default;">';
+    html += '<div class="card-accent-line" style="opacity:1;background:#2d7dd2;"></div>';
+    html += '<div style="display:flex;align-items:flex-start;gap:10px;">';
+    html += '<div style="width:36px;height:36px;border-radius:50%;background:rgba(45,125,210,0.2);border:1px solid rgba(45,125,210,0.4);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">👤</div>';
+    html += '<div style="flex:1;">';
+    html += '<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-bright);">'+escH(m.name)+'</div>';
+    html += '<div style="font-size:11px;color:var(--accent);margin-top:2px;">'+escH(m.role||'–')+'</div>';
+    if(m.email) html += '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">✉ '+escH(m.email)+'</div>';
+    if(m.phone) html += '<div style="font-size:10px;color:var(--text-dim);">📞 '+escH(m.phone)+'</div>';
+    if(m.note)  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">'+escH(m.note)+'</div>';
+    html += '</div>';
+    html += '<div class="row-actions" style="opacity:1;">';
+    html += '<button class="icon-btn edit" onclick="ganttOpenMemberModal(\''+m.id+'\')">✏️</button>';
+    html += '<button class="icon-btn del" onclick="ganttDeleteMember(\''+m.id+'\')">🗑️</button>';
+    html += '</div></div></div>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+// ── KUKA ──────────────────────────────────────────────────────────
+function renderGTrash() {
+  var html = '<div style="max-width:900px;">';
+  html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--danger);margin-bottom:16px;">🗑️ Gantt Kuka</div>';
+  if(_gTrash.length===0){
+    html += '<div class="empty-state"><div class="em-icon">🗑️</div><div class="em-title">A kuka üres</div></div>';
+  } else {
+    html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr><th>Típus</th><th>Megnevezés</th><th>Projekt</th><th>Törlés</th><th></th></tr></thead><tbody>';
+    _gTrash.forEach(function(tr){
+      var proj = _gProjects.find(function(p){return p.id===tr.projectId;});
+      html += '<tr>';
+      html += '<td style="font-size:11px;">'+escH(tr.type)+'</td>';
+      html += '<td style="font-weight:600;">'+escH(tr.name||tr.id)+'</td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);">'+(proj?escH(proj.name):'–')+'</td>';
+      html += '<td style="font-family:var(--mono);font-size:10px;">'+gDateFmt(tr.deletedAt)+'</td>';
+      html += '<td><div class="row-actions" style="opacity:1;">';
+      html += '<button class="icon-btn" style="color:#27ae60;" title="Visszaállítás" onclick="ganttRestoreTrash(\''+tr.id+'\')">↩️</button>';
+      html += '<button class="icon-btn del" title="Végleges törlés" onclick="ganttPermDel(\''+tr.id+'\')">🗑️</button>';
+      html += '</div></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div style="margin-top:12px;"><button class="btn btn-danger" onclick="ganttEmptyTrash()">🗑️ Kuka ürítése</button></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+// ── HTML ESCAPE ───────────────────────────────────────────────────
+function escH(s) {
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── PROJEKT MODAL ─────────────────────────────────────────────────
+function ganttOpenNewProjectModal() {
+  gLoad();
+  var html = '<div class="modal-overlay active" id="ganttProjModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div class="modal-title">➕ Új Gantt Projekt</div>';
+  html += '<div class="form-row"><label class="form-label">Projekt neve *</label><input class="form-input" id="gp-name" placeholder="pl. InfraGo EV Töltő Rollout"></div>';
+  html += '<div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="gp-desc" placeholder="Rövid leírás"></div>';
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Kezdési dátum *</label><input class="form-input" type="date" id="gp-start"></div>';
+  html += '<div><label class="form-label">Befejezési dátum *</label><input class="form-input" type="date" id="gp-end"></div>';
+  html += '</div>';
+  html += '<div class="form-row"><label class="form-label">Státusz</label>';
+  html += '<select class="form-input" id="gp-status">';
+  GANTT_STATUSES.forEach(function(s){ html += '<option value="'+s.id+'">'+s.label+'</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gp-note" placeholder="opcionális"></div>';
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttProjModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" onclick="ganttSaveProject(null)">✓ Létrehozás</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.ganttOpenNewProjectModal = ganttOpenNewProjectModal;
+
+function ganttOpenEditProjectModal(pid) {
+  gLoad();
+  var p = _gProjects.find(function(x){return x.id===pid;});
+  if(!p) return;
+  var html = '<div class="modal-overlay active" id="ganttProjModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:500px;">';
+  html += '<div class="modal-title">✏️ Projekt szerkesztése</div>';
+  html += '<div class="form-row"><label class="form-label">Projekt neve *</label><input class="form-input" id="gp-name" value="'+escH(p.name)+'"></div>';
+  html += '<div class="form-row"><label class="form-label">Leírás</label><input class="form-input" id="gp-desc" value="'+escH(p.desc||'')+'"></div>';
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Kezdési dátum *</label><input class="form-input" type="date" id="gp-start" value="'+(p.startDate||'')+'"></div>';
+  html += '<div><label class="form-label">Befejezési dátum *</label><input class="form-input" type="date" id="gp-end" value="'+(p.endDate||'')+'"></div>';
+  html += '</div>';
+  html += '<div class="form-row"><label class="form-label">Státusz</label><select class="form-input" id="gp-status">';
+  GANTT_STATUSES.forEach(function(s){ html += '<option value="'+s.id+'"'+(s.id===p.status?' selected':'')+'>'+s.label+'</option>'; });
+  html += '</select></div>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gp-note" value="'+escH(p.note||'')+'"></div>';
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttProjModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" data-pid="'+pid+'" onclick="ganttSaveProject(this.dataset.pid)">💾 Mentés</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.ganttOpenEditProjectModal = ganttOpenEditProjectModal;
+
+function ganttSaveProject(editId) {
+  var name  = (document.getElementById('gp-name')||{}).value||'';
+  var desc  = (document.getElementById('gp-desc')||{}).value||'';
+  var start = (document.getElementById('gp-start')||{}).value||'';
+  var end   = (document.getElementById('gp-end')||{}).value||'';
+  var status= (document.getElementById('gp-status')||{}).value||'tervezett';
+  var note  = (document.getElementById('gp-note')||{}).value||'';
+  if(!name){ alert('Add meg a projekt nevét!'); return; }
+  if(!start||!end){ alert('Add meg a kezdési és befejezési dátumot!'); return; }
+  gLoad();
+  var p;
+  if(editId){
+    p = _gProjects.find(function(x){return x.id===editId;});
+    if(!p) return;
+    p.name=name; p.desc=desc; p.startDate=start; p.endDate=end; p.status=status; p.note=note; p.updatedAt=gNow();
+  } else {
+    p = {id:'gp_'+Date.now(), name, desc, startDate:start, endDate:end, status, note, createdAt:gNow(), updatedAt:gNow()};
+    _gProjects.push(p);
+    _gActivePid = p.id;
+  }
+  gSync();
+  fbGP(p);
+  updateGanttLauncherStats();
+  var modal = document.getElementById('ganttProjModal');
+  if(modal) modal.remove();
+  if(typeof showToast==='function') showToast('✅ Projekt '+(editId?'frissítve':'létrehozva')+'!');
+  ganttShowView('dashboard');
+}
+window.ganttSaveProject = ganttSaveProject;
+
+function ganttDeleteProject(pid) {
+  if(!confirm('Biztosan törlöd ezt a projektet és az összes feladatát?')) return;
+  gLoad();
+  var p = _gProjects.find(function(x){return x.id===pid;});
+  if(!p) return;
+  _gProjects = _gProjects.filter(function(x){return x.id!==pid;});
+  var trs = [];
+  _gTasks = _gTasks.filter(function(t){
+    if(t.projectId===pid){ trs.push({id:'gtr_'+Date.now()+'_'+t.id, type:'feladat', name:t.name, projectId:pid, data:t, deletedAt:gNow()}); return false; }
+    return true;
+  });
+  trs.push({id:'gtr_proj_'+Date.now(), type:'projekt', name:p.name, projectId:pid, data:p, deletedAt:gNow()});
+  trs.forEach(function(tr){ _gTrash.push(tr); fbGTr(tr); fbDT(tr.data && tr.data.id ? tr.data.id : tr.id); });
+  fbDP(pid);
+  if(_gActivePid===pid) _gActivePid = _gProjects[0] ? _gProjects[0].id : null;
+  gSync();
+  updateGanttLauncherStats();
+  ganttShowView('dashboard');
+}
+window.ganttDeleteProject = ganttDeleteProject;
+
+// ── FELADAT MODAL ─────────────────────────────────────────────────
+function ganttOpenTaskModal(tid) {
+  gLoad();
+  var t = tid ? _gTasks.find(function(x){return x.id===tid;}) : null;
+  var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
+  var parentTasks = _gTasks.filter(function(x){return x.projectId===_gActivePid && x.type==='phase' && !x.deletedAt && (!t || x.id!==tid);});
+
+  var html = '<div class="modal-overlay active" id="ganttTaskModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:520px;">';
+  html += '<div class="modal-title">'+(t?'✏️ Feladat szerkesztése':'📌 Új feladat')+'</div>';
+
+  html += '<div class="form-row"><label class="form-label">Megnevezés *</label>';
+  html += '<input class="form-input" id="gt-name" value="'+escH(t?t.name:'')+'" placeholder="pl. Helyszíni felmérés – Cegléd"></div>';
+
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Típus</label><select class="form-input" id="gt-type">';
+  GANTT_TASK_TYPES.forEach(function(x){ html += '<option value="'+x.id+'"'+((t&&t.type===x.id)||(!t&&x.id==='task')?' selected':'')+'>'+x.icon+' '+x.label+'</option>'; });
+  html += '</select></div>';
+  html += '<div><label class="form-label">Státusz</label><select class="form-input" id="gt-status">';
+  GANTT_STATUSES.forEach(function(s){ html += '<option value="'+s.id+'"'+(t&&t.status===s.id?' selected':'')+'>'+s.label+'</option>'; });
+  html += '</select></div></div>';
+
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Kezdés *</label><input class="form-input" type="date" id="gt-start" value="'+(t&&t.startDate?t.startDate:'')+'"></div>';
+  html += '<div><label class="form-label">Befejezés *</label><input class="form-input" type="date" id="gt-end" value="'+(t&&t.endDate?t.endDate:'')+'"></div>';
+  html += '</div>';
+
+  html += '<div class="form-row"><label class="form-label">Felelős résztvevő</label><select class="form-input" id="gt-member">';
+  html += '<option value="">– Nincs –</option>';
+  members.forEach(function(m){ html += '<option value="'+m.id+'"'+(t&&t.memberId===m.id?' selected':'')+'>'+escH(m.name)+(m.role?' ('+escH(m.role)+')':'')+'</option>'; });
+  html += '</select></div>';
+
+  if(parentTasks.length > 0){
+    html += '<div class="form-row"><label class="form-label">Szülő fázis (opcionális)</label><select class="form-input" id="gt-parent">';
+    html += '<option value="">– Nincs –</option>';
+    parentTasks.forEach(function(x){ html += '<option value="'+x.id+'"'+(t&&t.parentId===x.id?' selected':'')+'>📁 '+escH(x.name)+'</option>'; });
+    html += '</select></div>';
+  }
+
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label>';
+  html += '<input class="form-input" id="gt-note" value="'+escH(t?t.note||'')+'" placeholder="opcionális"></div>';
+
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttTaskModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" data-tid="'+(tid||'')+'" onclick="ganttSaveTask(this.dataset.tid||null)">✓ Mentés</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.ganttOpenTaskModal = ganttOpenTaskModal;
+
+function ganttSaveTask(editId) {
+  var name    = (document.getElementById('gt-name')||{}).value||'';
+  var type    = (document.getElementById('gt-type')||{}).value||'task';
+  var status  = (document.getElementById('gt-status')||{}).value||'tervezett';
+  var start   = (document.getElementById('gt-start')||{}).value||'';
+  var end     = (document.getElementById('gt-end')||{}).value||'';
+  var memberId= (document.getElementById('gt-member')||{}).value||'';
+  var parentId= ((document.getElementById('gt-parent')||{}).value)||'';
+  var note    = (document.getElementById('gt-note')||{}).value||'';
+  if(!name){ alert('Add meg a feladat nevét!'); return; }
+  if(!start||!end){ alert('Add meg a kezdési és befejezési dátumot!'); return; }
+  gLoad();
+  var t;
+  if(editId){
+    t = _gTasks.find(function(x){return x.id===editId;});
+    if(!t) return;
+    t.name=name; t.type=type; t.status=status; t.startDate=start; t.endDate=end;
+    t.memberId=memberId; t.parentId=parentId; t.note=note; t.updatedAt=gNow();
+  } else {
+    t = {id:'gt_'+Date.now(), projectId:_gActivePid, name, type, status, startDate:start, endDate:end, memberId, parentId, note, createdAt:gNow(), updatedAt:gNow()};
+    _gTasks.push(t);
+  }
+  gSync();
+  fbGT(t);
+  updateGanttLauncherStats();
+  var modal = document.getElementById('ganttTaskModal');
+  if(modal) modal.remove();
+  if(typeof showToast==='function') showToast('✅ Feladat mentve!');
+  ganttShowView(_gView==='chart'?'chart':'tasks');
+}
+window.ganttSaveTask = ganttSaveTask;
+
+function ganttDeleteTask(tid) {
+  if(!confirm('Törlöd ezt a feladatot?')) return;
+  gLoad();
+  var t = _gTasks.find(function(x){return x.id===tid;});
+  if(!t) return;
+  _gTasks = _gTasks.filter(function(x){return x.id!==tid;});
+  var tr = {id:'gtr_'+Date.now(), type:'feladat', name:t.name, projectId:t.projectId, data:t, deletedAt:gNow()};
+  _gTrash.push(tr);
+  gSync();
+  fbDT(tid); fbGTr(tr);
+  updateGanttLauncherStats();
+  ganttShowView(_gView);
+}
+window.ganttDeleteTask = ganttDeleteTask;
+
+// ── RÉSZTVEVŐ MODAL ───────────────────────────────────────────────
+function ganttOpenMemberModal(mid) {
+  gLoad();
+  var m = mid ? _gMembers.find(function(x){return x.id===mid;}) : null;
+  var html = '<div class="modal-overlay active" id="ganttMemberModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:460px;">';
+  html += '<div class="modal-title">'+(m?'✏️ Résztvevő szerkesztése':'👤 Új résztvevő')+'</div>';
+  html += '<div class="form-row"><label class="form-label">Név *</label><input class="form-input" id="gm-name" value="'+escH(m?m.name:'')+'" placeholder="pl. Kovács Péter"></div>';
+  html += '<div class="form-row"><label class="form-label">Titulus / Feladatkör *</label><input class="form-input" id="gm-role" value="'+escH(m?m.role||'')+'" placeholder="pl. Projektmenedzser, Helyszíni mérnök, Megbízó képviselő"></div>';
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Email</label><input class="form-input" type="email" id="gm-email" value="'+escH(m?m.email||'')+'" placeholder="nev@ceg.hu"></div>';
+  html += '<div><label class="form-label">Telefon</label><input class="form-input" id="gm-phone" value="'+escH(m?m.phone||'')+'" placeholder="+36 30 ..."></div>';
+  html += '</div>';
+  html += '<div class="form-row"><label class="form-label">Megjegyzés</label><input class="form-input" id="gm-note" value="'+escH(m?m.note||'')+'" placeholder="opcionális"></div>';
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttMemberModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" data-mid="'+(mid||'')+'" onclick="ganttSaveMember(this.dataset.mid||null)">✓ Mentés</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.ganttOpenMemberModal = ganttOpenMemberModal;
+
+function ganttSaveMember(editId) {
+  var name  = (document.getElementById('gm-name')||{}).value||'';
+  var role  = (document.getElementById('gm-role')||{}).value||'';
+  var email = (document.getElementById('gm-email')||{}).value||'';
+  var phone = (document.getElementById('gm-phone')||{}).value||'';
+  var note  = (document.getElementById('gm-note')||{}).value||'';
+  if(!name){ alert('Add meg a nevet!'); return; }
+  if(!role){ alert('Add meg a titulusát/feladatkörét!'); return; }
+  gLoad();
+  var m;
+  if(editId){
+    m = _gMembers.find(function(x){return x.id===editId;});
+    if(!m) return;
+    m.name=name; m.role=role; m.email=email; m.phone=phone; m.note=note; m.updatedAt=gNow();
+  } else {
+    m = {id:'gm_'+Date.now(), projectId:_gActivePid, name, role, email, phone, note, createdAt:gNow(), updatedAt:gNow()};
+    _gMembers.push(m);
+  }
+  gSync();
+  fbGM(m);
+  var modal = document.getElementById('ganttMemberModal');
+  if(modal) modal.remove();
+  if(typeof showToast==='function') showToast('✅ Résztvevő mentve!');
+  ganttShowView('members');
+}
+window.ganttSaveMember = ganttSaveMember;
+
+function ganttDeleteMember(mid) {
+  if(!confirm('Törlöd ezt a résztvevőt?')) return;
+  gLoad();
+  var m = _gMembers.find(function(x){return x.id===mid;});
+  if(!m) return;
+  _gMembers = _gMembers.filter(function(x){return x.id!==mid;});
+  var tr = {id:'gtr_mem_'+Date.now(), type:'résztvevő', name:m.name, projectId:m.projectId, data:m, deletedAt:gNow()};
+  _gTrash.push(tr);
+  gSync();
+  fbDM(mid); fbGTr(tr);
+  ganttShowView('members');
+}
+window.ganttDeleteMember = ganttDeleteMember;
+
+// ── KUKA ──────────────────────────────────────────────────────────
+function ganttRestoreTrash(trid) {
+  gLoad();
+  var tr = _gTrash.find(function(x){return x.id===trid;});
+  if(!tr) return;
+  _gTrash = _gTrash.filter(function(x){return x.id!==trid;});
+  if(tr.type==='feladat')    { tr.data.deletedAt=null; _gTasks.push(tr.data);    fbGT(tr.data); }
+  else if(tr.type==='projekt'){ tr.data.deletedAt=null; _gProjects.push(tr.data); fbGP(tr.data); }
+  else if(tr.type==='résztvevő'){ tr.data.deletedAt=null; _gMembers.push(tr.data); fbGM(tr.data); }
+  fbDTr(trid);
+  gSync();
+  if(typeof showToast==='function') showToast('↩️ Visszaállítva!');
+  ganttShowView('trash');
+}
+window.ganttRestoreTrash = ganttRestoreTrash;
+
+function ganttPermDel(trid) {
+  if(!confirm('Véglegesen törlöd? Ez nem visszavonható!')) return;
+  gLoad();
+  _gTrash = _gTrash.filter(function(x){return x.id!==trid;});
+  fbDTr(trid);
+  gSync();
+  ganttShowView('trash');
+}
+window.ganttPermDel = ganttPermDel;
+
+function ganttEmptyTrash() {
+  if(!confirm('Mindent véglegesen töröl! Biztos?')) return;
+  gLoad();
+  _gTrash.forEach(function(tr){ fbDTr(tr.id); });
+  _gTrash = [];
+  gSync();
+  ganttUpdateTrashBadge();
+  ganttShowView('trash');
+}
+window.ganttEmptyTrash = ganttEmptyTrash;
+
+// ── TRASH BADGE ───────────────────────────────────────────────────
+function ganttUpdateTrashBadge() {
+  var badge = document.getElementById('trash-count-badge-gantt');
+  if(!badge) return;
+  var cnt = _gTrash.length;
+  badge.style.display = cnt ? '' : 'none';
+  badge.textContent   = cnt;
+}
+
+// ── LAUNCHER STATS ────────────────────────────────────────────────
+function updateGanttLauncherStats() {
+  gLoad();
+  var tp = document.getElementById('tstat-gantt-projs');
+  var tt = document.getElementById('tstat-gantt-tasks');
+  if(tp) tp.textContent = _gProjects.filter(function(p){return !p.deletedAt;}).length;
+  if(tt) tt.textContent = _gTasks.filter(function(t){return !t.deletedAt;}).length;
+}
+window.updateGanttLauncherStats = updateGanttLauncherStats;
+
+// ── ENTER MODULE WRAPPER ──────────────────────────────────────────
+window.enterGanttModule = function() {
+  document.getElementById('moduleLauncher').style.display = 'none';
+  document.getElementById('mainLayout').style.display = 'flex';
+  var ido = document.getElementById('ido-module');
+  if(ido) ido.style.display = 'none';
+  document.getElementById('activeModuleLabel').textContent = 'GANTT ÜTEMTERV';
+  var ganttSec = document.getElementById('sidebar-gantt-section');
+  ['sidebar-proj-section','sidebar-rel-section','sidebar-ml-section'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  if(ganttSec) ganttSec.style.display='';
+  gLoad();
+  ganttShowView('dashboard');
+};
+
+// ── XLS EXPORT ────────────────────────────────────────────────────
+function ganttExportXLS() {
+  gLoad();
+  if(!_gActivePid){ alert('Válassz projektet!'); return; }
+  var proj = _gProjects.find(function(p){return p.id===_gActivePid;});
+  var tasks= _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
+    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+  var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
+
+  var rows = [['Típus','Feladat neve','Kezdés','Befejezés','Időtartam (nap)','Felelős','Titulus','Státusz','Szülő fázis','Megjegyzés']];
+  tasks.forEach(function(t){
+    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{label:t.type};
+    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status};
+    var mem     = members.find(function(m){return m.id===t.memberId;});
+    var parent  = tasks.find(function(x){return x.id===t.parentId;});
+    var dur     = (t.startDate&&t.endDate) ? gDaysDiff(t.startDate,t.endDate)+1 : '';
+    rows.push([typeObj.label, t.name, t.startDate||'', t.endDate||'', dur, mem?mem.name:'', mem?mem.role:'', stObj.label, parent?parent.name:'', t.note||'']);
+  });
+
+  // Résztvevők sheet-ként a végén
+  rows.push([]);
+  rows.push(['=== RÉSZTVEVŐK ===']);
+  rows.push(['Név','Titulus / Feladatkör','Email','Telefon','Megjegyzés']);
+  members.forEach(function(m){ rows.push([m.name, m.role||'', m.email||'', m.phone||'', m.note||'']); });
+
+  var tsv = rows.map(function(r){ return r.join('\t'); }).join('\n');
+  var blob = new Blob(['\ufeff'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href=url; a.download='gantt_'+(proj?proj.name.replace(/[^a-zA-Z0-9]/g,'_'):'projekt')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(typeof showToast==='function') showToast('📥 XLS riport letöltve!');
+}
+window.ganttExportXLS = ganttExportXLS;
+
+// ── PDF EXPORT ────────────────────────────────────────────────────
+function ganttExportPDF() {
+  gLoad();
+  if(!_gActivePid){ alert('Válassz projektet!'); return; }
+  var proj = _gProjects.find(function(p){return p.id===_gActivePid;});
+  var tasks= _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
+    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+  var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
+
+  var COLORS = {'tervezett':'#6b7a96','folyamatban':'#2d7dd2','kesz':'#27ae60','keslekedik':'#e05252','felfuggesztett':'#e8a020'};
+  var doneCnt = tasks.filter(function(t){return t.status==='kesz';}).length;
+  var pct = tasks.length ? Math.round(doneCnt/tasks.length*100) : 0;
+
+  var pStart = proj && proj.startDate ? proj.startDate : (tasks[0] && tasks[0].startDate);
+  var pEnd   = proj && proj.endDate   ? proj.endDate   : (tasks[tasks.length-1] && tasks[tasks.length-1].endDate);
+  var totalDays = (pStart && pEnd) ? gDaysDiff(pStart,pEnd)+1 : 1;
+  var CHART_W = 680;
+  var LEFT_W  = 240;
+  var BAR_W   = CHART_W - LEFT_W;
+  var ROW_H   = 22;
+  var HEADER_H= 30;
+
+  // SVG Gantt chart generálása
+  var svgRows = '';
+  tasks.forEach(function(t, ti){
+    if(!pStart) return;
+    var isMilestone = t.type==='milestone';
+    var tStart = t.startDate || pStart;
+    var tEnd   = t.endDate   || tStart;
+    var startOff = Math.max(0, gDaysDiff(pStart, tStart));
+    var dur      = Math.max(1, gDaysDiff(tStart,tEnd)+1);
+    var barLeft  = Math.round(startOff/totalDays * BAR_W);
+    var barW     = isMilestone ? 14 : Math.max(4, Math.round(dur/totalDays * BAR_W));
+    var color    = COLORS[t.status]||'#6b7a96';
+    var y        = HEADER_H + ti*ROW_H;
+    var isEven   = ti%2===0;
+    svgRows += '<rect x="0" y="'+y+'" width="'+CHART_W+'" height="'+ROW_H+'" fill="'+(isEven?'#1a1f2e':'#161b26')+'"/>';
+    svgRows += '<text x="8" y="'+(y+15)+'" font-family="IBM Plex Mono,monospace" font-size="10" fill="'+(t.type==='phase'?'#f0f4ff':'#d4dbe8')+'" font-weight="'+(t.type==='phase'?'bold':'normal')+'">';
+    var nameShort = t.name.length>28 ? t.name.slice(0,26)+'..' : t.name;
+    svgRows += escH(nameShort)+'</text>';
+    if(isMilestone){
+      svgRows += '<polygon points="'+(LEFT_W+barLeft)+','+(y+4)+' '+(LEFT_W+barLeft+7)+','+(y+11)+' '+(LEFT_W+barLeft)+','+(y+18)+' '+(LEFT_W+barLeft-7)+','+(y+11)+'" fill="'+color+'"/>';
+    } else {
+      svgRows += '<rect x="'+(LEFT_W+barLeft)+'" y="'+(y+4)+'" width="'+barW+'" height="14" fill="'+color+'" rx="2" opacity="0.85"/>';
+      if(barW>30){
+        svgRows += '<text x="'+(LEFT_W+barLeft+4)+'" y="'+(y+15)+'" font-family="IBM Plex Mono,monospace" font-size="8" fill="white">';
+        var bl = t.name.length>12?t.name.slice(0,10)+'..':t.name;
+        svgRows += escH(bl)+'</text>';
+      }
+    }
+    // Ma vonal
+  });
+  var todayOff = pStart ? gDaysDiff(pStart, new Date().toISOString().slice(0,10)) : -1;
+  var todayLine = '';
+  if(todayOff>=0 && todayOff<=totalDays){
+    var tx = LEFT_W + Math.round(todayOff/totalDays*BAR_W);
+    todayLine = '<line x1="'+tx+'" y1="0" x2="'+tx+'" y2="'+(HEADER_H+tasks.length*ROW_H)+'" stroke="#e8a020" stroke-width="1.5" opacity="0.7" stroke-dasharray="4,2"/>';
+  }
+  var svgH = HEADER_H + tasks.length*ROW_H + 10;
+  var svgChart = '<svg width="'+CHART_W+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">';
+  svgChart += '<rect width="'+CHART_W+'" height="'+svgH+'" fill="#161b26"/>';
+  // Header
+  svgChart += '<rect x="0" y="0" width="'+CHART_W+'" height="'+HEADER_H+'" fill="#1e2535"/>';
+  svgChart += '<text x="8" y="20" font-family="IBM Plex Mono,monospace" font-size="10" fill="#6b7a96" font-weight="bold">FELADAT</text>';
+  svgChart += '<line x1="'+LEFT_W+'" y1="0" x2="'+LEFT_W+'" y2="'+svgH+'" stroke="#2a3347" stroke-width="1"/>';
+  svgChart += svgRows + todayLine + '</svg>';
+
+  // Résztvevők táblázat HTML
+  var memHtml = members.map(function(m){
+    return '<tr><td>'+escH(m.name)+'</td><td>'+escH(m.role||'–')+'</td><td>'+escH(m.email||'–')+'</td><td>'+escH(m.phone||'–')+'</td></tr>';
+  }).join('');
+
+  // Feladat táblázat
+  var taskHtml = tasks.map(function(t){
+    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{icon:'📌'};
+    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status, color:'#6b7a96'};
+    var mem     = members.find(function(m){return m.id===t.memberId;});
+    var dur     = (t.startDate&&t.endDate) ? gDaysDiff(t.startDate,t.endDate)+1 : '–';
+    return '<tr><td>'+typeObj.icon+'</td><td style="font-weight:'+(t.type==='phase'?700:400)+'">'+(t.parentId?'&nbsp;&nbsp;':'')+escH(t.name)+'</td><td>'+escH(t.startDate||'')+'</td><td>'+escH(t.endDate||'')+'</td><td>'+dur+'</td><td>'+(mem?escH(mem.name):'–')+'</td><td style="color:'+stObj.color+'">'+stObj.label+'</td></tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Gantt Riport – '+escH(proj?proj.name:'')+' – '+new Date().toLocaleDateString('hu-HU')+'</title>';
+  html += '<style>body{font-family:"IBM Plex Sans",Arial,sans-serif;background:#0f1117;color:#d4dbe8;margin:0;padding:24px;}';
+  html += 'h1{font-family:"IBM Plex Mono",monospace;color:#e8a020;font-size:20px;margin:0 0 4px;}';
+  html += '.sub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#6b7a96;margin-bottom:20px;}';
+  html += '.kpi{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}';
+  html += '.kpi-card{background:#161b26;border:1px solid #2a3347;border-radius:6px;padding:12px 16px;min-width:120px;}';
+  html += '.kpi-val{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:700;color:#f0f4ff;}';
+  html += '.kpi-label{font-size:10px;color:#6b7a96;margin-top:2px;}';
+  html += '.section{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#6b7a96;letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #2a3347;}';
+  html += 'table{width:100%;border-collapse:collapse;font-size:12px;background:#161b26;border:1px solid #2a3347;border-radius:6px;overflow:hidden;}';
+  html += 'th{background:#1e2535;color:#6b7a96;font-family:"IBM Plex Mono",monospace;font-size:10px;padding:8px 10px;text-align:left;border-bottom:1px solid #2a3347;}';
+  html += 'td{padding:7px 10px;border-bottom:1px solid rgba(42,51,71,0.5);color:#d4dbe8;}';
+  html += 'tr:last-child td{border-bottom:none;}';
+  html += '.pbar{height:6px;background:#1e2535;border-radius:3px;overflow:hidden;margin-top:6px;}';
+  html += '.pbar-fill{height:100%;background:#27ae60;border-radius:3px;}';
+  html += '.print-btn{position:fixed;top:16px;right:16px;background:#e8a020;border:none;border-radius:5px;padding:8px 18px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:#0f1117;cursor:pointer;}';
+  html += '@media print{.print-btn{display:none;}body{background:#fff;color:#000;padding:12px;}h1{color:#333;}th{background:#eee;color:#333;}table{border:1px solid #ccc;}td{border-bottom:1px solid #eee;color:#333;}.kpi-card{background:#f5f5f5;border:1px solid #ddd;}.kpi-val{color:#333;}.sub{color:#666;}}';
+  html += '</style></head><body>';
+  html += '<button class="print-btn" onclick="window.print()">🖨️ Nyomtatás / PDF</button>';
+  html += '<h1>📅 Gantt Ütemterv Riport</h1>';
+  html += '<div class="sub">'+(proj?escH(proj.name)+' &nbsp;·&nbsp; ':'')+gDateFmt(pStart)+' – '+gDateFmt(pEnd)+'  &nbsp;·&nbsp;  Generálva: '+new Date().toLocaleString('hu-HU')+'</div>';
+  if(proj && proj.desc) html += '<div style="font-size:12px;color:#6b7a96;margin-bottom:16px;">'+escH(proj.desc)+'</div>';
+
+  // KPI
+  html += '<div class="kpi">';
+  html += '<div class="kpi-card"><div class="kpi-val">'+tasks.length+'</div><div class="kpi-label">Feladatok</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-val" style="color:#27ae60">'+doneCnt+'</div><div class="kpi-label">Befejezett</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-val" style="color:#2d7dd2">'+pct+'%</div><div class="kpi-label">Haladás<div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div></div></div>';
+  html += '<div class="kpi-card"><div class="kpi-val">'+totalDays+'</div><div class="kpi-label">Összes nap</div></div>';
+  html += '<div class="kpi-card"><div class="kpi-val">'+members.length+'</div><div class="kpi-label">Résztvevő</div></div>';
+  html += '</div>';
+
+  // Gantt chart SVG
+  if(tasks.length>0 && pStart){
+    html += '<div class="section">GANTT CHART</div>';
+    html += '<div style="overflow-x:auto;background:#161b26;border:1px solid #2a3347;border-radius:6px;padding:10px;">'+svgChart+'</div>';
+  }
+
+  // Feladatok táblázat
+  html += '<div class="section">FELADATOK</div>';
+  html += '<table><thead><tr><th>Típus</th><th>Feladat neve</th><th>Kezdés</th><th>Befejezés</th><th>Napok</th><th>Felelős</th><th>Státusz</th></tr></thead><tbody>'+taskHtml+'</tbody></table>';
+
+  // Résztvevők
+  if(members.length>0){
+    html += '<div class="section">RÉSZTVEVŐK</div>';
+    html += '<table><thead><tr><th>Név</th><th>Titulus / Feladatkör</th><th>Email</th><th>Telefon</th></tr></thead><tbody>'+memHtml+'</tbody></table>';
+  }
+
+  html += '</body></html>';
+
+  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var win = window.open(url, '_blank');
+  if(win) win.focus();
+  if(typeof showToast==='function') showToast('📄 PDF riport megnyitva! Használd a Nyomtatás / PDF gombot!');
+}
+window.ganttExportPDF = ganttExportPDF;
+
+})(); // end GANTT MODULE
 
 
 setTimeout(()=>{
