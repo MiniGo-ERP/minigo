@@ -253,6 +253,7 @@
   /* (launcher grid responsive handled in carousel CSS above) */
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .masked-val { font-family:var(--mono); color:var(--text-dim); letter-spacing:2px; user-select:none; }
   ::-webkit-scrollbar { width:5px; height:5px; }
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
@@ -790,6 +791,10 @@
   <span id="activeModuleLabel" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">PROJECT TRACKER</span>
   <div class="topbar-right">
     <span id="clockDisplay"></span>
+    <button id="sensitiveToggleBtn" onclick="toggleSensitive()" title="Pénzügyi adatok megjelenítése"
+      style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;cursor:pointer;transition:all 0.15s;line-height:1;"
+      onmouseover="this.style.borderColor='var(--accent2)'"
+      onmouseout="this.style.borderColor='var(--border)'">🔒</button>
     <div class="user-badge" id="userBadge">👤 admin</div>
     <button onclick="doLogout()" title="Kijelentkezés"
       style="background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text-dim);font-size:11px;cursor:pointer;font-family:var(--mono);transition:all 0.15s;"
@@ -2496,6 +2501,51 @@ let projects = [
 ];
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
+// ── SENSITIVE DATA MASKING ───────────────────────────────────────────────────
+// localStorage-ban tároljuk az állapotot, default: rejtve (biztonságos)
+var _sensitiveVisible = localStorage.getItem('minigo_sensitive') === '1';
+
+function maskVal(n) {
+  if(_sensitiveVisible) return fmtS(n);
+  return '<span class="masked-val">•••• Ft</span>';
+}
+function maskPct(pct) {
+  if(_sensitiveVisible) return pct + '%';
+  return '<span class="masked-val">••%</span>';
+}
+function maskRaw(str) {
+  // Tetszőleges string maszkolása (pl. már formázott érték)
+  if(_sensitiveVisible) return str;
+  return '<span class="masked-val">•••• Ft</span>';
+}
+
+function toggleSensitive() {
+  _sensitiveVisible = !_sensitiveVisible;
+  localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
+  // Frissíti a gomb ikonját
+  var btn = document.getElementById('sensitiveToggleBtn');
+  if(btn) btn.textContent = _sensitiveVisible ? '👁' : '🔒';
+  btn && (btn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése');
+  // Újrarendeli az aktuális nézetet
+  if(typeof showView === 'function') {
+    var active = document.querySelector('.sidebar-item.active');
+    if(active && active.id) {
+      var viewMap = {
+        'nav-dashboard':'dashboard','nav-cashflow':'cashflow',
+        'nav-clients':'clients','nav-suppliers':'suppliers',
+        'nav-projects':'projects'
+      };
+      var v = viewMap[active.id];
+      if(v) showView(v);
+      else showView('dashboard');
+    } else showView('dashboard');
+  }
+}
+window.toggleSensitive = toggleSensitive;
+window.maskVal = maskVal;
+window.maskPct = maskPct;
+window.maskRaw = maskRaw;
+
 const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
 const fmtS = n => { const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).toFixed(1).replace('.',',')+' M Ft':a>=1000?s+Math.round(a/1000)+' e Ft':n+' Ft'; };
 // Projekt ID-t HTML onclick attribútumba biztonságosan injektáló segédfüggvény
@@ -2649,8 +2699,8 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-val" style="color:var(--accent)">${act}</div><div class="stat-label">Aktív</div></div>
     <div class="stat-card"><div class="stat-val" style="color:var(--success)">${done}</div><div class="stat-label">Befejezett</div></div>
     <div class="stat-card"><div class="stat-val" style="color:var(--profit)">${fmtS(tInc)}</div><div class="stat-label">Bevétel (${periodLabel})</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${fmtS(tCost)}</div><div class="stat-label">Kiadás (${periodLabel})</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmtS(tPro)}</div><div class="stat-label">Nyereség (${periodLabel})</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${maskVal(tCost)}</div><div class="stat-label">Kiadás (${periodLabel})</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${maskVal(tPro)}</div><div class="stat-label">Nyereség (${periodLabel})</div></div>
   </div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">📅 Időszak szűrő</span>
@@ -2719,7 +2769,7 @@ function renderCashflow(){
           <div class="cf-bar-inc" style="width:${iW}%"></div>
           <div class="cf-bar-cost" style="width:${cW}%"></div>
         </div>
-        <div class="cf-bar-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmtS(pro)}</div>
+        <div class="cf-bar-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${maskVal(pro)}</div>
       </div>`;}).join('')}
     <div class="cf-legend">
       <span><span class="cf-dot" style="background:rgba(46,204,113,0.55)"></span>Bevétel</span>
@@ -2753,7 +2803,7 @@ function renderCashflow(){
               <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">${i.pid} · ${i.ref}</div>
               <div style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${i.type==='in'?'Kimenő':'Szállítói: '+(i.supplierName||'')}</div>
             </div>
-            <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${i.type==='in'?'var(--profit)':'var(--cost)'}">${i.type==='in'?'+':'−'}${fmtS(i.amount)}</span>
+            <span style="font-family:var(--mono);font-size:12px;font-weight:600;color:${i.type==='in'?'var(--profit)':'var(--cost)'}">${i.type==='in'?'+':'−'}${i.type==='in'?fmtS(i.amount):maskVal(i.amount)}</span>
           </div>`).join('')}
       </div>
     </div>
@@ -2813,7 +2863,7 @@ function renderSuppliers(){
         </div>
         <div class="card-name">${s.name}</div>
         <div class="card-meta">${s.contact||'–'}${s.type?' · '+s.type:''}</div>
-        <div class="card-meta" style="margin-top:5px;"><span style="color:var(--cost)">${fmtS(tot)}</span> kiadás &nbsp;·&nbsp; ${cnt} projektben</div>
+        <div class="card-meta" style="margin-top:5px;"><span style="color:var(--cost)">${maskVal(tot)}</span> kiadás &nbsp;·&nbsp; ${cnt} projektben</div>
       </div>`;}).join('')}
     <div class="card" style="border-style:dashed;cursor:pointer;" onclick="openNewSupplierModal()">
       <div style="font-size:22px;margin-bottom:8px;">➕</div>
@@ -2922,7 +2972,7 @@ function renderProjectRow(p){
     </div>
     <div style="display:flex;align-items:center;">${typeBadge}</div>
     <div style="display:flex;align-items:center;"><span class="status-badge ${st.cls}">${st.short}</span></div>
-    <div style="font-family:var(--mono);font-size:11px;color:${inc>0?(pro>=0?'var(--profit)':'var(--danger)'):'var(--text-dim)'};">${inc>0?(pro>=0?'+':'')+fmtS(pro):'–'}</div>
+    <div style="font-family:var(--mono);font-size:11px;color:${inc>0?(pro>=0?'var(--profit)':'var(--danger)'):'var(--text-dim)'};">${inc>0?(pro>=0?'+':'')+maskVal(pro):'–'}</div>
     <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap;">${p.updatedAt?.slice(0,10)||'–'}</div>
     <div class="row-actions" onclick="event.stopPropagation()">
       <button class="icon-btn edit" title="Szerkesztés" onclick="openEditProject('${escPid(p.id)}')">✏️</button>
@@ -3115,7 +3165,7 @@ function renderProjectDetail(pid){
     </div>
     <div class="finance-box">
       <div class="finance-box-title">🔴 Szállítói számlák (kiadások)</div>
-      <div class="finance-total" style="color:var(--cost)">${fmt(cost)}</div>
+      <div class="finance-total" style="color:var(--cost)">${maskVal(cost)}</div>
       <div class="finance-label">nettó kiadás</div>
       <div class="invoice-list">${costInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs szállítói számla.</div>'}</div>
       <div class="add-btn" onclick="openCostInvoiceModal('${escPid(pid)}')">➕ Szállítói számla hozzáadása</div>
@@ -3125,19 +3175,19 @@ function renderProjectDetail(pid){
   <div class="profit-summary">
     <div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Projekt nyereség</div>
-      <div class="profit-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmt(pro)}</div>
-      ${margin!==null?`<div style="font-size:11px;color:var(--text-dim);margin-top:3px">Marzs: <b style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${margin}%</b></div>`
+      <div class="profit-val" style="color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${maskVal(pro)}</div>
+      ${margin!==null?`<div style="font-size:11px;color:var(--text-dim);margin-top:3px">Marzs: <b style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${maskPct(margin)}</b></div>`
         :'<div style="font-size:11px;color:var(--text-dim);margin-top:3px">Még nincs bevételi számla</div>'}
     </div>
     ${inc>0?`<div style="flex:1;min-width:160px;">
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:5px">
-        <span>Kiadás aránya a bevételből</span><span>${barW}%</span>
+        <span>Kiadás aránya a bevételből</span><span>${_sensitiveVisible?barW+'%':'••%'}</span>
       </div>
       <div class="profit-bar-track">
         <div class="profit-bar-fill" style="width:${barW}%;background:${pro>=0?'var(--profit)':'var(--danger)'}"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:4px">
-        <span style="color:var(--cost)">Kiadás: ${fmtS(cost)}</span>
+        <span style="color:var(--cost)">Kiadás: ${maskVal(cost)}</span>
         <span style="color:var(--profit)">Bevétel: ${fmtS(inc)}</span>
       </div>
     </div>`:''}
@@ -3191,10 +3241,10 @@ function renderUmbrellaSection(p, pid) {
           <span style="color:var(--text-dim);">Összes bevétel: </span><strong style="color:var(--profit);">${fmtS(totalInc)}</strong>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-          <span style="color:var(--text-dim);">Összes kiadás: </span><strong style="color:var(--cost);">${fmtS(totalCost)}</strong>
+          <span style="color:var(--text-dim);">Összes kiadás: </span><strong style="color:var(--cost);">${maskVal(totalCost)}</strong>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-          <span style="color:var(--text-dim);">Összesített profit: </span><strong style="color:${totalPro>=0?'var(--profit)':'var(--danger)'};">${fmtS(totalPro)}</strong>
+          <span style="color:var(--text-dim);">Összesített profit: </span><strong style="color:${totalPro>=0?'var(--profit)':'var(--danger)'};">${maskVal(totalPro)}</strong>
         </div>
       </div>`;
 
@@ -3207,7 +3257,7 @@ function renderUmbrellaSection(p, pid) {
           <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3498db;min-width:140px;">${sp.id}</div>
           <div style="flex:1;font-size:12px;">${sp.desc||'–'}</div>
           <span class="status-badge ${spSt.cls}">${spSt.short}</span>
-          ${spInc>0?`<span style="font-family:var(--mono);font-size:11px;color:${spPro>=0?'var(--profit)':'var(--danger)'};">${spPro>=0?'+':''}${fmtS(spPro)}</span>`:''}
+          ${spInc>0?`<span style="font-family:var(--mono);font-size:11px;color:${spPro>=0?'var(--profit)':'var(--danger)'};">${spPro>=0?'+':''}${maskVal(spPro)}</span>`:''}
           ${tigCount>0?`<span style="font-size:10px;color:var(--text-dim);">${tigCount} TIG</span>`:''}
         </div>`;
       });
@@ -7923,6 +7973,9 @@ function showLauncher(){
   if(typeof updateRaktarLauncherStats === 'function') updateRaktarLauncherStats();
   // Carousel frissítés
   if(typeof window.launcherCarouselRefresh === 'function') window.launcherCarouselRefresh();
+  // Sensitive toggle gomb ikon inicializálása
+  var sBtn = document.getElementById('sensitiveToggleBtn');
+  if(sBtn){ sBtn.textContent = _sensitiveVisible ? '👁' : '🔒'; sBtn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése'; }
   // Ha projekt modul aktív, frissítsük az év szűrőt
   if(typeof activeModule !== 'undefined' && activeModule === 'proj') {
     if(typeof projInitYearFilter === 'function') setTimeout(projInitYearFilter, 100);
