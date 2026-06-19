@@ -9430,7 +9430,7 @@ function applyRoleToLauncher(role) {
   const _curEmail = auth?.currentUser?.email || '';
   if (_curEmail) { role = getMigoUserRole(_curEmail); migoUserRole = role; }
   // Admin-only tile-ok (csak MiniGo admin látja)
-  const adminOnlyTiles = ['tile-proj','tile-rel','tile-munkalap','tile-arajanlat','tile-ures'];
+  const adminOnlyTiles = ['tile-proj','tile-rel','tile-munkalap','tile-arajanlat','tile-ures','tile-gantt'];
   adminOnlyTiles.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = (role === 'admin') ? '' : 'none';
@@ -9609,11 +9609,12 @@ function idoModuleSSO(email, idoRole, displayName) {
 }
 
 // ── WINDOW.SHOWLAUNCHER – role-aware patch ────────────────────────────────────
+const _showLauncherOriginal = showLauncher; // referencia mentése az override előtt
 window.showLauncher = function() {
   // Mindig frissítjük a role-t az aktuális auth state-ből
   const _email = auth?.currentUser?.email || '';
   if (_email) migoUserRole = getMigoUserRole(_email);
-  showLauncher(); // kezeli a topbart, ido-module-t, launcher display-t
+  _showLauncherOriginal(); // az eredeti lokális függvény hívása – NEM rekurzív
   applyRoleToLauncher(migoUserRole);
   // Non-admin userek → időnyilvántartásba irányítjuk
   if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && _email) {
