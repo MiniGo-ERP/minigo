@@ -203,7 +203,7 @@
 
   /* Carousel wrapper */
   .launcher-carousel-wrap { width:100%; max-width:1100px; position:relative; }
-  .launcher-carousel-track-outer { overflow:hidden; width:100%; }
+  .launcher-carousel-track-outer { overflow:hidden; width:100%; height:360px; }
 
   /* Track: 2 soros grid lapok egymás alatt, függőlegesen lapozunk */
   .launcher-carousel-track {
@@ -16129,23 +16129,20 @@ window.updateGanttLauncherStats = updateGanttLauncherStats;
 // ── ENTER MODULE WRAPPER ──────────────────────────────────────────
 window.enterGanttModule = function() {
   document.getElementById('moduleLauncher').style.display = 'none';
-  // Egyéb modulok elrejtése
   ['quote-module','raktar-module','ido-module'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.style.display='none';
   });
-  // MiniGo topbar visszaállítása
   var migoTopbar = document.getElementById('minigo-topbar');
   if(migoTopbar) migoTopbar.style.display='';
   document.getElementById('mainLayout').style.display = 'flex';
   document.getElementById('activeModuleLabel').textContent = 'GANTT ÜTEMTERV';
-  // Sidebar szekciók váltása
   ['sidebar-proj-section','sidebar-rel-section','sidebar-ml-section'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   var ganttSec = document.getElementById('sidebar-gantt-section');
   if(ganttSec) ganttSec.style.display='';
-  gLoad();
-  ganttShowView('dashboard');
+  if(typeof window.gLoad === 'function') window.gLoad();
+  if(typeof window.ganttShowView === 'function') window.ganttShowView('dashboard');
 };
 
 // ── XLS EXPORT ────────────────────────────────────────────────────
@@ -16321,6 +16318,10 @@ function ganttExportPDF() {
   if(typeof showToast==='function') showToast('📄 PDF riport megnyitva! Használd a Nyomtatás / PDF gombot!');
 }
 window.ganttExportPDF = ganttExportPDF;
+
+// Alap helper-ek exportálása (enterGanttModule az IIFE-n kívülről hívja)
+window.gLoad = gLoad;
+window.gSync = gSync;
 
 })(); // end GANTT MODULE
 
