@@ -16145,178 +16145,355 @@ window.enterGanttModule = function() {
   if(typeof window.ganttShowView === 'function') window.ganttShowView('dashboard');
 };
 
-// ── XLS EXPORT ────────────────────────────────────────────────────
-function ganttExportXLS() {
+// ── RIPORT MODAL ──────────────────────────────────────────────────
+function ganttOpenReportModal(mode) {
   gLoad();
   if(!_gActivePid){ alert('Válassz projektet!'); return; }
   var proj = _gProjects.find(function(p){return p.id===_gActivePid;});
-  var tasks= _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
-    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
-  var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
+  if(!proj){ alert('Projekt nem található!'); return; }
 
-  var rows = [['Típus','Feladat neve','Kezdés','Befejezés','Időtartam (nap)','Felelős','Titulus','Státusz','Szülő fázis','Megjegyzés']];
-  tasks.forEach(function(t){
-    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{label:t.type};
-    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status};
-    var mem     = members.find(function(m){return m.id===t.memberId;});
-    var parent  = tasks.find(function(x){return x.id===t.parentId;});
-    var dur     = (t.startDate&&t.endDate) ? gDaysDiff(t.startDate,t.endDate)+1 : '';
-    rows.push([typeObj.label, t.name, t.startDate||'', t.endDate||'', dur, mem?mem.name:'', mem?mem.role:'', stObj.label, parent?parent.name:'', t.note||'']);
+  var defStart = proj.startDate || '';
+  var defEnd   = proj.endDate   || '';
+
+  var html = '<div class="modal-overlay active" id="ganttReportModal" style="z-index:200;">';
+  html += '<div class="modal" style="width:480px;">';
+  html += '<div class="modal-title">📊 Riport beállítások – '+(mode==='pdf'?'PDF':'XLS')+'</div>';
+
+  html += '<div class="form-row"><label class="form-label">Projekt</label>';
+  html += '<div style="font-family:var(--mono);font-size:12px;color:var(--accent);">'+escH(proj.name)+'</div></div>';
+
+  html += '<div class="form-row-2">';
+  html += '<div><label class="form-label">Időablak – tól *</label>';
+  html += '<input class="form-input" type="date" id="gr-from" value="'+defStart+'"></div>';
+  html += '<div><label class="form-label">Időablak – ig *</label>';
+  html += '<input class="form-input" type="date" id="gr-to" value="'+defEnd+'"></div>';
+  html += '</div>';
+
+  html += '<div class="form-row">';
+  html += '<label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">';
+  html += '<input type="checkbox" id="gr-condense" checked style="accent-color:var(--accent2);" onchange="document.getElementById(\'gr-minbreak-row\').style.display=this.checked?\'\':\'none\'">' + '\n';
+  html += ' Automatikus törés (üres szakaszok elhagyása)</label>';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Ha egy időszakban csak 1 feladat fut és nincs párhuzamos, a közepét elhagyja.</div>';
+  html += '</div>';
+
+  html += '<div class="form-row" id="gr-minbreak-row">';
+  html += '<label class="form-label">Minimum törési hossz (nap)</label>';
+  html += '<input class="form-input" type="number" id="gr-minbreak" value="14" min="3" max="90" style="width:100px;">';
+  html += '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Ennél rövidebb "üres" szakaszt nem hagyja ki.</div>';
+  html += '</div>';
+
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="document.getElementById(\'ganttReportModal\').remove()">Mégse</button>';
+  html += '<button class="btn btn-primary" data-mode="'+mode+'" onclick="ganttRunReport(this.dataset.mode)">📥 Riport generálása</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+
+
+}
+window.ganttOpenReportModal = ganttOpenReportModal;
+
+// ── TÖRÉSI LOGIKA ENGINE ──────────────────────────────────────────
+function gFindBreaks(tasks, fromDate, toDate, minBreakDays) {
+  var relevant = tasks.filter(function(t){
+    return t.startDate && t.endDate &&
+           t.startDate <= toDate && t.endDate >= fromDate;
+  });
+  if(relevant.length < 2) return [];
+
+  var totalDays = gDaysDiff(fromDate, toDate) + 1;
+  var coverage  = new Array(totalDays).fill(0);
+
+  relevant.forEach(function(t){
+    var s = Math.max(0, gDaysDiff(fromDate, t.startDate));
+    var e = Math.min(totalDays-1, gDaysDiff(fromDate, t.endDate));
+    for(var d=s; d<=e; d++) coverage[d]++;
   });
 
-  // Résztvevők sheet-ként a végén
-  rows.push([]);
-  rows.push(['=== RÉSZTVEVŐK ===']);
-  rows.push(['Név','Titulus / Feladatkör','Email','Telefon','Megjegyzés']);
-  members.forEach(function(m){ rows.push([m.name, m.role||'', m.email||'', m.phone||'', m.note||'']); });
+  var breaks = [];
+  var inSolo = false, soloStart = 0;
 
-  var tsv = rows.map(function(r){ return r.join('\t'); }).join('\n');
-  var blob = new Blob(['\ufeff'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href=url; a.download='gantt_'+(proj?proj.name.replace(/[^a-zA-Z0-9]/g,'_'):'projekt')+'_'+new Date().toISOString().slice(0,10)+'.xls';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  if(typeof showToast==='function') showToast('📥 XLS riport letöltve!');
+  function pushBreak(start, endExcl) {
+    var len = endExcl - start;
+    if(len < minBreakDays) return;
+    var keepEdge = Math.min(3, Math.floor(len/3));
+    breaks.push({
+      start:     start + keepEdge,
+      end:       endExcl - keepEdge - 1,
+      startDate: gAddDays(fromDate, start + keepEdge),
+      endDate:   gAddDays(fromDate, endExcl - keepEdge - 1),
+      skipDays:  len - keepEdge * 2
+    });
+  }
+
+  for(var i=0; i<totalDays; i++){
+    if(coverage[i] === 1 && !inSolo){ inSolo=true; soloStart=i; }
+    if(coverage[i] !== 1 &&  inSolo){ pushBreak(soloStart, i); inSolo=false; }
+  }
+  // Záró solo szakasz kezelése
+  if(inSolo) pushBreak(soloStart, totalDays);
+
+  return breaks;
 }
-window.ganttExportXLS = ganttExportXLS;
 
-// ── PDF EXPORT ────────────────────────────────────────────────────
-function ganttExportPDF() {
+// Dátum → X pozíció töréseket figyelembe véve, clamped [0, CHART_W]
+function gDateToX(dateStr, fromDate, breaks, CHART_W, totalDays) {
+  var rawDay  = gDaysDiff(fromDate, dateStr);
+  rawDay = Math.max(0, Math.min(totalDays, rawDay)); // clamp
+  var skipped = 0;
+  breaks.forEach(function(b){
+    if(rawDay > b.end)    skipped += b.skipDays;
+    else if(rawDay > b.start) skipped += rawDay - b.start;
+  });
+  var effDays = Math.max(1, totalDays - breaks.reduce(function(s,b){ return s+b.skipDays; }, 0));
+  return Math.round(Math.max(0, Math.min(CHART_W, (rawDay - skipped) / effDays * CHART_W)));
+}
+
+// ── RIPORT FUTTATÁS ───────────────────────────────────────────────
+function ganttRunReport(mode) {
+  var fromDate   = (document.getElementById('gr-from')||{}).value||'';
+  var toDate     = (document.getElementById('gr-to')||{}).value||'';
+  var condense   = (document.getElementById('gr-condense')||{}).checked;
+  var minBreak   = parseInt((document.getElementById('gr-minbreak')||{}).value||14);
+
+  if(!fromDate||!toDate){ alert('Add meg a kezdő és záró dátumot!'); return; }
+  if(fromDate > toDate){ alert('A kezdő dátum nem lehet később a zárónál!'); return; }
+
+  document.getElementById('ganttReportModal').remove();
   gLoad();
-  if(!_gActivePid){ alert('Válassz projektet!'); return; }
-  var proj = _gProjects.find(function(p){return p.id===_gActivePid;});
-  var tasks= _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
-    .sort(function(a,b){ return (a.startDate||'').localeCompare(b.startDate||''); });
+
+  var proj    = _gProjects.find(function(p){return p.id===_gActivePid;});
+  var allTasks= _gTasks.filter(function(t){return t.projectId===_gActivePid && !t.deletedAt;})
+    .sort(function(a,b){return (a.startDate||'').localeCompare(b.startDate||'');});
   var members = _gMembers.filter(function(m){return m.projectId===_gActivePid && !m.deletedAt;});
 
+  var tasks = allTasks.filter(function(t){
+    return t.startDate && t.endDate &&
+           t.startDate <= toDate && t.endDate >= fromDate;
+  });
+
+  if(tasks.length === 0){
+    if(typeof showToast==='function') showToast('⚠️ Nincs feladat a megadott időablakban!');
+    return;
+  }
+
+  if(mode==='xls'){ ganttBuildXLS(proj, tasks, members, fromDate, toDate); return; }
+
+  // PDF
+  var breaks   = condense ? gFindBreaks(tasks, fromDate, toDate, minBreak) : [];
+  var totalDays = gDaysDiff(fromDate, toDate) + 1;
+  var effDays   = totalDays - breaks.reduce(function(s,b){ return s+b.skipDays; },0);
+
   var COLORS = {'tervezett':'#6b7a96','folyamatban':'#2d7dd2','kesz':'#27ae60','keslekedik':'#e05252','felfuggesztett':'#e8a020'};
-  var doneCnt = tasks.filter(function(t){return t.status==='kesz';}).length;
-  var pct = tasks.length ? Math.round(doneCnt/tasks.length*100) : 0;
-
-  var pStart = proj && proj.startDate ? proj.startDate : (tasks[0] && tasks[0].startDate);
-  var pEnd   = proj && proj.endDate   ? proj.endDate   : (tasks[tasks.length-1] && tasks[tasks.length-1].endDate);
-  var totalDays = (pStart && pEnd) ? gDaysDiff(pStart,pEnd)+1 : 1;
-  var CHART_W = 680;
-  var LEFT_W  = 240;
-  var BAR_W   = CHART_W - LEFT_W;
+  var CHART_W = 660;
+  var LEFT_W  = 220;
   var ROW_H   = 22;
-  var HEADER_H= 30;
+  var HEADER_H= 36;
 
-  // SVG Gantt chart generálása
+  var doneCnt = tasks.filter(function(t){return t.status==='kesz';}).length;
+  var pct     = tasks.length ? Math.round(doneCnt/tasks.length*100) : 0;
+
+  // SVG sorok
   var svgRows = '';
   tasks.forEach(function(t, ti){
-    if(!pStart) return;
     var isMilestone = t.type==='milestone';
-    var tStart = t.startDate || pStart;
-    var tEnd   = t.endDate   || tStart;
-    var startOff = Math.max(0, gDaysDiff(pStart, tStart));
-    var dur      = Math.max(1, gDaysDiff(tStart,tEnd)+1);
-    var barLeft  = Math.round(startOff/totalDays * BAR_W);
-    var barW     = isMilestone ? 14 : Math.max(4, Math.round(dur/totalDays * BAR_W));
-    var color    = COLORS[t.status]||'#6b7a96';
-    var y        = HEADER_H + ti*ROW_H;
-    var isEven   = ti%2===0;
-    svgRows += '<rect x="0" y="'+y+'" width="'+CHART_W+'" height="'+ROW_H+'" fill="'+(isEven?'#1a1f2e':'#161b26')+'"/>';
-    svgRows += '<text x="8" y="'+(y+15)+'" font-family="IBM Plex Mono,monospace" font-size="10" fill="'+(t.type==='phase'?'#f0f4ff':'#d4dbe8')+'" font-weight="'+(t.type==='phase'?'bold':'normal')+'">';
+    // Dátumok az ablakra csonkolva
+    var tStart = t.startDate < fromDate ? fromDate : t.startDate;
+    var tEnd   = t.endDate   > toDate   ? toDate   : t.endDate;
+    var x1 = gDateToX(tStart, fromDate, breaks, CHART_W, totalDays);
+    var x2 = gDateToX(tEnd,   fromDate, breaks, CHART_W, totalDays);
+    var barW   = Math.max(isMilestone?0:4, x2-x1);
+    var color  = COLORS[t.status]||'#6b7a96';
+    var y      = HEADER_H + ti*ROW_H;
+    var isEven = ti%2===0;
+    var csonkL = t.startDate < fromDate; // bal oldalt csonkolt
+    var csonkR = t.endDate   > toDate;   // jobb oldalt csonkolt
+
+    // Sor háttér
+    svgRows += '<rect x="0" y="'+y+'" width="'+(LEFT_W+CHART_W)+'" height="'+ROW_H+'" fill="'+(isEven?'#1a1f2e':'#161b26')+'"/>';
+
+    // Feladat neve
     var nameShort = t.name.length>28 ? t.name.slice(0,26)+'..' : t.name;
-    svgRows += escH(nameShort)+'</text>';
+    svgRows += '<text x="8" y="'+(y+15)+'" font-family="IBM Plex Mono,monospace" font-size="10" fill="'+(t.type==='phase'?'#f0f4ff':'#d4dbe8')+'" font-weight="'+(t.type==='phase'?'bold':'normal')+'">'+escH(nameShort)+'</text>';
+
+    // Sáv / mérföldkő
     if(isMilestone){
-      svgRows += '<polygon points="'+(LEFT_W+barLeft)+','+(y+4)+' '+(LEFT_W+barLeft+7)+','+(y+11)+' '+(LEFT_W+barLeft)+','+(y+18)+' '+(LEFT_W+barLeft-7)+','+(y+11)+'" fill="'+color+'"/>';
+      var mx = LEFT_W + x1;
+      svgRows += '<polygon points="'+mx+','+(y+4)+' '+(mx+7)+','+(y+11)+' '+mx+','+(y+18)+' '+(mx-7)+','+(y+11)+'" fill="'+color+'"/>';
     } else {
-      svgRows += '<rect x="'+(LEFT_W+barLeft)+'" y="'+(y+4)+'" width="'+barW+'" height="14" fill="'+color+'" rx="2" opacity="0.85"/>';
-      if(barW>30){
-        svgRows += '<text x="'+(LEFT_W+barLeft+4)+'" y="'+(y+15)+'" font-family="IBM Plex Mono,monospace" font-size="8" fill="white">';
-        var bl = t.name.length>12?t.name.slice(0,10)+'..':t.name;
-        svgRows += escH(bl)+'</text>';
+      // Ha csonkolt: ferdevégű határoló
+      var rx1 = LEFT_W+x1, ry = y+3, rh = ROW_H-6, rw = barW;
+      if(!csonkL && !csonkR){
+        svgRows += '<rect x="'+rx1+'" y="'+ry+'" width="'+rw+'" height="'+rh+'" fill="'+color+'" rx="2" opacity="0.9"/>';
+      } else {
+        // Csonkolt vég jelzése: ferdevonallal
+        var pts = '';
+        if(csonkL && csonkR){
+          pts = (rx1)+','+(ry+rh)+' '+(rx1+8)+','+ry+' '+(rx1+rw-8)+','+ry+' '+(rx1+rw)+','+(ry+rh);
+        } else if(csonkL){
+          pts = rx1+','+(ry+rh)+' '+(rx1+8)+','+ry+' '+(rx1+rw)+','+ry+' '+(rx1+rw)+','+(ry+rh);
+        } else {
+          pts = rx1+','+ry+' '+(rx1+rw-8)+','+ry+' '+(rx1+rw)+','+(ry+rh)+' '+rx1+','+(ry+rh);
+        }
+        svgRows += '<polygon points="'+pts+'" fill="'+color+'" opacity="0.9"/>';
+      }
+      // Progress fill
+      var prog = t.progress||0;
+      if(prog>0){
+        svgRows += '<rect x="'+rx1+'" y="'+(ry+rh-3)+'" width="'+Math.round(rw*prog/100)+'" height="3" fill="rgba(255,255,255,0.4)" rx="1"/>';
       }
     }
   });
-  var todayOff = pStart ? gDaysDiff(pStart, new Date().toISOString().slice(0,10)) : -1;
-  var todayLine = '';
-  if(todayOff>=0 && todayOff<=totalDays){
-    var tx = LEFT_W + Math.round(todayOff/totalDays*BAR_W);
-    todayLine = '<line x1="'+tx+'" y1="0" x2="'+tx+'" y2="'+(HEADER_H+tasks.length*ROW_H)+'" stroke="#e8a020" stroke-width="1.5" opacity="0.7" stroke-dasharray="4,2"/>';
-  }
-  var svgH = HEADER_H + tasks.length*ROW_H + 10;
-  var svgChart = '<svg width="'+CHART_W+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">';
-  svgChart += '<rect width="'+CHART_W+'" height="'+svgH+'" fill="#161b26"/>';
-  // Header
-  svgChart += '<rect x="0" y="0" width="'+CHART_W+'" height="'+HEADER_H+'" fill="#1e2535"/>';
-  svgChart += '<text x="8" y="20" font-family="IBM Plex Mono,monospace" font-size="10" fill="#6b7a96" font-weight="bold">FELADAT</text>';
-  svgChart += '<line x1="'+LEFT_W+'" y1="0" x2="'+LEFT_W+'" y2="'+svgH+'" stroke="#2a3347" stroke-width="1"/>';
-  svgChart += svgRows + todayLine + '</svg>';
 
-  // Résztvevők táblázat HTML
+  // Fejléc: hónapok + törés jelölők
+  var headerSvg = '';
+  var d = new Date(fromDate+'T00:00:00');
+  var endD = new Date(toDate+'T00:00:00');
+  var lastMonth = '';
+  while(d <= endD){
+    var ds = d.toISOString().slice(0,10);
+    var x  = gDateToX(ds, fromDate, breaks, CHART_W, totalDays);
+    var mn = d.getFullYear()+'-'+(d.getMonth()+1);
+    if(mn !== lastMonth){
+      headerSvg += '<text x="'+(LEFT_W+x+2)+'" y="14" font-family="IBM Plex Mono,monospace" font-size="9" fill="#6b7a96">'+d.toLocaleDateString('hu-HU',{month:'short',year:'numeric'})+'</text>';
+      headerSvg += '<line x1="'+(LEFT_W+x)+'" y1="0" x2="'+(LEFT_W+x)+'" y2="'+(HEADER_H+tasks.length*ROW_H)+'" stroke="#2a3347" stroke-width="0.5"/>';
+      lastMonth = mn;
+    }
+    d.setDate(d.getDate()+1);
+  }
+
+  // Ma vonal
+  var todayX = gDateToX(new Date().toISOString().slice(0,10), fromDate, breaks, CHART_W, totalDays);
+  if(todayX>=0 && todayX<=CHART_W){
+    svgRows += '<line x1="'+(LEFT_W+todayX)+'" y1="0" x2="'+(LEFT_W+todayX)+'" y2="'+(HEADER_H+tasks.length*ROW_H)+'" stroke="#e8a020" stroke-width="1.5" stroke-dasharray="4,2" opacity="0.8"/>';
+  }
+
+  // Törés jelölők (~~~~~)
+  breaks.forEach(function(b){
+    var bx = gDateToX(gAddDays(fromDate, b.start), fromDate, breaks, CHART_W, totalDays);
+    var fullH = HEADER_H + tasks.length*ROW_H;
+    // Szaggatott függőleges vonal
+    svgRows += '<line x1="'+(LEFT_W+bx)+'" y1="0" x2="'+(LEFT_W+bx)+'" y2="'+fullH+'" stroke="#e8a020" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>';
+    // Tilde jelölés
+    svgRows += '<text x="'+(LEFT_W+bx-8)+'" y="'+(HEADER_H-4)+'" font-family="monospace" font-size="11" fill="#e8a020" opacity="0.8">~~~~</text>';
+    svgRows += '<rect x="'+(LEFT_W+bx-2)+'" y="0" width="12" height="'+fullH+'" fill="#e8a020" opacity="0.04"/>';
+  });
+
+  var svgH = HEADER_H + tasks.length*ROW_H;
+  var svgW  = LEFT_W  + CHART_W;
+  var svgChart = '<svg width="'+svgW+'" height="'+svgH+'" xmlns="http://www.w3.org/2000/svg">';
+  svgChart += '<rect width="'+svgW+'" height="'+svgH+'" fill="#161b26"/>';
+  svgChart += '<rect x="0" y="0" width="'+svgW+'" height="'+HEADER_H+'" fill="#1e2535"/>';
+  svgChart += '<line x1="'+LEFT_W+'" y1="0" x2="'+LEFT_W+'" y2="'+svgH+'" stroke="#2a3347" stroke-width="1"/>';
+  svgChart += headerSvg + svgRows + '</svg>';
+
+  // Feladat + résztvevő táblázat HTML
+  var taskHtml = tasks.map(function(t){
+    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{icon:'📌'};
+    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status,color:'#6b7a96'};
+    var mem     = members.find(function(m){return m.id===t.memberId;});
+    var effStart = t.startDate < fromDate ? fromDate+'*' : t.startDate;
+    var effEnd   = t.endDate   > toDate   ? toDate+'*'  : t.endDate;
+    return '<tr><td>'+typeObj.icon+'</td><td style="font-weight:'+(t.type==='phase'?700:400)+'">'+escH(t.name)+'</td><td>'+effStart+'</td><td>'+effEnd+'</td><td style="color:'+stObj.color+'">'+stObj.label+'</td><td>'+(mem?escH(mem.name):'–')+'</td></tr>';
+  }).join('');
+
   var memHtml = members.map(function(m){
     return '<tr><td>'+escH(m.name)+'</td><td>'+escH(m.role||'–')+'</td><td>'+escH(m.email||'–')+'</td><td>'+escH(m.phone||'–')+'</td></tr>';
   }).join('');
 
-  // Feladat táblázat
-  var taskHtml = tasks.map(function(t){
-    var typeObj = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{icon:'📌'};
-    var stObj   = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status, color:'#6b7a96'};
-    var mem     = members.find(function(m){return m.id===t.memberId;});
-    var dur     = (t.startDate&&t.endDate) ? gDaysDiff(t.startDate,t.endDate)+1 : '–';
-    return '<tr><td>'+typeObj.icon+'</td><td style="font-weight:'+(t.type==='phase'?700:400)+'">'+(t.parentId?'&nbsp;&nbsp;':'')+escH(t.name)+'</td><td>'+escH(t.startDate||'')+'</td><td>'+escH(t.endDate||'')+'</td><td>'+dur+'</td><td>'+(mem?escH(mem.name):'–')+'</td><td style="color:'+stObj.color+'">'+stObj.label+'</td></tr>';
-  }).join('');
-
-  var html = '<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>Gantt Riport – '+escH(proj?proj.name:'')+' – '+new Date().toLocaleDateString('hu-HU')+'</title>';
-  html += '<style>body{font-family:"IBM Plex Sans",Arial,sans-serif;background:#0f1117;color:#d4dbe8;margin:0;padding:24px;}';
-  html += 'h1{font-family:"IBM Plex Mono",monospace;color:#e8a020;font-size:20px;margin:0 0 4px;}';
-  html += '.sub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#6b7a96;margin-bottom:20px;}';
-  html += '.kpi{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}';
-  html += '.kpi-card{background:#161b26;border:1px solid #2a3347;border-radius:6px;padding:12px 16px;min-width:120px;}';
-  html += '.kpi-val{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:700;color:#f0f4ff;}';
-  html += '.kpi-label{font-size:10px;color:#6b7a96;margin-top:2px;}';
-  html += '.section{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#6b7a96;letter-spacing:2px;text-transform:uppercase;margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid #2a3347;}';
-  html += 'table{width:100%;border-collapse:collapse;font-size:12px;background:#161b26;border:1px solid #2a3347;border-radius:6px;overflow:hidden;}';
-  html += 'th{background:#1e2535;color:#6b7a96;font-family:"IBM Plex Mono",monospace;font-size:10px;padding:8px 10px;text-align:left;border-bottom:1px solid #2a3347;}';
-  html += 'td{padding:7px 10px;border-bottom:1px solid rgba(42,51,71,0.5);color:#d4dbe8;}';
-  html += 'tr:last-child td{border-bottom:none;}';
-  html += '.pbar{height:6px;background:#1e2535;border-radius:3px;overflow:hidden;margin-top:6px;}';
-  html += '.pbar-fill{height:100%;background:#27ae60;border-radius:3px;}';
-  html += '.print-btn{position:fixed;top:16px;right:16px;background:#e8a020;border:none;border-radius:5px;padding:8px 18px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:#0f1117;cursor:pointer;}';
-  html += '@media print{.print-btn{display:none;}body{background:#fff;color:#000;padding:12px;}h1{color:#333;}th{background:#eee;color:#333;}table{border:1px solid #ccc;}td{border-bottom:1px solid #eee;color:#333;}.kpi-card{background:#f5f5f5;border:1px solid #ddd;}.kpi-val{color:#333;}.sub{color:#666;}}';
-  html += '</style></head><body>';
-  html += '<button class="print-btn" onclick="window.print()">🖨️ Nyomtatás / PDF</button>';
-  html += '<h1>📅 Gantt Ütemterv Riport</h1>';
-  html += '<div class="sub">'+(proj?escH(proj.name)+' &nbsp;·&nbsp; ':'')+gDateFmt(pStart)+' – '+gDateFmt(pEnd)+'  &nbsp;·&nbsp;  Generálva: '+new Date().toLocaleString('hu-HU')+'</div>';
-  if(proj && proj.desc) html += '<div style="font-size:12px;color:#6b7a96;margin-bottom:16px;">'+escH(proj.desc)+'</div>';
-
-  // KPI
-  html += '<div class="kpi">';
-  html += '<div class="kpi-card"><div class="kpi-val">'+tasks.length+'</div><div class="kpi-label">Feladatok</div></div>';
-  html += '<div class="kpi-card"><div class="kpi-val" style="color:#27ae60">'+doneCnt+'</div><div class="kpi-label">Befejezett</div></div>';
-  html += '<div class="kpi-card"><div class="kpi-val" style="color:#2d7dd2">'+pct+'%</div><div class="kpi-label">Haladás<div class="pbar"><div class="pbar-fill" style="width:'+pct+'%"></div></div></div></div>';
-  html += '<div class="kpi-card"><div class="kpi-val">'+totalDays+'</div><div class="kpi-label">Összes nap</div></div>';
-  html += '<div class="kpi-card"><div class="kpi-val">'+members.length+'</div><div class="kpi-label">Résztvevő</div></div>';
-  html += '</div>';
-
-  // Gantt chart SVG
-  if(tasks.length>0 && pStart){
-    html += '<div class="section">GANTT CHART</div>';
-    html += '<div style="overflow-x:auto;background:#161b26;border:1px solid #2a3347;border-radius:6px;padding:10px;">'+svgChart+'</div>';
+  var periodLabel = gDateFmt(fromDate)+' – '+gDateFmt(toDate);
+  if(breaks.length>0){
+    var skippedTotal = breaks.reduce(function(s,b){return s+b.skipDays;},0);
+    periodLabel += ' ('+breaks.length+' törés, '+skippedTotal+' nap kihagyva)';
   }
 
-  // Feladatok táblázat
-  html += '<div class="section">FELADATOK</div>';
-  html += '<table><thead><tr><th>Típus</th><th>Feladat neve</th><th>Kezdés</th><th>Befejezés</th><th>Napok</th><th>Felelős</th><th>Státusz</th></tr></thead><tbody>'+taskHtml+'</tbody></table>';
+  var pdfHtml = '<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8">';
+  pdfHtml += '<title>Gantt Riport – '+escH(proj.name)+'</title>';
+  pdfHtml += '<style>body{font-family:"IBM Plex Sans",Arial,sans-serif;background:#0f1117;color:#d4dbe8;margin:0;padding:20px;}';
+  pdfHtml += 'h1{font-family:"IBM Plex Mono",monospace;color:#e8a020;font-size:18px;margin:0 0 4px;}';
+  pdfHtml += '.period{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#6b7a96;margin-bottom:16px;}';
+  pdfHtml += '.kpi{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}';
+  pdfHtml += '.kpi-card{background:#161b26;border:1px solid #2a3347;border-radius:5px;padding:10px 14px;}';
+  pdfHtml += '.kpi-val{font-family:"IBM Plex Mono",monospace;font-size:20px;font-weight:700;color:#f0f4ff;}';
+  pdfHtml += '.kpi-label{font-size:10px;color:#6b7a96;}';
+  pdfHtml += '.section{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#6b7a96;letter-spacing:2px;margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid #2a3347;}';
+  pdfHtml += 'table{width:100%;border-collapse:collapse;font-size:11px;background:#161b26;border:1px solid #2a3347;border-radius:5px;overflow:hidden;}';
+  pdfHtml += 'th{background:#1e2535;color:#6b7a96;font-family:"IBM Plex Mono",monospace;font-size:9px;padding:7px 8px;text-align:left;border-bottom:1px solid #2a3347;}';
+  pdfHtml += 'td{padding:6px 8px;border-bottom:1px solid rgba(42,51,71,0.5);}';
+  pdfHtml += 'tr:last-child td{border-bottom:none;}';
+  pdfHtml += '.break-note{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#e8a020;background:rgba(232,160,32,0.08);border:1px solid rgba(232,160,32,0.25);border-radius:4px;padding:6px 10px;margin-bottom:12px;}';
+  pdfHtml += '.print-btn{position:fixed;top:14px;right:14px;background:#e8a020;border:none;border-radius:4px;padding:7px 16px;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:#0f1117;cursor:pointer;}';
+  pdfHtml += '@media print{.print-btn{display:none;}body{background:#fff;color:#000;padding:8px;}h1{color:#333;}.kpi-card{background:#f5f5f5;border:1px solid #ddd;}.kpi-val{color:#333;}th{background:#eee;color:#555;}table{border:1px solid #ccc;}td{color:#333;}.period{color:#666;}.section{color:#666;border-color:#ddd;}.break-note{background:#fff8e7;border-color:#e8a020;color:#c07000;}}';
+  pdfHtml += '</style></head><body>';
+  pdfHtml += '<button class="print-btn" onclick="window.print()">🖨️ Nyomtatás / PDF</button>';
+  pdfHtml += '<h1>📅 Gantt Riport – '+escH(proj.name)+'</h1>';
+  pdfHtml += '<div class="period">Időszak: '+periodLabel+'</div>';
 
-  // Résztvevők
+  if(breaks.length > 0){
+    pdfHtml += '<div class="break-note">⚡ Automatikus törés alkalmazva – a ~~~~ jelzi ahol az üres szakasz ki van hagyva. A * jelölésű dátumok az időablakon kívül esnek.</div>';
+  }
+
+  pdfHtml += '<div class="kpi">';
+  pdfHtml += '<div class="kpi-card"><div class="kpi-val">'+tasks.length+'</div><div class="kpi-label">Feladat</div></div>';
+  pdfHtml += '<div class="kpi-card"><div class="kpi-val" style="color:#27ae60">'+doneCnt+'</div><div class="kpi-label">Befejezett</div></div>';
+  pdfHtml += '<div class="kpi-card"><div class="kpi-val" style="color:#2d7dd2">'+pct+'%</div><div class="kpi-label">Haladás</div></div>';
+  pdfHtml += '<div class="kpi-card"><div class="kpi-val">'+effDays+'</div><div class="kpi-label">Eff. nap</div></div>';
+  pdfHtml += '</div>';
+
+  if(tasks.length > 0){
+    pdfHtml += '<div class="section">GANTT CHART</div>';
+    pdfHtml += '<div style="overflow-x:auto;background:#161b26;border:1px solid #2a3347;border-radius:5px;padding:8px;">'+svgChart+'</div>';
+  }
+
+  pdfHtml += '<div class="section">FELADATOK</div>';
+  pdfHtml += '<table><thead><tr><th>T</th><th>Feladat</th><th>Kezdés</th><th>Befejezés</th><th>Státusz</th><th>Felelős</th></tr></thead><tbody>'+taskHtml+'</tbody></table>';
+
   if(members.length>0){
-    html += '<div class="section">RÉSZTVEVŐK</div>';
-    html += '<table><thead><tr><th>Név</th><th>Titulus / Feladatkör</th><th>Email</th><th>Telefon</th></tr></thead><tbody>'+memHtml+'</tbody></table>';
+    pdfHtml += '<div class="section">RÉSZTVEVŐK</div>';
+    pdfHtml += '<table><thead><tr><th>Név</th><th>Titulus</th><th>Email</th><th>Telefon</th></tr></thead><tbody>'+memHtml+'</tbody></table>';
   }
 
-  html += '</body></html>';
+  pdfHtml += '</body></html>';
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var win = window.open(url, '_blank');
+  var blob = new Blob([pdfHtml], {type:'text/html;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  var win  = window.open(url, '_blank');
   if(win) win.focus();
-  if(typeof showToast==='function') showToast('📄 PDF riport megnyitva! Használd a Nyomtatás / PDF gombot!');
+  if(typeof showToast==='function') showToast('📄 PDF riport megnyitva!');
 }
+window.ganttRunReport = ganttRunReport;
+
+// ── XLS EXPORT ────────────────────────────────────────────────────
+function ganttBuildXLS(proj, tasks, members, fromDate, toDate) {
+  var rows = [['Típus','Feladat neve','Kezdés (eff.)','Befejezés (eff.)','Teljes kezdés','Teljes befejezés','Időtartam (nap)','Felelős','Titulus','Státusz','Haladás %','Megjegyzés']];
+  tasks.forEach(function(t){
+    var typeObj  = GANTT_TASK_TYPES.find(function(x){return x.id===t.type;})||{label:t.type};
+    var stObj    = GANTT_STATUSES.find(function(s){return s.id===t.status;})||{label:t.status};
+    var mem      = members.find(function(m){return m.id===t.memberId;});
+    var effStart = t.startDate < fromDate ? fromDate : t.startDate;
+    var effEnd   = t.endDate   > toDate   ? toDate   : t.endDate;
+    var dur      = gDaysDiff(t.startDate, t.endDate)+1;
+    rows.push([typeObj.label, t.name, effStart, effEnd, t.startDate, t.endDate, dur,
+               mem?mem.name:'', mem?mem.role:'', stObj.label, t.progress||0, t.note||'']);
+  });
+  rows.push([]); rows.push(['=== RÉSZTVEVŐK ===']);
+  rows.push(['Név','Titulus','Email','Telefon','Megjegyzés']);
+  members.forEach(function(m){ rows.push([m.name, m.role||'', m.email||'', m.phone||'', m.note||'']); });
+  rows.push([]); rows.push(['Időablak: '+fromDate+' – '+toDate]);
+
+  var tsv  = rows.map(function(r){ return r.join('\t'); }).join('\n');
+  var blob = new Blob(['\ufeff'+tsv], {type:'text/tab-separated-values;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href=url; a.download='gantt_'+proj.name.replace(/[^a-zA-Z0-9]/g,'_')+'_'+fromDate+'_'+toDate+'.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if(typeof showToast==='function') showToast('📥 XLS riport letöltve!');
+}
+
+function ganttExportXLS() { ganttOpenReportModal('xls'); }
+window.ganttExportXLS = ganttExportXLS;
+
+function ganttExportPDF() { ganttOpenReportModal('pdf'); }
 window.ganttExportPDF = ganttExportPDF;
 
 // Alap helper-ek exportálása (enterGanttModule az IIFE-n kívülről hívja)
