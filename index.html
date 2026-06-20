@@ -12113,7 +12113,7 @@ function renderQDashboard() {
   const thisYearQ = _qStore.filter(q=>q.createdAt&&q.createdAt.startsWith(thisYear));
   const recent = _qStore.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).slice(0,5);
 
-  let html = '<div style="max-width:900px;">';
+  let html = '<div style="max-width:1400px;">';
   html += '<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent);margin-bottom:20px;">📝 Árajánlatkészítő</div>';
 
   // KPI kártyák - inline stílussal hogy ne függjenek globális CSS-től
@@ -12138,7 +12138,7 @@ function renderQDashboard() {
   if(recent.length > 0) {
     html += '<div class="panel-title">Legutóbbi ajánlatok</div>';
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-    html += '<th>Azonosító</th><th>Projekt</th><th>Megrendelő</th><th>Típus</th><th>Deviza</th><th>Nettó összeg</th><th>Dátum</th><th></th>';
+    html += '<th style="white-space:nowrap;">Azonosító</th><th style="white-space:nowrap;">Projekt</th><th style="white-space:nowrap;">Megrendelő</th><th style="white-space:nowrap;">Típus</th><th style="white-space:nowrap;">Deviza</th><th style="white-space:nowrap;">Nettó összeg</th><th style="white-space:nowrap;">Dátum</th><th></th>';
     html += '</tr></thead><tbody>';
     recent.forEach(function(q, qi) {
       const net = calcQNet(q);
@@ -12146,13 +12146,13 @@ function renderQDashboard() {
       const typeLbl = (QUOTE_TYPES.find(t=>t.value===q.type)||{label:q.type||'–'}).label;
       if(qi > 0) html += '<tr><td colspan="8" style="padding:0;"><hr style="border:none;border-top:1px solid var(--border);margin:0;"></td></tr>';
       html += '<tr>';
-      html += '<td style="font-family:var(--mono);font-size:12px;">' + (q.id||q.quoteNum||'–') + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">' + (q.projectId||'–') + '</td>';
-      html += '<td>' + (client?client.name:q.clientId||'–') + '</td>';
-      html += '<td style="font-size:11px;">' + typeLbl + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;">' + (q.currency||'HUF') + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:12px;">' + maskQMoney(net, q.currency) + ' + ÁFA</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">' + (q.createdAt||'').slice(0,10) + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">' + (q.id||q.quoteNum||'–') + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">' + (q.projectId||'–') + '</td>';
+      html += '<td style="white-space:nowrap;">' + (client?client.name:q.clientId||'–') + '</td>';
+      html += '<td style="font-size:11px;white-space:nowrap;">' + typeLbl + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">' + (q.currency||'HUF') + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">' + maskQMoney(net, q.currency) + ' + ÁFA</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">' + (q.createdAt||'').slice(0,10) + '</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" title="Szerkesztés" data-qid="' + (q.id||q.quoteNum||'') + '" onclick="qEditQuote(this.dataset.qid)">✏️</button>';
       html += '<button class="icon-btn" title="PDF előnézet" data-qid="' + (q.id||q.quoteNum||'') + '" onclick="qPreviewQuote(this.dataset.qid)" style="color:#27ae60;">📄</button>';
@@ -12874,7 +12874,7 @@ function renderQList(filter) {
   if(filter.date) {
     sorted = sorted.filter(function(q){ return (q.date||q.createdAt||'').startsWith(filter.date); });
   }
-  let html = '<div style="max-width:900px;">';
+  let html = '<div style="max-width:1400px;">';
   html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">';
   html += '<div style="font-family:var(--mono);font-size:16px;font-weight:700;">📋 Ajánlatok listája (' + sorted.length + ' db)</div>';
   html += '<button class="btn btn-primary" onclick="_qv(1)">&#10133; Új ajánlat</button>';
@@ -12889,7 +12889,7 @@ function renderQList(filter) {
     html += '<div style="color:var(--text-dim);font-family:var(--mono);font-size:13px;">Nincs találat.</div>';
   } else {
     html += '<div style="overflow-x:auto;"><table class="data-table"><thead><tr>';
-    html += '<th>Azonosító</th><th>Megrendelő</th><th>Típus</th><th>Nettó</th><th>Deviza</th><th>Dátum</th><th></th>';
+    html += '<th style="white-space:nowrap;">Azonosító</th><th style="white-space:nowrap;">Megrendelő</th><th style="white-space:nowrap;">Típus</th><th style="white-space:nowrap;">Nettó összeg</th><th style="white-space:nowrap;">Deviza</th><th style="white-space:nowrap;">Dátum</th><th></th>';
     html += '</tr></thead><tbody>';
     sorted.forEach(function(q, qi) {
       const net = calcQNet(q);
@@ -12897,12 +12897,12 @@ function renderQList(filter) {
       const typeLbl = (QUOTE_TYPES.find(function(t){return t.value===q.type;})||{label:q.type||'–'}).label;
       if(qi > 0) html += '<tr><td colspan="7" style="padding:0;"><hr style="border:none;border-top:1px solid var(--border);margin:0;"></td></tr>';
       html += '<tr>';
-      html += '<td style="font-family:var(--mono);font-size:12px;font-weight:700;">' + (q.id||'–') + '</td>';
-      html += '<td>' + (client?client.name:q.clientId||'–') + '</td>';
-      html += '<td style="font-size:11px;">' + typeLbl + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:12px;">' + maskQMoney(net,q.currency) + ' + ÁFA</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;">' + (q.currency||'HUF') + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">' + (q.date||q.createdAt||'').slice(0,10) + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap;">' + (q.id||'–') + '</td>';
+      html += '<td style="white-space:nowrap;">' + (client?client.name:q.clientId||'–') + '</td>';
+      html += '<td style="font-size:11px;white-space:nowrap;">' + typeLbl + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;white-space:nowrap;">' + maskQMoney(net,q.currency) + ' + ÁFA</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;white-space:nowrap;">' + (q.currency||'HUF') + '</td>';
+      html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);white-space:nowrap;">' + (q.date||q.createdAt||'').slice(0,10) + '</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" title="Szerkesztés" data-qid="' + q.id + '" onclick="qEditQuote(this.dataset.qid)">&#9999;</button>';
       html += '<button class="icon-btn" title="PDF előnézet" data-qid="' + q.id + '" onclick="qPreviewQuote(this.dataset.qid)" style="color:#27ae60;">&#128196;</button>';
