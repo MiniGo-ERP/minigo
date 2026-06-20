@@ -2540,25 +2540,16 @@ function toggleSensitive() {
   _sensitiveVisible = !_sensitiveVisible;
   localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
   _updateSensitiveBtn();
-  // Újrarendeli az aktuális nézetet
+  // Újrarendeli az aktuális nézetet – minden modult fed
   try {
     if(typeof showView !== 'function') return;
-    var viewMap = {
-      'nav-dashboard':'dashboard','nav-cashflow':'cashflow',
-      'nav-clients':'clients','nav-suppliers':'suppliers',
-      'nav-projects':'projects'
-    };
-    var active = document.querySelector('#sidebar-proj-section .sidebar-item.active');
-    if(active && viewMap[active.id]) { showView(viewMap[active.id]); return; }
-    // project-detail és egyéb nézetek
-    if(typeof currentView !== 'undefined') {
-      if(currentView === 'project-detail' && typeof currentProjectId !== 'undefined') {
-        showView('project-detail', currentProjectId);
-      } else if(currentView) {
-        showView(currentView);
-      } else {
-        showView('dashboard');
-      }
+    if(typeof currentView === 'undefined' || !currentView) { showView('dashboard'); return; }
+    // project-detail külön kezeljük mert currentProjectId kell
+    if(currentView === 'project-detail' && typeof currentProjectId !== 'undefined') {
+      showView('project-detail', currentProjectId);
+    } else {
+      // Minden más view: ml-tigs, ml-dashboard, ml-tig-detail, cashflow, quote-list stb.
+      showView(currentView, typeof currentProjectId !== 'undefined' ? currentProjectId : undefined);
     }
   } catch(e) { console.warn('toggleSensitive refresh:', e); }
 }
@@ -3324,10 +3315,10 @@ function renderPartTigSection(p, pid) {
         <span style="color:var(--text-dim);">TIG-ek száma: </span><strong>${linkedTigs.length} db</strong>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-        <span style="color:var(--text-dim);">Összes nettó: </span><strong style="color:var(--profit);">${fmtS(totalNet)}</strong>
+        <span style="color:var(--text-dim);">Összes nettó: </span><strong style="color:var(--profit);">${maskVal(totalNet)}</strong>
       </div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-size:12px;">
-        <span style="color:var(--text-dim);">Összes bruttó: </span><strong>${fmtS(totalGross)}</strong>
+        <span style="color:var(--text-dim);">Összes bruttó: </span><strong>${maskVal(totalGross)}</strong>
       </div>
     </div>`;
   }
@@ -3339,7 +3330,7 @@ function renderPartTigSection(p, pid) {
       <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:20px;">${i+1}.</span>
       <div style="font-family:var(--mono);font-size:12px;font-weight:700;min-width:130px;">${t.id}</div>
       <div style="font-size:11px;color:var(--text-dim);flex:1;">${t.date||'–'}</div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);">Nettó: ${fmtS(t.netTotal||0)}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);">Nettó: ${maskVal(t.netTotal||0)}</div>
       <button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;" onclick="mlRedownloadDirect('${t.id}')">⬇️</button>
     </div>`;
   });
@@ -8593,7 +8584,7 @@ function renderTigRow(t) {
   const sc=isSigned?'var(--success)':isDraft?'var(--accent)':'var(--accent2)';
   const sl=isSigned?'✅ Aláírt':isDraft?'📝 Piszkozat':'⏳ Aláírás alatt';
   const borderClr=isDraft?'var(--accent)':isSigned?'rgba(39,174,96,0.4)':'var(--border)';
-  const amountEl=isDraft?`<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:80px;text-align:right;">–</div>`:`<div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${fmt(t.grossTotal||0)}</div>`;
+  const amountEl=isDraft?`<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);min-width:80px;text-align:right;">–</div>`:`<div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${maskVal(t.grossTotal||0)}</div>`;
   return `<div style="background:var(--surface);border:1px solid ${borderClr};border-radius:6px;padding:12px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all 0.15s;" onclick="showView('ml-tig-detail','${t.id}')" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='${borderClr}'">${isDraft?`<div style="font-size:15px;flex-shrink:0;">📝</div>`:''}<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent2);min-width:120px;">${t.id}</div><div style="flex:1;"><div style="font-size:13px;color:var(--text-bright);font-weight:500;">${t.clientName||'–'}</div><div style="font-size:11px;color:var(--text-dim);">${(t.sections||[]).length} szekció · ${t.desc||''}</div></div>${amountEl}<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">${t.date||''}</div><span style="font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid ${sc};color:${sc};">${sl}</span></div>`;
 }
 
@@ -9106,7 +9097,7 @@ function renderMlTrash(){
         <div style="font-size:12px;color:var(--text);margin-top:2px;">${t.clientName||'–'} · ${t.date||''}</div>
         <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Törölve: ${del}${item.deletedBy?' · '+item.deletedBy:''}</div>
       </div>
-      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${fmt(t.grossTotal||0)}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--profit);font-weight:600;">${maskVal(t.grossTotal||0)}</div>
       <div style="display:flex;gap:6px;">
         <button class="btn btn-secondary" style="font-size:10px;padding:5px 10px;" onclick="mlRestoreFromTrash('${item.id}')">↩ Visszaállít</button>
         <button class="btn btn-danger"    style="font-size:10px;padding:5px 10px;" onclick="mlPermanentDelete('${item.id}')">🗑️ Végleges</button>
@@ -9327,7 +9318,7 @@ function mlEditRecalc(){
   });
   const grandGross=Math.round(grandNet*(1+vatPct)),grandVat=grandGross-grandNet;
   const el=document.getElementById('ml-edit-grand-total');
-  if(el){if(grandNet>0){el.style.display='';el.innerHTML=`<div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">VÉGÖSSZEG</div><div style="display:flex;gap:24px;flex-wrap:wrap;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--profit);">${fmt(grandNet)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA (${Math.round(vatPct*100)}%)</div><div style="font-family:var(--mono);font-size:14px;color:var(--text-dim);">${fmt(grandVat)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó (utalandó)</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text-bright);">${fmt(grandGross)}</div></div></div>`;}else el.style.display='none';}
+  if(el){if(grandNet>0){el.style.display='';el.innerHTML=`<div style="font-family:var(--mono);font-size:9px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">VÉGÖSSZEG</div><div style="display:flex;gap:24px;flex-wrap:wrap;"><div><div style="font-size:11px;color:var(--text-dim);">Nettó</div><div style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--profit);">${maskVal(grandNet)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">ÁFA (${Math.round(vatPct*100)}%)</div><div style="font-family:var(--mono);font-size:14px;color:var(--text-dim);">${maskVal(grandVat)}</div></div><div><div style="font-size:11px;color:var(--text-dim);">Bruttó (utalandó)</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text-bright);">${maskVal(grandGross)}</div></div></div>`;}else el.style.display='none';}
 }
 
 async function mlSaveEditTig(tigId){
@@ -12084,6 +12075,12 @@ function fmtQMoney(n, cur) {
   if(cur==='EUR') return num.toLocaleString('hu-HU') + ' €';
   return num.toLocaleString('hu-HU') + ' ' + cur;
 }
+function maskQMoney(n, cur) {
+  if(window._sensitiveVisible) return fmtQMoney(n, cur);
+  cur = cur || 'HUF';
+  const sym = cur==='EUR' ? '€' : cur==='HUF' ? 'Ft' : cur;
+  return '<span class="masked-val">•••• ' + sym + '</span>';
+}
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function renderQDashboard() {
@@ -12130,7 +12127,7 @@ function renderQDashboard() {
       html += '<td>' + (client?client.name:q.clientId||'–') + '</td>';
       html += '<td style="font-size:11px;">' + typeLbl + '</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;">' + (q.currency||'HUF') + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:12px;">' + fmtQMoney(net, q.currency) + ' + ÁFA</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;">' + maskQMoney(net, q.currency) + ' + ÁFA</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">' + (q.createdAt||'').slice(0,10) + '</td>';
       html += '<td><div class="row-acts">';
       html += '<button class="icon-btn" title="Szerkesztés" data-qid="' + (q.id||q.quoteNum||'') + '" onclick="qEditQuote(this.dataset.qid)">✏️</button>';
@@ -12622,12 +12619,12 @@ function renderQTotals(q) {
   let html = '<div style="background:var(--surface);border:2px solid var(--accent);border-radius:8px;padding:20px;">';
   html += '<div class="panel-title" style="margin-bottom:12px;">💰 Összesítő</div>';
   html += '<table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;">';
-  if(totals.material > 0) html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Anyag összesen:</td><td style="text-align:right;">' + fmtQMoney(totals.material, cur) + ' nettó</td></tr>';
-  if(totals.work > 0)     html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Munkadíj összesen:</td><td style="text-align:right;">' + fmtQMoney(totals.work, cur) + ' nettó</td></tr>';
-  if(totals.travel > 0)   html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Kiszállás összesen:</td><td style="text-align:right;">' + fmtQMoney(totals.travel, cur) + ' nettó</td></tr>';
-  html += '<tr style="border-top:1px solid var(--border);"><td style="padding:8px 0 4px;font-weight:700;">Összes nettó:</td><td style="text-align:right;font-weight:700;font-size:14px;">' + fmtQMoney(grandNet, cur) + '</td></tr>';
-  html += '<tr><td style="padding:4px 0;color:var(--text-dim);">ÁFA (' + vat + '%):</td><td style="text-align:right;color:var(--text-dim);">+ ' + fmtQMoney(vatAmt, cur) + '</td></tr>';
-  html += '<tr style="border-top:2px solid var(--accent);"><td style="padding:8px 0 0;font-family:var(--mono);font-weight:700;color:var(--accent);">VÉGÖSSZEG (bruttó):</td><td style="text-align:right;font-size:16px;font-weight:700;color:var(--accent);">' + fmtQMoney(gross, cur) + '</td></tr>';
+  if(totals.material > 0) html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Anyag összesen:</td><td style="text-align:right;">' + maskQMoney(totals.material, cur) + ' nettó</td></tr>';
+  if(totals.work > 0)     html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Munkadíj összesen:</td><td style="text-align:right;">' + maskQMoney(totals.work, cur) + ' nettó</td></tr>';
+  if(totals.travel > 0)   html += '<tr><td style="padding:4px 0;color:var(--text-dim);">Kiszállás összesen:</td><td style="text-align:right;">' + maskQMoney(totals.travel, cur) + ' nettó</td></tr>';
+  html += '<tr style="border-top:1px solid var(--border);"><td style="padding:8px 0 4px;font-weight:700;">Összes nettó:</td><td style="text-align:right;font-weight:700;font-size:14px;">' + maskQMoney(grandNet, cur) + '</td></tr>';
+  html += '<tr><td style="padding:4px 0;color:var(--text-dim);">ÁFA (' + vat + '%):</td><td style="text-align:right;color:var(--text-dim);">+ ' + maskQMoney(vatAmt, cur) + '</td></tr>';
+  html += '<tr style="border-top:2px solid var(--accent);"><td style="padding:8px 0 0;font-family:var(--mono);font-weight:700;color:var(--accent);">VÉGÖSSZEG (bruttó):</td><td style="text-align:right;font-size:16px;font-weight:700;color:var(--accent);">' + maskQMoney(gross, cur) + '</td></tr>';
   html += '</table></div>';
   return html;
 }
@@ -12879,7 +12876,7 @@ function renderQList(filter) {
       html += '<td style="font-family:var(--mono);font-size:12px;font-weight:700;">' + (q.id||'–') + '</td>';
       html += '<td>' + (client?client.name:q.clientId||'–') + '</td>';
       html += '<td style="font-size:11px;">' + typeLbl + '</td>';
-      html += '<td style="font-family:var(--mono);font-size:12px;">' + fmtQMoney(net,q.currency) + ' + ÁFA</td>';
+      html += '<td style="font-family:var(--mono);font-size:12px;">' + maskQMoney(net,q.currency) + ' + ÁFA</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;">' + (q.currency||'HUF') + '</td>';
       html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim);">' + (q.date||q.createdAt||'').slice(0,10) + '</td>';
       html += '<td><div class="row-acts">';
