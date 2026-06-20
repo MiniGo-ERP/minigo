@@ -2501,8 +2501,10 @@ let projects = [
 ];
 
 // ── UTILS ────────────────────────────────────────────────────────────────────
-// ── SENSITIVE DATA MASKING ───────────────────────────────────────────────────
-// localStorage-ban tároljuk az állapotot, default: rejtve (biztonságos)
+const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
+const fmtS = n => { const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).toFixed(1).replace('.',',')+' M Ft':a>=1000?s+Math.round(a/1000)+' e Ft':n+' Ft'; };
+// ── SENSITIVE DATA MASKING ─────────────────────────────────────────────────────
+// _sensitiveVisible, maskVal, maskPct, toggleSensitive – a fmtS UTÁN definiálva
 var _sensitiveVisible = localStorage.getItem('minigo_sensitive') === '1';
 
 function maskVal(n) {
@@ -2514,29 +2516,8 @@ function maskPct(pct) {
   return '<span class="masked-val">••%</span>';
 }
 function maskRaw(str) {
-  // Tetszőleges string maszkolása (pl. már formázott érték)
   if(_sensitiveVisible) return str;
   return '<span class="masked-val">•••• Ft</span>';
-}
-
-function toggleSensitive() {
-  _sensitiveVisible = !_sensitiveVisible;
-  localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
-  _updateSensitiveBtn();
-  // Újrarendeli az aktuális nézetet
-  if(typeof showView === 'function') {
-    var active = document.querySelector('.sidebar-item.active');
-    if(active && active.id) {
-      var viewMap = {
-        'nav-dashboard':'dashboard','nav-cashflow':'cashflow',
-        'nav-clients':'clients','nav-suppliers':'suppliers',
-        'nav-projects':'projects'
-      };
-      var v = viewMap[active.id];
-      if(v) showView(v);
-      else showView('dashboard');
-    } else showView('dashboard');
-  }
 }
 
 function _updateSensitiveBtn() {
@@ -2547,20 +2528,47 @@ function _updateSensitiveBtn() {
   if(label) label.textContent = _sensitiveVisible ? 'LÁTHATÓ' : 'REJTVE';
   if(btn){
     btn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése';
-    btn.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)';
+    btn.style.background  = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)';
     btn.style.borderColor = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
-    btn.style.color = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
+    btn.style.color       = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
     btn.onmouseover = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.3)' : 'rgba(232,160,32,0.3)'; };
     btn.onmouseout  = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)'; };
   }
 }
-window.toggleSensitive = toggleSensitive;
-window.maskVal = maskVal;
-window.maskPct = maskPct;
-window.maskRaw = maskRaw;
 
-const fmt  = n => Number(n).toLocaleString('hu-HU') + ' Ft';
-const fmtS = n => { const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).toFixed(1).replace('.',',')+' M Ft':a>=1000?s+Math.round(a/1000)+' e Ft':n+' Ft'; };
+function toggleSensitive() {
+  _sensitiveVisible = !_sensitiveVisible;
+  localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
+  _updateSensitiveBtn();
+  // Újrarendeli az aktuális nézetet
+  try {
+    if(typeof showView !== 'function') return;
+    var viewMap = {
+      'nav-dashboard':'dashboard','nav-cashflow':'cashflow',
+      'nav-clients':'clients','nav-suppliers':'suppliers',
+      'nav-projects':'projects'
+    };
+    var active = document.querySelector('#sidebar-proj-section .sidebar-item.active');
+    if(active && viewMap[active.id]) { showView(viewMap[active.id]); return; }
+    // project-detail és egyéb nézetek
+    if(typeof currentView !== 'undefined') {
+      if(currentView === 'project-detail' && typeof currentProjectId !== 'undefined') {
+        showView('project-detail', currentProjectId);
+      } else if(currentView) {
+        showView(currentView);
+      } else {
+        showView('dashboard');
+      }
+    }
+  } catch(e) { console.warn('toggleSensitive refresh:', e); }
+}
+
+window.toggleSensitive    = toggleSensitive;
+window.maskVal            = maskVal;
+window.maskPct            = maskPct;
+window.maskRaw            = maskRaw;
+window._updateSensitiveBtn= _updateSensitiveBtn;
+
 // Projekt ID-t HTML onclick attribútumba biztonságosan injektáló segédfüggvény
 // (megakadályozza hogy az ID-ban lévő " vagy ' karakterek törjék az attribútumot)
 const escPid = id => (id||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
@@ -2762,9 +2770,9 @@ function renderCashflow(){
   return `
   <div class="cf-stats">
     <div class="cf-stat"><div class="cf-stat-val" style="color:var(--profit)">${fmt(tInc)}</div><div class="cf-stat-label">Összes bevétel (nettó)</div></div>
-    <div class="cf-stat"><div class="cf-stat-val" style="color:var(--cost)">${fmt(tCost)}</div><div class="cf-stat-label">Összes kiadás (nettó)</div></div>
-    <div class="cf-stat"><div class="cf-stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${fmt(tPro)}</div><div class="cf-stat-label">Nyereség (nettó)</div></div>
-    <div class="cf-stat"><div class="cf-stat-val" style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${margin}%</div><div class="cf-stat-label">Marzs</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:var(--cost)">${maskVal(tCost)}</div><div class="cf-stat-label">Összes kiadás (nettó)</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${maskVal(tPro)}</div><div class="cf-stat-label">Nyereség (nettó)</div></div>
+    <div class="cf-stat"><div class="cf-stat-val" style="color:${margin>=0?'var(--profit)':'var(--danger)'}">${maskPct(margin)}</div><div class="cf-stat-label">Marzs</div></div>
   </div>
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
     <button class="btn btn-secondary" onclick="openExportModal()" style="font-size:11px;">📊 Export XLS</button>
@@ -2799,7 +2807,7 @@ function renderCashflow(){
         return `<div style="margin-bottom:10px;">
           <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;">
             <span style="color:var(--text)">${name}</span>
-            <span style="font-family:var(--mono);color:var(--cost)">${fmt(tot)}</span>
+            <span style="font-family:var(--mono);color:var(--cost)">${maskVal(tot)}</span>
           </div>
           <div style="height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;">
             <div style="width:${w}%;height:100%;background:rgba(224,82,82,0.5);border-radius:3px;"></div>
@@ -4146,8 +4154,8 @@ function openArchiveModal(pid) {
       <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">${co?co.name:p.clientId} · ${p.desc||''}</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
         <span style="font-size:11px;color:var(--profit)">💚 Bevétel: ${fmt(inc)}</span>
-        <span style="font-size:11px;color:var(--cost)">🔴 Kiadás: ${fmt(cost)}</span>
-        <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">= Nyereség: ${fmt(pro)}</span>
+        <span style="font-size:11px;color:var(--cost)">🔴 Kiadás: ${maskVal(cost)}</span>
+        <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">= Nyereség: ${maskVal(pro)}</span>
         <span style="font-size:11px;color:var(--text-dim)">📎 ${docCount} dokumentum</span>
       </div>
     </div>
@@ -4208,8 +4216,8 @@ function openArchiveBrowser() {
             <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Archiválva: ${p.archivedAt||'–'} ${p.archiveNote?'· '+p.archiveNote:''}</div>
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;">
               <span style="font-size:11px;color:var(--profit)">+${fmt(inc)}</span>
-              <span style="font-size:11px;color:var(--cost)">-${fmt(cost)}</span>
-              <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${fmt(pro)}</span>
+              <span style="font-size:11px;color:var(--cost)">-${maskVal(cost)}</span>
+              <span style="font-size:11px;color:${pro>=0?'var(--profit)':'var(--danger)'}">${pro>=0?'+':''}${maskVal(pro)}</span>
               <span style="font-size:11px;color:var(--text-dim)">📎 ${docCount} dok.</span>
             </div>
           </div>
