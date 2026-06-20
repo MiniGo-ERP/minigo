@@ -2521,34 +2521,59 @@ function maskRaw(str) {
 }
 
 function _updateSensitiveBtn() {
-  var icon  = document.getElementById('sensitiveToggleIcon');
-  var label = document.getElementById('sensitiveToggleLabel');
-  var btn   = document.getElementById('sensitiveToggleBtn');
-  if(icon)  icon.textContent  = _sensitiveVisible ? '👁' : '🔒';
-  if(label) label.textContent = _sensitiveVisible ? 'LÁTHATÓ' : 'REJTVE';
-  if(btn){
-    btn.title = _sensitiveVisible ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése';
-    btn.style.background  = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)';
-    btn.style.borderColor = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
-    btn.style.color       = _sensitiveVisible ? 'var(--success)' : 'var(--accent)';
-    btn.onmouseover = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.3)' : 'rgba(232,160,32,0.3)'; };
-    btn.onmouseout  = function(){ this.style.background = _sensitiveVisible ? 'rgba(39,174,96,0.15)' : 'rgba(232,160,32,0.15)'; };
-  }
+  var isVis = _sensitiveVisible;
+  var bg     = isVis ? 'rgba(39,174,96,0.15)'  : 'rgba(232,160,32,0.15)';
+  var bgHov  = isVis ? 'rgba(39,174,96,0.3)'   : 'rgba(232,160,32,0.3)';
+  var bColor = isVis ? 'var(--success)'         : 'var(--accent)';
+  var icon   = isVis ? '👁'  : '🔒';
+  var label  = isVis ? 'LÁTHATÓ' : 'REJTVE';
+  var title  = isVis ? 'Pénzügyi adatok elrejtése' : 'Pénzügyi adatok megjelenítése';
+
+  // Minden topbarban lévő gomb frissítése
+  ['', 'Quote', 'Raktar'].forEach(function(suffix) {
+    var btn = document.getElementById('sensitiveToggleBtn' + suffix);
+    var ico = document.getElementById('sensitiveToggleIcon' + suffix);
+    var lbl = document.getElementById('sensitiveToggleLabel' + suffix);
+    if(ico) ico.textContent = icon;
+    if(lbl) lbl.textContent = label;
+    if(btn) {
+      btn.title = title;
+      btn.style.background  = bg;
+      btn.style.borderColor = bColor;
+      btn.style.color       = bColor;
+      btn.onmouseover = function(){ this.style.background = bgHov; };
+      btn.onmouseout  = function(){ this.style.background = bg; };
+    }
+  });
 }
 
 function toggleSensitive() {
   _sensitiveVisible = !_sensitiveVisible;
   localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
   _updateSensitiveBtn();
-  // Újrarendeli az aktuális nézetet – minden modult fed
   try {
+    // Quote modul aktív?
+    var quoteMod = document.getElementById('quote-module');
+    if(quoteMod && quoteMod.style.display !== 'none') {
+      if(window.quoteShowView && window._quoteCurrentView) {
+        window.quoteShowView(window._quoteCurrentView);
+      }
+      return;
+    }
+    // Raktar modul aktív?
+    var rMod = document.getElementById('raktar-module');
+    if(rMod && rMod.style.display !== 'none') {
+      if(window.raktarShowView && window._raktarCurrentView) {
+        window.raktarShowView(window._raktarCurrentView);
+      }
+      return;
+    }
+    // Projekt modul / főmenü
     if(typeof showView !== 'function') return;
     if(typeof currentView === 'undefined' || !currentView) { showView('dashboard'); return; }
-    // project-detail külön kezeljük mert currentProjectId kell
     if(currentView === 'project-detail' && typeof currentProjectId !== 'undefined') {
       showView('project-detail', currentProjectId);
     } else {
-      // Minden más view: ml-tigs, ml-dashboard, ml-tig-detail, cashflow, quote-list stb.
       showView(currentView, typeof currentProjectId !== 'undefined' ? currentProjectId : undefined);
     }
   } catch(e) { console.warn('toggleSensitive refresh:', e); }
@@ -9735,19 +9760,17 @@ window.enterModule = enterModule;
 
   // ── ÁRAJÁNLATKÉSZÍTŐ MODUL BELÉPÉS/KILÉPÉS ──────────────────────────────
   window.enterQuoteModule = function() {
-    // Launcher és MiniGo layout elrejtése
     document.getElementById('moduleLauncher').style.display = 'none';
     document.getElementById('mainLayout').style.display = 'none';
     const idoMod = document.getElementById('ido-module');
     if(idoMod) idoMod.style.display = 'none';
     const migoTopbar = document.getElementById('minigo-topbar');
     if(migoTopbar) migoTopbar.style.display = 'none';
-    // Quote modul megjelenítése
     const quoteMod = document.getElementById('quote-module');
     if(quoteMod) quoteMod.style.display = 'flex';
     const badge = document.getElementById('quote-userBadge');
     if(badge && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
-    // Dashboard renderelés rövid késéssel (DOM render után)
+    if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
     setTimeout(function() {
       if(window.quoteShowView) window.quoteShowView('dashboard');
     }, 30);
@@ -9777,6 +9800,7 @@ window.enterModule = enterModule;
     if(rMod) rMod.style.display = 'flex';
     const badge = document.getElementById('raktar-userBadge');
     if(badge && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
+    if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
     setTimeout(function() { if(window.raktarShowView) window.raktarShowView('dashboard'); }, 30);
   };
 
@@ -12033,6 +12057,7 @@ function quoteInit() {
 }
 
 function quoteShowView(v) {
+  window._quoteCurrentView = v; // toggleSensitive frissítéshez
   quoteInit();
   qNav(v);
   const mc = qmc();
@@ -13361,6 +13386,7 @@ function raktarInit() {
 }
 
 function raktarShowView(v) {
+  window._raktarCurrentView = v; // toggleSensitive frissítéshez
   raktarInit();
   rNav(v === 'trash' ? 'trash' : v === 'helyek' ? 'helyek' : v);
   var mc = rmc();
@@ -16732,6 +16758,12 @@ setTimeout(()=>{
     <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;">📝 ÁRAJÁNLATKÉSZÍTŐ</span>
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
       <span id="quote-userBadge" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);"></span>
+      <button id="sensitiveToggleBtnQuote" onclick="toggleSensitive()"
+        style="background:rgba(232,160,32,0.15);border:1px solid var(--accent);border-radius:4px;padding:5px 10px;cursor:pointer;transition:all 0.15s;color:var(--accent);font-family:var(--mono);font-size:10px;font-weight:600;display:flex;align-items:center;gap:5px;"
+        onmouseover="this.style.background='rgba(232,160,32,0.3)'"
+        onmouseout="this.style.background='rgba(232,160,32,0.15)'">
+        <span id="sensitiveToggleIconQuote">🔒</span> <span id="sensitiveToggleLabelQuote">REJTVE</span>
+      </button>
       <button onclick="quoteModuleBack()" class="btn btn-secondary" style="font-size:11px;padding:4px 12px;">← Főmenü</button>
     </div>
   </div>
@@ -16771,6 +16803,12 @@ setTimeout(()=>{
     <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;">📦 RAKTÁRKÉSZLET</span>
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
       <span id="raktar-userBadge" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);"></span>
+      <button id="sensitiveToggleBtnRaktar" onclick="toggleSensitive()"
+        style="background:rgba(232,160,32,0.15);border:1px solid var(--accent);border-radius:4px;padding:5px 10px;cursor:pointer;transition:all 0.15s;color:var(--accent);font-family:var(--mono);font-size:10px;font-weight:600;display:flex;align-items:center;gap:5px;"
+        onmouseover="this.style.background='rgba(232,160,32,0.3)'"
+        onmouseout="this.style.background='rgba(232,160,32,0.15)'">
+        <span id="sensitiveToggleIconRaktar">🔒</span> <span id="sensitiveToggleLabelRaktar">REJTVE</span>
+      </button>
       <button onclick="raktarModuleBack()" class="btn btn-secondary" style="font-size:11px;padding:4px 12px;">← Főmenü</button>
     </div>
   </div>
