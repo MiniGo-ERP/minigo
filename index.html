@@ -2506,6 +2506,7 @@ const fmtS = n => { const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).to
 // ── SENSITIVE DATA MASKING ─────────────────────────────────────────────────────
 // _sensitiveVisible, maskVal, maskPct, toggleSensitive – a fmtS UTÁN definiálva
 var _sensitiveVisible = localStorage.getItem('minigo_sensitive') === '1';
+window._sensitiveVisible = _sensitiveVisible; // maskQMoney (IIFE scope) számára
 
 function maskVal(n) {
   if(_sensitiveVisible) return fmtS(n);
@@ -2549,6 +2550,7 @@ function _updateSensitiveBtn() {
 
 function toggleSensitive() {
   _sensitiveVisible = !_sensitiveVisible;
+  window._sensitiveVisible = _sensitiveVisible; // maskQMoney is uses this
   localStorage.setItem('minigo_sensitive', _sensitiveVisible ? '1' : '0');
   _updateSensitiveBtn();
   try {
@@ -9770,7 +9772,7 @@ window.enterModule = enterModule;
     if(quoteMod) quoteMod.style.display = 'flex';
     const badge = document.getElementById('quote-userBadge');
     if(badge && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
-    if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
+    if(typeof window._updateSensitiveBtn === 'function') window._updateSensitiveBtn();
     setTimeout(function() {
       if(window.quoteShowView) window.quoteShowView('dashboard');
     }, 30);
@@ -9800,7 +9802,7 @@ window.enterModule = enterModule;
     if(rMod) rMod.style.display = 'flex';
     const badge = document.getElementById('raktar-userBadge');
     if(badge && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
-    if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
+    if(typeof window._updateSensitiveBtn === 'function') window._updateSensitiveBtn();
     setTimeout(function() { if(window.raktarShowView) window.raktarShowView('dashboard'); }, 30);
   };
 
