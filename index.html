@@ -203,7 +203,7 @@
 
   /* Carousel wrapper */
   .launcher-carousel-wrap { width:100%; max-width:1100px; position:relative; }
-  .launcher-carousel-track-outer { overflow:hidden; width:100%; min-height:320px; }
+  .launcher-carousel-track-outer { overflow:hidden; width:100%; }
 
   /* Track: 2 soros grid lapok egymás alatt, függőlegesen lapozunk */
   .launcher-carousel-track {
@@ -1062,6 +1062,37 @@
         </div>
       </div>
     </div>
+
+    <div id="sidebar-gantt-section" style="display:none">
+      <span class="module-badge" style="background:rgba(22,160,133,0.15);color:#16a085;border-color:rgba(22,160,133,0.3);">📅 Gantt Ütemterv</span>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Navigáció</div>
+        <div class="sidebar-item" id="nav-gantt-dashboard" onclick="ganttShowView('dashboard')"><span>📊</span> Áttekintés</div>
+        <div class="sidebar-item" id="nav-gantt-chart"     onclick="ganttShowView('chart')">    <span>📅</span> Gantt nézet</div>
+        <div class="sidebar-item" id="nav-gantt-tasks"     onclick="ganttShowView('tasks')">    <span>📋</span> Feladatok</div>
+        <div class="sidebar-item" id="nav-gantt-members"   onclick="ganttShowView('members')">  <span>👥</span> Résztvevők</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Gyors műveletek</div>
+        <div class="sidebar-item" onclick="ganttOpenNewProjectModal()"><span>➕</span> Új projekt</div>
+        <div class="sidebar-item" onclick="ganttOpenTaskModal(null)">  <span>📌</span> Új feladat</div>
+        <div class="sidebar-item" onclick="ganttOpenMemberModal(null)"><span>👤</span> Új résztvevő</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Export</div>
+        <div class="sidebar-item" onclick="ganttExportXLS()"><span>📊</span> Export XLS</div>
+        <div class="sidebar-item" onclick="ganttExportPDF()"><span>📄</span> Export PDF</div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section" style="padding-bottom:10px;">
+        <div class="sidebar-item" id="nav-gantt-trash" onclick="ganttShowView('trash')" style="color:var(--danger);opacity:0.7;">
+          <span>🗑️</span> Kuka
+          <span id="trash-count-badge-gantt" style="display:none;margin-left:auto;background:var(--danger);color:#fff;font-family:var(--mono);font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="main">
@@ -1069,8 +1100,6 @@
     <div class="content" id="mainContent"></div>
   </div>
 </div>
-
-<!-- MODAL: ÚJ PROJEKT -->
 <div class="modal-overlay" id="newProjectModal">
   <div class="modal">
     <div class="modal-title">➕ Új Projekt Rögzítése</div>
@@ -16100,14 +16129,20 @@ window.updateGanttLauncherStats = updateGanttLauncherStats;
 // ── ENTER MODULE WRAPPER ──────────────────────────────────────────
 window.enterGanttModule = function() {
   document.getElementById('moduleLauncher').style.display = 'none';
+  // Egyéb modulok elrejtése
+  ['quote-module','raktar-module','ido-module'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.style.display='none';
+  });
+  // MiniGo topbar visszaállítása
+  var migoTopbar = document.getElementById('minigo-topbar');
+  if(migoTopbar) migoTopbar.style.display='';
   document.getElementById('mainLayout').style.display = 'flex';
-  var ido = document.getElementById('ido-module');
-  if(ido) ido.style.display = 'none';
   document.getElementById('activeModuleLabel').textContent = 'GANTT ÜTEMTERV';
-  var ganttSec = document.getElementById('sidebar-gantt-section');
+  // Sidebar szekciók váltása
   ['sidebar-proj-section','sidebar-rel-section','sidebar-ml-section'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
+  var ganttSec = document.getElementById('sidebar-gantt-section');
   if(ganttSec) ganttSec.style.display='';
   gLoad();
   ganttShowView('dashboard');
@@ -16386,7 +16421,11 @@ window.ganttExportPDF = ganttExportPDF;
   window.addEventListener('resize', function() { lcUpdate(); });
 
   // showLauncher után – setTimeout kell, mert display:flex-re vált
-  window.launcherCarouselRefresh = function() { _lcPage = 0; setTimeout(lcUpdate, 60); };
+  window.launcherCarouselRefresh = function() {
+    _lcPage = 0;
+    setTimeout(lcUpdate, 60);   // első hívás - DOM megjelenik
+    setTimeout(lcUpdate, 200);  // második hívás - CSS már teljesen renderelt, pontos offsetHeight
+  };
 
   setTimeout(lcUpdate, 100);
 })();
