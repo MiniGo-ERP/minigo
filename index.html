@@ -198,14 +198,14 @@
   .danger-bar { background:rgba(224,82,82,0.08); border:1px solid var(--danger); border-radius:6px; padding:11px 14px; display:flex; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--text); }
 
   /* MODULE LAUNCHER */
-  .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:20px 24px; overflow:hidden; flex-direction:column; }
+  .module-launcher { display:flex; flex:1; background:var(--bg); align-items:center; justify-content:center; padding:20px 24px; overflow-y:auto; flex-direction:column; }
   .launcher-header { text-align:center; margin-bottom:20px; flex-shrink:0; }
 
   /* Carousel wrapper */
-  .launcher-carousel-wrap { width:100%; max-width:1100px; position:relative; }
+  .launcher-carousel-wrap { width:100%; max-width:1100px; }
   .launcher-carousel-track-outer { overflow:hidden; width:100%; height:360px; }
 
-  /* Track: 2 soros grid lapok egymás alatt, függőlegesen lapozunk */
+  /* Track */
   .launcher-carousel-track {
     display:grid;
     grid-template-columns: repeat(3, 1fr);
@@ -232,15 +232,13 @@
   .tile-stat-label { font-size:10px; color:var(--text-dim); margin-top:1px; }
   .tile-locked { position:absolute; top:12px; right:12px; font-size:16px; opacity:0.5; }
 
-  /* Függőleges lapozó nyilak */
-  .launcher-arrow { width:32px; height:32px; background:var(--surface2); border:1px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; color:var(--text); transition:all 0.15s; z-index:10; user-select:none; margin:0 auto; }
+  /* Navigációs nyilak */
+  .launcher-arrow { width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; color:var(--text); transition:all 0.15s; user-select:none; flex-shrink:0; }
   .launcher-arrow:hover { background:var(--surface); border-color:var(--accent); color:var(--accent); }
-  .launcher-arrow.hidden { opacity:0; pointer-events:none; }
-  .launcher-arrow-up   { margin-bottom:8px; }
-  .launcher-arrow-down { margin-top:8px; }
+  .launcher-arrow.hidden { opacity:0; pointer-events:none; visibility:hidden; }
 
-  /* Dot indicators (oldalszám jelző) */
-  .launcher-dots { display:flex; gap:6px; justify-content:center; margin-top:12px; }
+  /* Dot indicators */
+  .launcher-dots { display:flex; gap:6px; justify-content:center; }
   .launcher-dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:all 0.2s; cursor:pointer; }
   .launcher-dot.active { background:var(--accent); width:18px; border-radius:3px; }
 
@@ -816,9 +814,6 @@
   </div>
 
   <div class="launcher-carousel-wrap">
-    <!-- Felső nyíl -->
-    <div class="launcher-arrow launcher-arrow-up hidden" id="launcher-arrow-left" onclick="launcherScroll(-1)" title="Előző oldal">▲</div>
-
     <div class="launcher-carousel-track-outer">
       <div class="launcher-grid launcher-carousel-track" id="launcher-track">
 
@@ -929,13 +924,14 @@
 
     </div><!-- /launcher-track -->
     </div><!-- /track-outer -->
-
-    <!-- Dot indikátorok -->
-    <!-- Alsó nyíl -->
-    <div class="launcher-arrow launcher-arrow-down" id="launcher-arrow-right" onclick="launcherScroll(1)" title="Következő oldal">▼</div>
-
-    <div class="launcher-dots" id="launcher-dots"></div>
   </div><!-- /carousel-wrap -->
+
+  <!-- Navigációs nyilak a wrap-on kívül, szabad klikkelhetőség -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;">
+    <div class="launcher-arrow hidden" id="launcher-arrow-left" onclick="launcherScroll(-1)" title="Előző oldal" style="position:static;transform:none;">▲</div>
+    <div class="launcher-dots" id="launcher-dots"></div>
+    <div class="launcher-arrow" id="launcher-arrow-right" onclick="launcherScroll(1)" title="Következő oldal" style="position:static;transform:none;">▼</div>
+  </div>
 </div><!-- /moduleLauncher -->
 
 <div class="layout" id="mainLayout">
