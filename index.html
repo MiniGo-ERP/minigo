@@ -15754,38 +15754,6 @@ function ganttOpenTaskModal(tid) {
 }
 window.ganttOpenTaskModal = ganttOpenTaskModal;
 
-  var html = '<div class="modal-overlay active" id="ganttTaskModal" style="z-index:200;">';
-  html += '<div class="modal" style="width:520px;">';
-  html += '<div class="modal-title">'+(t?'✏️ Feladat szerkesztése':'📌 Új feladat')+'</div>';
-
-  html += '<div class="form-row"><label class="form-label">Megnevezés *</label>';
-  html += '<input class="form-input" id="gt-name" value="'+escH(t?t.name:'')+'" placeholder="pl. Helyszíni felmérés – Cegléd"></div>';
-
-  html += '<div class="form-row-2">';
-  html += '<div><label class="form-label">Típus</label><select class="form-input" id="gt-type" onchange="ganttTaskTypeChange()">';
-  GANTT_TASK_TYPES.forEach(function(x){ html += '<option value="'+x.id+'"'+((t&&t.type===x.id)||(!t&&x.id==='task')?' selected':'')+'>'+x.icon+' '+x.label+'</option>'; });
-  html += '</select></div>';
-  html += '<div><label class="form-label">Státusz</label><select class="form-input" id="gt-status" onchange="ganttStatusChange()">';
-  GANTT_STATUSES.forEach(function(s){ html += '<option value="'+s.id+'"'+(t&&t.status===s.id?' selected':'')+'>'+s.label+'</option>'; });
-  html += '</select></div></div>';
-
-  html += '<div class="form-row-2">';
-  html += '<div><label class="form-label">Kezdés *</label><input class="form-input" type="date" id="gt-start" value="'+(t&&t.startDate?t.startDate:'')+'"></div>';
-  html += '<div><label class="form-label">Befejezés *</label><input class="form-input" type="date" id="gt-end" value="'+(t&&t.endDate?t.endDate:'')+'"></div>';
-  html += '</div>';
-
-  // Progress csúszka – mérföldkőnél rejtve
-  var showProgress = !t || t.type !== 'milestone';
-  var progressVal = t ? (t.progress||0) : 0;
-  html += '<div id="gt-progress-row" class="form-row" style="'+(showProgress?'':'display:none;')+'">';
-  html += '<label class="form-label">Haladás – <span id="gt-progress-label">'+progressVal+'</span>%</label>';
-  html += '<input type="range" id="gt-progress" min="0" max="100" step="5" value="'+progressVal+'" style="width:100%;accent-color:var(--accent2);" oninput="document.getElementById(\'gt-progress-label\').textContent=this.value">';
-  html += '<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>';
-  html += '</div>';
-
-  html += '<div class="form-row"><label class="form-label">Felelős résztvevő</label><select class="form-input" id="gt-member">';
-window.ganttOpenTaskModal = ganttOpenTaskModal;
-
 function ganttAddDepRow() {
   var list = document.getElementById('gt-deps-list');
   if(!list) return;
