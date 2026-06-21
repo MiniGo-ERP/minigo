@@ -8032,8 +8032,6 @@ function showLauncher(){
   // Quote launcher stats
   if(typeof updateQuoteLauncherStats === 'function') updateQuoteLauncherStats();
   if(typeof updateRaktarLauncherStats === 'function') updateRaktarLauncherStats();
-  // Carousel frissítés
-  if(typeof window.launcherCarouselRefresh === 'function') window.launcherCarouselRefresh();
   // Sensitive toggle gomb ikon inicializálása
   if(typeof _updateSensitiveBtn === 'function') _updateSensitiveBtn();
   // Ha projekt modul aktív, frissítsük az év szűrőt
@@ -9769,11 +9767,13 @@ function idoModuleSSO(email, idoRole, displayName) {
 // ── WINDOW.SHOWLAUNCHER – role-aware patch ────────────────────────────────────
 const _showLauncherOriginal = showLauncher; // referencia mentése az override előtt
 window.showLauncher = function() {
-  // Mindig frissítjük a role-t az aktuális auth state-ből
   const _email = auth?.currentUser?.email || '';
   if (_email) migoUserRole = getMigoUserRole(_email);
-  _showLauncherOriginal(); // az eredeti lokális függvény hívása – NEM rekurzív
+  _showLauncherOriginal();
+  // Szerepkör alkalmazása ELŐSZÖR – tile-ok megjelennek
   applyRoleToLauncher(migoUserRole);
+  // Carousel frissítés UTÁNA – most már láthatók a tile-ok, offsetHeight mérhető
+  if(typeof window.launcherCarouselRefresh === 'function') window.launcherCarouselRefresh();
   // Non-admin userek → időnyilvántartásba irányítjuk
   if ((migoUserRole === 'ido_admin' || migoUserRole === 'ido_user') && _email) {
     setTimeout(() => enterModule('ido'), 150);
@@ -16597,8 +16597,8 @@ window.gSync = gSync;
   // showLauncher után – setTimeout kell, mert display:flex-re vált
   window.launcherCarouselRefresh = function() {
     _lcPage = 0;
-    setTimeout(lcUpdate, 60);   // első hívás - DOM megjelenik
-    setTimeout(lcUpdate, 200);  // második hívás - CSS már teljesen renderelt, pontos offsetHeight
+    setTimeout(lcUpdate, 80);   // első hívás
+    setTimeout(lcUpdate, 300);  // második hívás – CSS biztosan renderelt
   };
 
   setTimeout(lcUpdate, 100);
