@@ -928,9 +928,9 @@
 
   <!-- Navigációs nyilak a wrap-on kívül, szabad klikkelhetőség -->
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px;">
-    <div class="launcher-arrow hidden" id="launcher-arrow-left" onclick="launcherScroll(-1)" title="Előző oldal" style="position:static;transform:none;">▲</div>
+    <div class="launcher-arrow hidden" id="launcher-arrow-left" onclick="window.launcherScroll(-1)" title="Előző oldal" style="position:static;transform:none;">▲</div>
     <div class="launcher-dots" id="launcher-dots"></div>
-    <div class="launcher-arrow" id="launcher-arrow-right" onclick="launcherScroll(1)" title="Következő oldal" style="position:static;transform:none;">▼</div>
+    <div class="launcher-arrow" id="launcher-arrow-right" onclick="window.launcherScroll(1)" title="Következő oldal" style="position:static;transform:none;">▼</div>
   </div>
 </div><!-- /moduleLauncher -->
 
@@ -16123,23 +16123,6 @@ function updateGanttLauncherStats() {
 window.updateGanttLauncherStats = updateGanttLauncherStats;
 
 // ── ENTER MODULE WRAPPER ──────────────────────────────────────────
-window.enterGanttModule = function() {
-  document.getElementById('moduleLauncher').style.display = 'none';
-  ['quote-module','raktar-module','ido-module'].forEach(function(id){
-    var el = document.getElementById(id); if(el) el.style.display='none';
-  });
-  var migoTopbar = document.getElementById('minigo-topbar');
-  if(migoTopbar) migoTopbar.style.display='';
-  document.getElementById('mainLayout').style.display = 'flex';
-  document.getElementById('activeModuleLabel').textContent = 'GANTT ÜTEMTERV';
-  ['sidebar-proj-section','sidebar-rel-section','sidebar-ml-section'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.style.display='none';
-  });
-  var ganttSec = document.getElementById('sidebar-gantt-section');
-  if(ganttSec) ganttSec.style.display='';
-  if(typeof window.gLoad === 'function') window.gLoad();
-  if(typeof window.ganttShowView === 'function') window.ganttShowView('dashboard');
-};
 
 // ── RIPORT MODAL ──────────────────────────────────────────────────
 function ganttOpenReportModal(mode) {
@@ -16497,6 +16480,30 @@ window.gLoad = gLoad;
 window.gSync = gSync;
 
 })(); // end GANTT MODULE
+
+// enterGanttModule a module scope-ban – az IIFE-n kívül, hogy biztosan elérhető legyen
+window.enterGanttModule = function() {
+  // Egyéb modulok elrejtése
+  document.getElementById('moduleLauncher').style.display = 'none';
+  ['quote-module','raktar-module','ido-module'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.style.display='none';
+  });
+  // MiniGo topbar + mainLayout
+  var migoTopbar = document.getElementById('minigo-topbar');
+  if(migoTopbar) migoTopbar.style.display='';
+  document.getElementById('mainLayout').style.display = 'flex';
+  // Sidebar szekciók
+  ['sidebar-proj-section','sidebar-rel-section','sidebar-ml-section'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  var ganttSec = document.getElementById('sidebar-gantt-section');
+  if(ganttSec) ganttSec.style.display='';
+  var lbl = document.getElementById('activeModuleLabel');
+  if(lbl) lbl.textContent = 'GANTT ÜTEMTERV';
+  // Gantt modul indítása
+  if(typeof window.gLoad === 'function') window.gLoad();
+  if(typeof window.ganttShowView === 'function') window.ganttShowView('dashboard');
+};
 
 
 // ── LAUNCHER CAROUSEL – 2 soros lapozás (6 tile / oldal) ─────────────────────
