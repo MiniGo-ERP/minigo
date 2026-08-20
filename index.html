@@ -3069,13 +3069,15 @@ function renderProjectDetail(pid){
     :'';
   const barW=inc>0?Math.min(100,Math.round(cost/inc*100)):0;
 
-  const wf=STATUSES.map((s,i)=>`
+  const isContWf = p.isContinuous || p.status===STATUS_CONTINUOUS;
+  const wfSteps = STATUSES.map((s,i)=>({s,i})).filter(x=> isContWf || x.i!==STATUS_CONTINUOUS);
+  const wf=wfSteps.map((x,idx)=>`
     <div class="wf-step">
-      <div class="wf-node ${i<p.status?'done':''} ${i===p.status?'current':''}">
-        <div class="wf-num">${i<p.status?'✓':(i+1)}</div>
-        <div class="wf-label">${s.short}</div>
+      <div class="wf-node ${x.i<p.status?'done':''} ${x.i===p.status?'current':''}">
+        <div class="wf-num">${x.i<p.status?'✓':(idx+1)}</div>
+        <div class="wf-label">${x.s.short}</div>
       </div>
-      ${i<STATUSES.length-1?'<div class="wf-arrow">›</div>':''}
+      ${idx<wfSteps.length-1?'<div class="wf-arrow">›</div>':''}
     </div>`).join('');
 
   const docs=FOLDERS.map(f=>{
@@ -3219,7 +3221,7 @@ function renderProjectDetail(pid){
         : `<button class="btn btn-secondary" onclick="closeAutoSubProject('${escPid(pid)}')" title="Alprojekt kézi lezárása">🔒 Alprojekt lezárása</button>`) : ''}
       ${p.status>0?`<button class="btn btn-secondary" onclick="openRevertModal('${escPid(pid)}')">◀ Előző státusz</button>`:''}
       <button class="btn btn-secondary" onclick="openEditProject('${escPid(pid)}')">✏️ Szerkesztés</button>
-      ${p.status>=4?(
+      ${(p.status>=4 && !(p.autoTigSubProject && p.status===STATUS_CLOSED))?(
         (p.isContinuous||p.status===STATUS_CONTINUOUS)
           ? `<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="openSubTigLabelModal('${escPid(pid)}')">📋 Új rész-TIG készítése</button>`
           : `<button class="btn btn-primary" style="background:var(--accent2);border-color:var(--accent2);" onclick="enterMunkalapForProject('${escPid(pid)}')">📋 TIG készítés</button>`
@@ -3492,11 +3494,30 @@ window.openMlForProject = openMlForProject;
 // Cashflow-ba – szükség esetén később újranyitható és újra lezárható.
 window._pendingSubTigParentId = null;
 
+// A folyamatos projekt automatikus rész-TIG alprojektjeinek sorszámozása a MAXIMÁLISAN
+// használt sorszám alapján történik (nem a jelenlegi darabszám alapján), hogy törölt
+// alprojekt után se ismétlődhessen ugyanaz a sorszám/címke két különböző alprojektnél.
+function nextSubTigNumber(parentId){
+  const allKnown = [
+    ...projects,
+    ...(typeof archivedProjects !== 'undefined' ? archivedProjects : []),
+    ...(typeof trashBin !== 'undefined' ? trashBin.filter(i=>i.type==='project').map(i=>i.data) : []),
+  ];
+  const prefix = parentId + '_';
+  const nums = allKnown.map(function(p){
+    if(!p || !p.id || !p.id.startsWith(prefix)) return 0;
+    const n = parseInt(p.id.slice(prefix.length), 10);
+    return isNaN(n) ? 0 : n;
+  });
+  return (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+}
+window.nextSubTigNumber = nextSubTigNumber;
+
 function openSubTigLabelModal(parentId){
   const parent = projects.find(x=>x.id===parentId);
   if(!parent) return;
   window._pendingSubTigParentId = parentId;
-  const n = projects.filter(p=>p.parentId===parentId).length + 1;
+  const n = nextSubTigNumber(parentId);
   const input = document.getElementById('stl-label');
   if(input) input.value = `${n}. rész`;
   openModal('subTigLabelModal');
@@ -3519,7 +3540,7 @@ window.confirmSubTigLabel = confirmSubTigLabel;
 function createAutoSubProject(parentId, label){
   const parent = projects.find(x=>x.id===parentId);
   if(!parent) return null;
-  const n = projects.filter(p=>p.parentId===parentId).length + 1;
+  const n = nextSubTigNumber(parentId);
   let sid = `${parentId}_${n}`, bump = n;
   while(projects.some(p=>p.id===sid)){ bump++; sid = `${parentId}_${bump}`; }
   const now = new Date().toISOString().split('T')[0];
@@ -8737,11 +8758,12 @@ function suggestTigId(projectId) {
   const now = new Date();
   const ymSuffix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const _proj = projectId ? (typeof projects!=='undefined' ? projects.find(x=>x.id===projectId) : null) : null;
-  // A projekt ID végén lévő automatikus ütközésbiztos sorszám (pl. "_1") ne kerüljön bele
-  // a TIG azonosítóba – csak zavaró, a projektazonosítást nem segíti. KIVÉTEL: folyamatos
-  // projekt automatikus rész-TIG alprojektjénél a "_n" ténylegesen a billing-ciklust jelöli,
-  // ott hasznos infó, tehát ott megmarad.
-  const cleanProjectId = (projectId && !(_proj && _proj.autoTigSubProject)) ? projectId.replace(/_\d+$/, '') : projectId;
+  // A projekt ID végén lévő automatikus ütközésbiztos sorszám csak akkor "_1" (az első/egyetlen
+  // ilyen nevű projektnél) – ez önmagában csak zavaró, nem segíti a projektazonosítást, ezért
+  // ilyenkor levágjuk. Ha viszont a szám _2 vagy nagyobb, az ténylegesen megkülönbözteti egymástól
+  // a több, azonos névvel induló projektet, ezért azt MEG KELL TARTANI. KIVÉTEL: folyamatos
+  // projekt automatikus rész-TIG alprojektjénél a "_n" a billing-ciklust jelöli, ott mindig megmarad.
+  const cleanProjectId = (projectId && !(_proj && _proj.autoTigSubProject)) ? projectId.replace(/_1$/, '') : projectId;
   const base = cleanProjectId ? `TIG-${cleanProjectId}-${ymSuffix}` : generateTigId();
   // Ha ütközik, sorszámozva: TIG-LIBERTY_II_46-2026-03-2
   if (!tigStore.some(t => t.id === base) && !tigTrashBin.some(t => t.originalId === base)) return base;
@@ -8794,7 +8816,8 @@ function updateQuoteLauncherStats() {
 function updateMlLauncherStats() {
   const openEl = document.getElementById('tstat-ml-open');
   const totEl  = document.getElementById('tstat-ml-total');
-  if (openEl) openEl.textContent = tigStore.filter(t => t.status !== 'signed' && t.status !== 'draft').length;
+  // "Nyitott" = minden nem aláírt TIG (piszkozatokkal együtt) – megegyezik a "Nyitott TIG-ek" fül definíciójával.
+  if (openEl) openEl.textContent = tigStore.filter(t => t.status !== 'signed').length;
   if (totEl)  totEl.textContent  = tigStore.filter(t => t.status !== 'draft').length;
   updateMlTrashBadge();
 }
@@ -9160,7 +9183,7 @@ function mlGenerateTig(){
   // TIG azonosító – a felhasználó által szerkesztett mezőből
   const tigId=(document.getElementById('ml-tig-id')?.value||'').trim();
   if(!tigId){showToast('⚠️ Add meg a TIG azonosítót!','warn');return;}
-  if(/[^A-Za-z0-9_\-.]/.test(tigId)){showToast('⚠️ Az azonosító csak betűt, számot, _ - . tartalmazhat!','warn');return;}
+  if(/[^A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9_\-.]/.test(tigId)){showToast('⚠️ Az azonosító csak betűt (ékezetes is), számot, _ - . tartalmazhat!','warn');return;}
   if(tigId!==_mlDraftId&&(tigStore.some(t=>t.id===tigId)||tigTrashBin.some(t=>t.originalId===tigId))){showToast(`⚠️ Az azonosító már foglalt: ${tigId}`,'warn');return;}
 
   // Magánszemély: kiválasztott projekt adatai
@@ -9223,7 +9246,7 @@ ${sectionsHtml}
 </div>
 <div class="legal">${legalClause}</div>
 <div class="sigs">
-  <div><div class="sr">Megrendelő</div><div class="sn">${co?.name||'–'}</div><div class="sl">Aláírás</div></div>
+  <div><div class="sr">Megrendelő</div><div class="sn">${co?.isPrivate&&privatePersonName ? privatePersonName : (co?.name||'–')}</div><div class="sl">Aláírás</div></div>
 </div>
 <footer><span>${tigId} · MiniGo · ${new Date().toLocaleString('hu-HU')}</span></footer>
 </body></html>`;
@@ -9233,7 +9256,7 @@ ${sectionsHtml}
   _pendingTigId     = tigId;
   _pendingTigDate   = tigDate;
   _pendingTigObj    = {id:tigId,clientId,clientName:co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||''),
-    privatePersonName,privatePersonAddress,
+    isPrivate:!!co?.isPrivate,privatePersonName,privatePersonAddress,
     date:tigDate,desc,vatPct,netTotal:grandNet,grossTotal:grandGross,
     legalClause,
     sections:sectionsData.map(s=>({type:s.type,typeLabel:s.typeLabel,projectId:s.projectId||'',
@@ -9303,7 +9326,7 @@ async function mlRedownloadDirect(t){
   const CSS=`* {margin:0;padding:0;box-sizing:border-box;} body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a2e;padding:36px 44px;max-width:820px;margin:0 auto;} .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1a1a2e;} h1{font-size:24px;font-weight:700;letter-spacing:1px;margin-bottom:3px;} .meta{text-align:right;} .tid{font-size:15px;font-weight:700;font-family:monospace;} .tdl{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-top:4px;} .tdv{font-size:14px;font-weight:600;} .parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;} .pb{border:1px solid #ddd;border-radius:5px;padding:12px 15px;} .pr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .pn{font-size:14px;font-weight:700;margin-bottom:3px;} .pt,.pa{font-size:11px;color:#666;margin-top:2px;} .grand{margin-top:24px;border:2px solid #1a1a2e;border-radius:6px;padding:16px 18px;} .grand-row{display:flex;gap:14px;} .grand-box{flex:1;text-align:center;padding:12px 10px;border-radius:5px;border:1px solid #ddd;background:#f8f9fa;} .grand-box .gbl{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#888;margin-bottom:5px;} .grand-box .gbv{font-size:19px;font-weight:700;color:#1a1a2e;} .grand-vat{text-align:center;font-size:11px;color:#888;margin-top:10px;} .legal{margin-top:24px;background:#f8f9fa;border:1px solid #ddd;border-radius:5px;padding:14px 16px;font-size:12px;color:#444;line-height:1.7;} .sigs{margin-top:44px;} .sr{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aaa;margin-bottom:5px;} .sn{font-size:13px;font-weight:600;margin-bottom:34px;} .sl{border-top:2px solid #1a1a2e;padding-top:7px;font-size:11px;color:#777;text-align:center;max-width:280px;} footer{margin-top:26px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#bbb;display:flex;justify-content:space-between;} @media print{body{padding:18px 24px;}}`;
   const html=`<!DOCTYPE html><html lang="hu"><head><meta charset="UTF-8"><title>TIG – ${t.id}</title><style>${CSS}</style></head><body>
 <div class="hdr"><div><h1>TELJESÍTÉSI IGAZOLÁS</h1></div><div class="meta"><div class="tid">${t.id}</div><div class="tdl">Kelt</div><div class="tdv">${tigDateDisplay}</div></div></div>
-<div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${t.privatePersonName||(co?.name||'–')}</div>${t.privatePersonAddress?`<div class="pt">${t.privatePersonAddress}</div>`:''}${!t.privatePersonName&&co?.taxnr?`<div class="pt">Adószám: ${co.taxnr}</div>`:''}</div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>
+<div class="parties"><div class="pb"><div class="pr">Megrendelő</div><div class="pn">${t.privatePersonName||(co?.name||'–')}</div>${t.privatePersonAddress?`<div class="pt">${t.privatePersonAddress}</div>`:''}${!(t.privatePersonName||t.isPrivate)&&co?.taxnr?`<div class="pt">Adószám: ${co.taxnr}</div>`:''}</div><div class="pb"><div class="pr">Szolgáltató / Vállalkozó</div><div class="pn">${companySettings.name}</div><div class="pt">Adószám: ${companySettings.taxnr||'–'}</div><div class="pa">${companySettings.address||''}</div></div></div>
 ${t.desc?`<div style="background:#f8f9fa;border-left:4px solid #1a1a2e;padding:10px 14px;border-radius:0 5px 5px 0;margin-bottom:22px;font-size:13px;line-height:1.6;">${t.desc}</div>`:''}
 ${sectionsHtml}
 <div class="grand"><div class="grand-row"><div class="grand-box"><div class="gbl">Nettó összeg</div><div class="gbv">${grandNet.toLocaleString('hu-HU')} Ft</div></div><div class="grand-box"><div class="gbl">Bruttó (utalandó)</div><div class="gbv">${grandGross.toLocaleString('hu-HU')} Ft</div></div></div><div class="grand-vat">ÁFA (${vatPct}%): ${grandVat.toLocaleString('hu-HU')} Ft</div></div>
@@ -9631,7 +9654,7 @@ async function mlSaveEditTig(tigId){
 async function mlSaveDraftTig(){
   const tigId=(document.getElementById('ml-tig-id')?.value||'').trim();
   if(!tigId){showToast('⚠️ Add meg a TIG azonosítót!','warn');return;}
-  if(/[^A-Za-z0-9_\-.]/.test(tigId)){showToast('⚠️ Az azonosító csak betűt, számot, _ - . tartalmazhat!','warn');return;}
+  if(/[^A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű0-9_\-.]/.test(tigId)){showToast('⚠️ Az azonosító csak betűt (ékezetes is), számot, _ - . tartalmazhat!','warn');return;}
   if(tigId!==_mlDraftId&&(tigStore.some(t=>t.id===tigId)||tigTrashBin.some(t=>t.originalId===tigId))){showToast(`⚠️ Az azonosító már foglalt: ${tigId}`,'warn');return;}
   const clientId=document.getElementById('ml-client')?.value||'';
   const co=clientId==='__PRIVATE__'?(clients.find(c=>c.id==='__PRIVATE__')||{id:'__PRIVATE__',name:'Magánszemély',isPrivate:true}):clients.find(c=>c.id===clientId);
@@ -9646,9 +9669,9 @@ async function mlSaveDraftTig(){
   if(btn){btn.disabled=true;btn.textContent='⏳ Mentés...';}
   try{    if(_mlDraftId&&_mlDraftId===tigId){
       const existing=tigStore.find(t=>t.id===tigId);
-      if(existing){existing.clientId=clientId;existing.clientName=co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||'');existing.privatePersonName=privatePersonName;existing.privatePersonAddress=privatePersonAddress;existing.date=tigDate;existing.vatPct=vatPct;existing.desc=desc;existing.sections=activeSections;existing.projectRefs=[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))];existing.updatedAt=new Date().toISOString().split('T')[0];existing.log=existing.log||[];existing.log.push({time:nowStr(),msg:'Piszkozat frissítve',type:'draft',by:creator});await fbSaveTig(existing);showToast('💾 Piszkozat frissítve!');return;}
+      if(existing){existing.clientId=clientId;existing.clientName=co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||'');existing.isPrivate=!!co?.isPrivate;existing.privatePersonName=privatePersonName;existing.privatePersonAddress=privatePersonAddress;existing.date=tigDate;existing.vatPct=vatPct;existing.desc=desc;existing.sections=activeSections;existing.projectRefs=[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))];existing.updatedAt=new Date().toISOString().split('T')[0];existing.log=existing.log||[];existing.log.push({time:nowStr(),msg:'Piszkozat frissítve',type:'draft',by:creator});await fbSaveTig(existing);showToast('💾 Piszkozat frissítve!');return;}
     }
-    const draft={id:tigId,clientId,clientName:co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||''),privatePersonName,privatePersonAddress,date:tigDate,vatPct,desc,sections:activeSections,projectRefs:[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))],netTotal:0,grossTotal:0,status:'draft',createdAt:new Date().toISOString(),log:[{time:nowStr(),msg:'Piszkozat létrehozva',type:'draft',by:creator}]};
+    const draft={id:tigId,clientId,clientName:co?.isPrivate&&privatePersonName?privatePersonName:(co?.name||''),isPrivate:!!co?.isPrivate,privatePersonName,privatePersonAddress,date:tigDate,vatPct,desc,sections:activeSections,projectRefs:[...new Set(activeSections.map(s=>s.projectId).filter(Boolean))],netTotal:0,grossTotal:0,status:'draft',createdAt:new Date().toISOString(),log:[{time:nowStr(),msg:'Piszkozat létrehozva',type:'draft',by:creator}]};
     tigStore.push(draft);_mlDraftId=tigId;await fbSaveTig(draft);updateMlLauncherStats();showToast('💾 Piszkozat elmentve!');mlValidateTigId();
   }finally{if(btn){btn.disabled=false;btn.textContent='💾 Piszkozat mentése';}}
 }
@@ -12851,16 +12874,24 @@ function renderQRows(secKey, rows, currency) {
   });
   html += '</tbody></table>';
 
-  // Event listeners csatolása setTimeout-mal (DOM render után)
+  // Event listeners csatolása setTimeout-mal (DOM render után).
+  // FONTOS: a querySelectorAll-t erre a szekcióra (q-sec-<secKey>) kell szűkíteni, NEM az
+  // egész document-re – különben egy tetszőleges szekció újrarenderelése (pl. egy sor törlése
+  // az "Anyag" szekcióban) a MÁSIK, nem érintett szekciók (pl. "Munkadíj", "Utazás") már élő,
+  // korábban is bekötött soraira is rááragaszt egy újabb, duplikált listener-készletet – ez
+  // minden módosításnál tovább halmozódva egyetlen kattintásra/blur-re többszörös (kaszkádoló)
+  // végrehajtást okoz (pl. egy törlés gomb véletlenül több sort is töröl egyszerre).
   setTimeout(function(){
+    const container = document.getElementById('q-sec-' + secKey);
+    if(!container) return;
     // Select change
-    document.querySelectorAll('.q-row-sel').forEach(function(el){
+    container.querySelectorAll('.q-row-sel').forEach(function(el){
       el.addEventListener('change', function(){
         qRowItemChange(this.dataset.qsk, parseInt(this.dataset.qi), this.value);
       });
     });
     // Input change
-    document.querySelectorAll('.q-row-inp').forEach(function(el){
+    container.querySelectorAll('.q-row-inp').forEach(function(el){
       el.addEventListener('input', function(){
         qRowField(this.dataset.qsk, parseInt(this.dataset.qi), this.dataset.qf, this.value);
         if(this.dataset.recalc) qRefreshTotals();
@@ -12874,7 +12905,7 @@ function renderQRows(secKey, rows, currency) {
       }
     });
     // Delete button
-    document.querySelectorAll('.q-row-del').forEach(function(el){
+    container.querySelectorAll('.q-row-del').forEach(function(el){
       el.addEventListener('click', function(){
         qDelRow(this.dataset.qsk, parseInt(this.dataset.qi));
       });
@@ -13041,9 +13072,19 @@ function qMaybeSaveFreeTextItem(secKey, idx) {
   if(row.itemId) return; // ez már egy könyvtári tételre mutat, nincs teendő
   const name = (row.customName||'').trim();
   if(!name) return;
-  const unit  = (row.unit||'').trim();
-  const price = parseFloat(row.unitPrice)||0;
-  if(!unit && !price) return; // várunk, amíg legalább az egység vagy az ár is meg van adva
+  const unit = (row.unit||'').trim();
+  // Az árat a NYERS mezőértékből olvassuk, hogy meg tudjuk különböztetni az "üres" (nincs
+  // megadva) és a szándékosan beírt "0" (pl. ingyenes/beleértett tétel) esetet egymástól.
+  const rawPrice = (row.unitPrice!==undefined && row.unitPrice!==null) ? String(row.unitPrice).trim() : '';
+  const hasPrice = rawPrice!=='' && !isNaN(parseFloat(rawPrice));
+  const price = hasPrice ? parseFloat(rawPrice) : 0;
+  if(!unit && !hasPrice) return; // várunk, amíg legalább az egység vagy az ár is meg van adva
+
+  // Ha ugyanezt a (név+egység+ár) kombinációt már elmentettük ebből a sorból, nincs teendő –
+  // ez elkerüli, hogy egy tartalmilag változatlan sor ismételt blur-jére (pl. kézzel törölt
+  // könyvtári tétel esetén) feleslegesen újra létrehozzuk/mentsük ugyanazt a tételt.
+  const sig = name.toLowerCase()+'|'+unit.toLowerCase()+'|'+price;
+  if(row._qAutoSaveSig === sig) return;
 
   const existing = _qItems.find(function(i){
     return i.type===secKey && (i.name||'').trim().toLowerCase()===name.toLowerCase();
@@ -13051,11 +13092,12 @@ function qMaybeSaveFreeTextItem(secKey, idx) {
   if(existing) {
     let changed = false;
     if(unit && existing.unit!==unit){ existing.unit=unit; changed=true; }
-    if(price && existing.defaultPrice!==price){ existing.defaultPrice=price; changed=true; }
+    if(hasPrice && existing.defaultPrice!==price){ existing.defaultPrice=price; changed=true; }
     if(changed){
       window._quoteItems = _qItems;
       if(window.fbSaveQuoteItem) window.fbSaveQuoteItem(existing).catch(function(e){console.error('Quote item mentési hiba:',e);});
     }
+    row._qAutoSaveSig = sig;
     return;
   }
 
@@ -13065,6 +13107,7 @@ function qMaybeSaveFreeTextItem(secKey, idx) {
   if(window.fbSaveQuoteItem) {
     window.fbSaveQuoteItem(it).catch(function(e){ console.error('Quote item mentési hiba:', e); });
   }
+  row._qAutoSaveSig = sig;
   if(typeof showToast==='function') showToast('📦 „'+name+'” hozzáadva a tételkönyvtárhoz – legközelebb választható lesz.');
 }
 window.qMaybeSaveFreeTextItem = qMaybeSaveFreeTextItem;
@@ -16757,9 +16800,12 @@ window.enterGanttModule = function() {
   }
 
   function lcCalcCols() {
+    // A töréspontoknak egyezniük kell a CSS media query-kkel (lásd .launcher-carousel-track
+    // szabályok: max-width:900px → 2 oszlop, max-width:580px → 1 oszlop), különben a JS és a
+    // ténylegesen megjelenő CSS grid oszlopszáma szűk tartományban (korábban 581-599px) eltérhet.
     var w = window.innerWidth;
-    if(w < 600) return 1;
-    if(w < 900) return 2;
+    if(w <= 580) return 1;
+    if(w <= 900) return 2;
     return COLS;
   }
 
@@ -16779,7 +16825,10 @@ window.enterGanttModule = function() {
     var tileH   = maxTileH || 160;
     var gap     = 14;   // egyezik CSS gap:14px értékkel
     var trackPad= 8;    // CSS padding: 4px top + 4px bottom
-    var pageH   = (tileH + gap) * ROWS + trackPad;
+    // Egy oldalnyi tényleges magassága (a trackPad csak a teljes terület egyszeri, nem
+    // oldalanként ismétlődő felső/alsó paddingja, ezért a lapozási offset-be nem számít bele –
+    // korábban duplán hozzáadva soronként ~22px-es túllapozást okozott).
+    var pageH   = tileH * ROWS + gap * (ROWS - 1);
     var offset  = _lcPage * pageH;
 
     track.style.transform = 'translateY(-' + offset + 'px)';
