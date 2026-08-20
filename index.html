@@ -2628,6 +2628,12 @@ const pIncome  = p => (p.incomeInvoices||[]).reduce((s,i)=>s+Number(i.amount),0)
 const pCost    = p => (p.costInvoices||[]).reduce((s,i)=>s+Number(i.amount),0);
 const pProfit  = p => pIncome(p)-pCost(p);
 const nowStr   = () => new Date().toLocaleString('hu-HU').replace(',','');
+// Van-e a projekten legalább egy VALÓDI (kézzel rögzített/jóváhagyott) kimenő számlaszám?
+// A TIG aláírásakor automatikusan létrejövő bevételi tétel (ref: a TIG azonosítója) önmagában
+// NEM számít valódinak – csak miután valaki ténylegesen beírta hozzá a tényleges (pl. számlázz.hu-s)
+// számlaszámot (invoiceNo mező). Ez a "poka-yoke" véd az elfelejtett kiszámlázás ellen: a projekt
+// (ill. a folyamatos projekt rész-TIG alprojektje) csak ekkor tekinthető ténylegesen kiszámlázottnak.
+const hasRealInvoice = p => (p.incomeInvoices||[]).some(i => (i.invoiceNo||'').trim());
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
 let currentView='dashboard', currentViewX=null, currentProjectId=null, currentUploadFolder=null;
@@ -2767,6 +2773,7 @@ function renderDashboard(){
   const tPro  = tInc - tCost;
   const isCurrentYear = !dashboardAllTime && dashboardDateFrom===curYear+'-01-01' && dashboardDateTo===curYear+'-12-31';
   const periodLabel = dashboardAllTime ? 'Összes idő' : isCurrentYear ? curYear+'. év' : (dashboardDateFrom||'?')+' – '+(dashboardDateTo||'?');
+  const invoicePending = projects.filter(p => (pIncome(p)>0 || (p.incomeInvoices||[]).length>0) && !hasRealInvoice(p));
   return `
   <div class="stats-row">
     <div class="stat-card"><div class="stat-val">${tot}</div><div class="stat-label">Összes projekt</div></div>
@@ -2775,6 +2782,10 @@ function renderDashboard(){
     <div class="stat-card"><div class="stat-val" style="color:var(--profit)">${fmtS(tInc)}</div><div class="stat-label">Bevétel (${periodLabel})</div></div>
     <div class="stat-card"><div class="stat-val" style="color:var(--cost)">${maskVal(tCost)}</div><div class="stat-label">Kiadás (${periodLabel})</div></div>
     <div class="stat-card"><div class="stat-val" style="color:${tPro>=0?'var(--profit)':'var(--danger)'}">${maskVal(tPro)}</div><div class="stat-label">Nyereség (${periodLabel})</div></div>
+    <div class="stat-card" style="cursor:pointer;${invoicePending.length>0?'border-color:#e67e22;':''}" onclick="showInvoicePendingList()" title="Bevétel van rögzítve, de valódi számlaszám még nincs – kattints a listához">
+      <div class="stat-val" style="color:${invoicePending.length>0?'#e67e22':'var(--text-dim)'}">${invoicePending.length}</div>
+      <div class="stat-label">🧾 Számlázásra vár</div>
+    </div>
   </div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;">📅 Időszak szűrő</span>
@@ -2804,6 +2815,22 @@ function renderDashboard(){
       </div>`).join('')}
   </div>`;
 }
+
+// "Számlázásra vár" gyűjtőlista – minden projekt/alprojekt, amihez van rögzített bevétel,
+// de nincs hozzá valódi (kézzel jóváhagyott) számlaszám. Poka-yoke: ez a lista véd az ellen,
+// hogy egy TIG-alapú vagy manuálisan felvitt bevétel véglegesen kiszámlázás nélkül maradjon.
+function showInvoicePendingList(){
+  currentView='invoice-pending';
+  closeSidebar();
+  const list = projects.filter(p => (pIncome(p)>0 || (p.incomeInvoices||[]).length>0) && !hasRealInvoice(p));
+  bc([{l:'Áttekintés',o:"showView('dashboard')"},{l:'🧾 Számlázásra vár'}]);
+  mc().innerHTML = `<div class="panel-title">🧾 Számlázásra vár (${list.length} db)</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;">Ezeken a projekteken/alprojekteken van rögzített bevétel, de még nincs hozzá valódi számlaszám megadva. Nyisd meg a projektet, és a „Kimenő számla” szerkesztésével (vagy hozzáadásával) rögzítsd a tényleges számlaszámot.</div>
+    ${list.length ? `<div style="display:flex;flex-direction:column;gap:8px;">${list.map(renderProjectRow).join('')}</div>`
+      : '<div class="empty-state"><div class="em-icon">✅</div><div class="em-title">Nincs elmaradás</div><div style="font-size:12px;margin-top:4px;color:var(--text-dim)">Minden rögzített bevételhez van valódi számlaszám.</div></div>'}`;
+}
+window.showInvoicePendingList = showInvoicePendingList;
+
 // ── CASHFLOW ──────────────────────────────────────────────────────────────────
 function renderCashflow(){
   const tInc=projects.reduce((s,p)=>s+pIncome(p),0),
@@ -3214,7 +3241,7 @@ function renderProjectDetail(pid){
       ${p.desc?`<div style="font-size:13px;color:var(--text);margin-top:5px">${p.desc}</div>`:''}
       ${commitBadge?`<div style="margin-top:6px;">${commitBadge}</div>`:''}
     </div>
-    <span class="status-badge ${st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start">${st.label}</span>
+    <span class="status-badge ${p.autoTigSubProject&&p.tigSignedPendingInvoice?'':st.cls}" style="font-size:11px;padding:5px 12px;align-self:flex-start;${p.autoTigSubProject&&p.tigSignedPendingInvoice?'background:rgba(230,126,34,0.15);border:1px solid #e67e22;color:#e67e22;':''}">${p.autoTigSubProject&&p.tigSignedPendingInvoice?'🧾 Számlázásra vár':st.label}</span>
     <div class="detail-actions">
       ${p.autoTigSubProject ? (p.status===STATUS_CLOSED
         ? `<button class="btn btn-secondary" onclick="reopenAutoSubProject('${escPid(pid)}')" title="Alprojekt újranyitása, ha valamit módosítani kell">🔓 Alprojekt újranyitása</button>`
@@ -3241,14 +3268,12 @@ function renderProjectDetail(pid){
   <div class="finance-grid">
     <div class="finance-box">
       <div class="finance-box-title" style="display:flex;align-items:center;gap:8px;">💚 Kimenő számlák (MiniGo bevétele)
-        <span style="margin-left:auto;font-size:9px;font-family:var(--mono);padding:2px 8px;border-radius:10px;border:1px solid ${p.paid?'var(--success)':'var(--text-dim)'};color:${p.paid?'var(--success)':'var(--text-dim)'};cursor:pointer;white-space:nowrap;" onclick="toggleProjectPaid('${escPid(pid)}')" title="Kattints a kifizetettségi állapot váltásához">${p.paid?'💰 Kifizetve':'⏳ Nincs kifizetve'}</span>
+        <span style="margin-left:auto;font-size:9px;font-family:var(--mono);padding:2px 8px;border-radius:10px;border:1px solid ${hasRealInvoice(p)?'var(--success)':'var(--text-dim)'};color:${hasRealInvoice(p)?'var(--success)':'var(--text-dim)'};white-space:nowrap;" title="Automatikusan jelzi, van-e legalább egy valódi számlaszámú kimenő számla rögzítve">${hasRealInvoice(p)?'💰 Kiszámlázva':'🧾 Számlázásra vár'}</span>
       </div>
       <div class="finance-total" style="color:var(--profit)">${fmt(inc)}</div>
       <div class="finance-label">nettó bevétel</div>
       <div class="invoice-list">${incInv||'<div style="color:var(--text-dim);font-size:12px">Még nincs számla rögzítve.</div>'}</div>
-      ${p.paid
-        ? `<div class="add-btn" onclick="openIncomeInvoiceModal('${escPid(pid)}')">➕ Kimenő számla hozzáadása</div>`
-        : `<div class="add-btn" style="opacity:0.55;cursor:not-allowed;" title="Csak akkor tölthető ki, ha a projekt már kifizetett" onclick="showToast('⚠️ A bevételi díj csak akkor tölthető ki, ha a projekt már kifizetett státuszban van.','warn')">🔒 Kimenő számla (csak kifizetett projektnél)</div>`}
+      <div class="add-btn" onclick="openIncomeInvoiceModal('${escPid(pid)}')">➕ Kimenő számla hozzáadása</div>
     </div>
     <div class="finance-box">
       <div class="finance-box-title">🔴 Szállítói számlák (kiadások)</div>
@@ -3346,7 +3371,7 @@ function renderUmbrellaSection(p, pid) {
         html += `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid #3498db;border-radius:5px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="showView('project-detail','${escPid(sp.id)}')">
           <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3498db;min-width:140px;">${sp.id}</div>
           <div style="flex:1;font-size:12px;">${sp.desc||'–'}</div>
-          <span class="status-badge ${spSt.cls}">${spSt.short}</span>
+          <span class="status-badge ${sp.autoTigSubProject&&sp.tigSignedPendingInvoice?'':spSt.cls}" style="${sp.autoTigSubProject&&sp.tigSignedPendingInvoice?'background:rgba(230,126,34,0.15);border:1px solid #e67e22;color:#e67e22;':''}">${sp.autoTigSubProject&&sp.tigSignedPendingInvoice?'🧾 Számlázásra vár':spSt.short}</span>
           ${spInc>0?`<span style="font-family:var(--mono);font-size:11px;color:${spPro>=0?'var(--profit)':'var(--danger)'};">${spPro>=0?'+':''}${maskVal(spPro)}</span>`:''}
           ${tigCount>0?`<span style="font-size:10px;color:var(--text-dim);">${tigCount} TIG</span>`:''}
         </div>`;
@@ -3448,20 +3473,9 @@ function openNewSubProjectModal(parentId) {
 }
 window.openNewSubProjectModal = openNewSubProjectModal;
 
-// toggleProjectPaid – a projekt kifizetettségi állapotának váltása.
-// Csak kifizetett projektnél tölthető ki a bevételi díj (Kimenő számla / InfraGo bevétele).
-function toggleProjectPaid(pid) {
-  const p = projects.find(function(x){ return x.id===pid; });
-  if(!p) return;
-  p.paid = !p.paid;
-  p.updatedAt = new Date().toISOString().split('T')[0];
-  p.log = p.log||[];
-  p.log.push({time:nowStr(), msg: p.paid?'Projekt kifizetettnek jelölve':'Kifizetettségi jelölés visszavonva', type:'advance'});
-  if(window.fbSaveProject) window.fbSaveProject(p).catch(function(e){console.error(e);});
-  showView('project-detail', pid);
-  if(typeof showToast === 'function') showToast(p.paid?'💰 Projekt kifizetettnek jelölve!':'Kifizetettségi jelölés visszavonva.');
-}
-window.toggleProjectPaid = toggleProjectPaid;
+// A "kifizetve / kiszámlázva" jelzés a hasRealInvoice() alapján automatikusan számolódik
+// (lásd fentebb) – nincs többé kézi kapcsoló, hogy sose lehessen véletlenül "kifizetettnek"
+// jelölni egy projektet anélkül, hogy valódi számlaszám lenne hozzá rögzítve.
 
 // setProjContinuous – folyamatos projektté alakítás
 function setProjContinuous(pid) {
@@ -3576,7 +3590,14 @@ window.createAutoSubProject = createAutoSubProject;
 function closeAutoSubProject(pid){
   const p = projects.find(x=>x.id===pid);
   if(!p) return;
+  // Poka-yoke: ha még nincs rögzítve valódi számlaszám, ez egy tudatos, felülbírált lezárás –
+  // erre figyelmeztetünk, de (mivel ez egy kézi, szándékos felhasználói döntés, pl. ingyenes/
+  // belső munkánál) nem tiltjuk le teljesen.
+  if(!hasRealInvoice(p)){
+    if(!confirm('⚠️ Ehhez az alprojekthez még nincs rögzítve valódi számlaszám (a TIG-alapú bevétel önmagában nem elég).\n\nBiztosan lezárod számlázás nélkül? Utólag a „Kimenő számla” szerkesztésével pótolhatod a számlaszámot.')) return;
+  }
   p.status = STATUS_CLOSED;
+  p.tigSignedPendingInvoice = false;
   p.updatedAt = new Date().toISOString().split('T')[0];
   p.log = p.log||[];
   p.log.push({time:nowStr(), msg:'Alprojekt lezárva', type:'advance'});
@@ -3591,6 +3612,7 @@ function reopenAutoSubProject(pid){
   if(!p) return;
   if(!confirm('Újranyitod ezt a lezárt alprojektet módosításhoz? A bevétele a Cashflow-ban is marad, amíg újra le nem zárod, vagy nem módosítod a hozzá tartozó TIG-et.')) return;
   p.status = 5; // vissza "TIG aláírásra vár"-ra, hogy szerkeszthető/újra lezárható legyen
+  p.tigSignedPendingInvoice = false;
   p.updatedAt = new Date().toISOString().split('T')[0];
   p.log = p.log||[];
   p.log.push({time:nowStr(), msg:'Alprojekt újranyitva módosításhoz', type:'revert'});
@@ -4136,6 +4158,12 @@ function confirmAdvance(){
   const p=projects.find(x=>x.id===pendingAdvanceId);
   const toIdx = pendingAdvanceToIdx!=null ? pendingAdvanceToIdx : nextStepIndex(p?p.status:0);
   if(!p||!STATUSES[toIdx]) return;
+  // Poka-yoke: a projekt véglegesen "Kész" (lezárt) állapotba lépésekor legyen rögzítve
+  // hozzá valódi kimenő számlaszám, hogy sose maradjon el egy projekt kiszámlázása. Kézi,
+  // szándékos döntésként felülbírálható (pl. ingyenes/belső munkánál), de figyelmeztetünk.
+  if(toIdx===STATUS_CLOSED && !hasRealInvoice(p)){
+    if(!confirm('⚠️ Ehhez a projekthez még nincs rögzítve valódi számlaszám (a „Kimenő számla” panelben).\n\nBiztosan lezárod számlázás nélkül? Utólag a számla szerkesztésével pótolhatod a számlaszámot.')) return;
+  }
   const from=STATUSES[p.status]; p.status=toIdx;
   p.log.push({time:nowStr(),msg:`Státusz: ${from.label} → ${STATUSES[p.status].label}`,type:'advance',fromStatus:STATUSES.indexOf(from),toStatus:p.status});
   p.updatedAt=new Date().toISOString().split('T')[0];
@@ -4595,7 +4623,7 @@ Object.assign(window, {
 // ── BEVÉTELI SZÁMLA ───────────────────────────────────────────────────────────
 function openIncomeInvoiceModal(pid){
   const _p=projects.find(x=>x.id===pid);
-  if(!_p||!_p.paid){ showToast('⚠️ A bevételi díj csak akkor tölthető ki, ha a projekt már kifizetett státuszban van.','warn'); return; }
+  if(!_p){ showToast('⚠️ Projekt nem található!','warn'); return; }
   pendingInvoiceId=pid;
   document.getElementById('iiProjectLabel').textContent=`Projekt: ${pid}`;
   ['ii-ref','ii-amount','ii-note'].forEach(id=>document.getElementById(id).value='');
@@ -4603,12 +4631,15 @@ function openIncomeInvoiceModal(pid){
   openModal('incomeInvoiceModal');
 }
 function confirmIncomeInvoice(){
-  const ref = document.getElementById('ii-ref').value.trim() || 'N/A';
+  const ref = document.getElementById('ii-ref').value.trim();
+  // Poka-yoke: a számlaszám kötelező, nincs "N/A" alapértelmezés – e nélkül ne lehessen
+  // véglegesen elkönyvelni a bevételt, hogy sose maradjon el a tényleges kiszámlázás.
+  if(!ref){ showToast('⚠️ Add meg a valódi számlaszámot (ez kötelező)!','warn'); return; }
   const amount=Number(document.getElementById('ii-amount').value);
   if(!amount && amount !== 0){ showToast('⚠️ Add meg az összeget!','warn'); return; }
   const p=projects.find(x=>x.id===pendingInvoiceId);
   if(!p){ showToast('⚠️ Projekt nem található!','warn'); return; }
-  (p.incomeInvoices=p.incomeInvoices||[]).push({ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
+  (p.incomeInvoices=p.incomeInvoices||[]).push({ref,invoiceNo:ref,amount,date:document.getElementById('ii-date').value,note:document.getElementById('ii-note').value.trim()});
   p.log.push({time:nowStr(),msg:`Kimenő számla rögzítve: ${ref} – ${fmt(amount)}`,type:'invoice',subtype:'income_add',ref,amount});
   p.updatedAt=new Date().toISOString().split('T')[0];
   if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
@@ -5167,11 +5198,21 @@ function saveIncomeInvoice(){
   const inv = (p.incomeInvoices||[])[editingInvoiceIdx];
   if(!inv){ showToast('⚠️ Számla nem található!','warn'); return; }
   inv.ref    = ref;
+  inv.invoiceNo = ref; // a szerkesztő űrlapon megadott érték mindig valódi, jóváhagyott számlaszámnak minősül
   inv.amount = amount;
   inv.date   = document.getElementById('eii-date').value;
   inv.note   = document.getElementById('eii-note').value.trim();
   p.log.push({time:nowStr(), msg:`Kimenő számla módosítva: ${ref} – ${fmt(amount)}`, type:'invoice',subtype:'income_edit',ref,amount});
   p.updatedAt = new Date().toISOString().split('T')[0];
+  // Ha ez egy folyamatos projekt automatikus rész-TIG alprojektje, ami a TIG aláírása óta
+  // "Számlázásra vár" állapotban várakozott, és most megérkezett hozzá a valódi számlaszám,
+  // akkor most zárjuk le automatikusan – ez a késleltetett auto-close pontja.
+  if(p.autoTigSubProject && p.tigSignedPendingInvoice && p.status!==STATUS_CLOSED && hasRealInvoice(p)){
+    p.tigSignedPendingInvoice = false;
+    p.status = STATUS_CLOSED;
+    p.log.push({time:nowStr(), msg:`Alprojekt automatikusan lezárva – valódi számlaszám rögzítve: ${ref}`, type:'advance'});
+    if(typeof showToast==='function') showToast('🔒 Alprojekt lezárva – a számla rögzítve lett!');
+  }
   if(window.fbSaveProject) window.fbSaveProject(p).catch(e=>console.error(e));
   closeModal('editIncomeInvoiceModal');
   showView('project-detail', pendingInvoiceId);
@@ -9304,9 +9345,16 @@ function mlMarkSigned(tigId){
   t.log=t.log||[];
   t.log.push({time:nowStr(),msg:`TIG aláírtnak jelölve`,type:'advance',by:user});
   fbSaveTig(t).catch(e=>console.error(e));
-  (t.sections||[]).forEach(sec=>{if(!sec.projectId||!sec.secNet)return;const p=projects.find(x=>x.id===sec.projectId);if(!p)return;const secGross=Math.round(sec.secNet*(1+(t.vatPct||27)/100));(p.incomeInvoices=p.incomeInvoices||[]).push({ref:tigId,amount:sec.secNet,date:t.date,note:`TIG alapján (${sec.typeLabel||sec.type}) – bruttó: ${secGross.toLocaleString('hu-HU')} Ft`,tigId,_fromTig:true});p.log.push({time:nowStr(),msg:`TIG aláírva, bevétel rögzítve: ${tigId} – ${sec.secNet.toLocaleString('hu-HU')} Ft nettó`,type:'invoice',subtype:'income_add',ref:tigId,amount:sec.secNet,tigId});
-    // Folyamatos projekt automatikus rész-TIG alprojektje: TIG aláírásakor automatikusan lezárul
-    if(p.autoTigSubProject && p.status!==STATUS_CLOSED){ p.status=STATUS_CLOSED; p.log.push({time:nowStr(),msg:'Alprojekt automatikusan lezárva a TIG aláírásával',type:'advance'}); }
+  (t.sections||[]).forEach(sec=>{if(!sec.projectId||!sec.secNet)return;const p=projects.find(x=>x.id===sec.projectId);if(!p)return;const secGross=Math.round(sec.secNet*(1+(t.vatPct||27)/100));
+    // FONTOS: a "ref" itt csak a TIG belső azonosítója, NEM a tényleges (pl. számlázz.hu-s)
+    // számlaszám – ezért invoiceNo szándékosan üresen marad, amíg valaki utólag be nem írja
+    // (lásd saveIncomeInvoice) a valódi számlaszámot. Ez a hasRealInvoice() alapja.
+    (p.incomeInvoices=p.incomeInvoices||[]).push({ref:tigId,invoiceNo:'',amount:sec.secNet,date:t.date,note:`TIG alapján (${sec.typeLabel||sec.type}) – bruttó: ${secGross.toLocaleString('hu-HU')} Ft`,tigId,_fromTig:true});p.log.push({time:nowStr(),msg:`TIG aláírva, bevétel rögzítve: ${tigId} – ${sec.secNet.toLocaleString('hu-HU')} Ft nettó`,type:'invoice',subtype:'income_add',ref:tigId,amount:sec.secNet,tigId});
+    // Folyamatos projekt automatikus rész-TIG alprojektje: a TIG aláírása MÉG NEM zárja le
+    // automatikusan – előbb "Számlázásra vár" állapotba kerül, és csak akkor zárul le, ha
+    // valaki utólag rögzíti hozzá a valódi számlaszámot (lásd saveIncomeInvoice), hogy sose
+    // maradjon el egy-egy alprojekt tényleges kiszámlázása.
+    if(p.autoTigSubProject && p.status!==STATUS_CLOSED){ p.tigSignedPendingInvoice=true; p.log.push({time:nowStr(),msg:'TIG aláírva – az alprojekt „Számlázásra vár” állapotba került, a valódi számlaszám rögzítése után zárul le automatikusan',type:'advance'}); }
     p.updatedAt=new Date().toISOString().split('T')[0];if(window.fbSaveProject)window.fbSaveProject(p).catch(e=>console.error(e));});
   updateMlLauncherStats();showToast(`✅ ${tigId} aláírtnak jelölve – bevételek rögzítve!`);showView('ml-tig-detail',tigId);
 }
