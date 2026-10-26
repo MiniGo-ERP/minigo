@@ -3325,7 +3325,7 @@ function renderProjectDetail(pid){
   ${linkedQuotes.length ? `
   <div class="panel-title">Kapcsolódó ajánlatok</div>
   <div style="margin-bottom:16px;">${linkedQuotes.map(q=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;margin-top:4px;cursor:pointer;" onclick="window.enterQuoteModule();setTimeout(function(){if(window.qEditQuote)window.qEditQuote('${(q.id||'').replace(/'/g,"\\'")}')},80);">
+    <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--surface2);border-radius:4px;margin-top:4px;cursor:pointer;" onclick="window.qJumpToQuoteEditor('${(q.id||'').replace(/'/g,"\\'")}')">
       <span style="font-family:var(--mono);font-size:11px;color:var(--accent2);">${q.id||'–'}</span>
       <span style="font-size:12px;color:var(--text);flex:1;">${(q.date||q.createdAt||'').slice(0,10)}</span>
       <span style="font-size:11px;color:var(--text-dim);">Megnyitás →</span>
@@ -9103,7 +9103,7 @@ function mlRecalc(){
     let secNet=0;const unitTotals={};
     sec.rows.filter(Boolean).forEach(row=>{
       const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);secNet+=ln;
-      if(row.unit&&parseFloat(row.qty))unitTotals[row.unit]=(unitTotals[row.unit]||0)+(parseFloat(row.qty)||0);
+      if(row.unit&&parseFloat(row.qty)&&(parseFloat(row.rate)||0)>=0)unitTotals[row.unit]=(unitTotals[row.unit]||0)+(parseFloat(row.qty)||0);
       const el=document.getElementById(`ml-row-net-${sec.id}-${row.rowIdx}`);if(el)el.textContent=ln!==0?`${ln.toLocaleString('hu-HU')} Ft`:'';
     });
     grandNet+=secNet;
@@ -9326,7 +9326,7 @@ function mlGenerateTig(){
     const secNet=activeRows.reduce((s,r)=>s+(parseFloat(r.qty)||0)*(parseFloat(r.rate)||0),0);grandNet+=secNet;
     const typeLabel=TIG_TYPES.find(t=>t.key===sec.type)?.label||sec.type;
     const projObj=sec.projectId?projects.find(p=>p.id===sec.projectId):null;
-    const unitTotals={};activeRows.forEach(r=>{if(r.unit&&parseFloat(r.qty))unitTotals[r.unit]=(unitTotals[r.unit]||0)+(parseFloat(r.qty)||0);});
+    const unitTotals={};activeRows.forEach(r=>{if(r.unit&&parseFloat(r.qty)&&(parseFloat(r.rate)||0)>=0)unitTotals[r.unit]=(unitTotals[r.unit]||0)+(parseFloat(r.qty)||0);});
     return{...sec,activeRows,secNet,typeLabel,projObj,unitTotals};
   });
   const grandGross=Math.round(grandNet*vatMult),grandVat=grandGross-grandNet;
@@ -9718,7 +9718,7 @@ function mlEditRecalc(){
     let secNet=0;const unitTotals={};
     sec.rows.filter(Boolean).forEach(row=>{
       const ln=(parseFloat(row.qty)||0)*(parseFloat(row.rate)||0);secNet+=ln;
-      if(row.unit&&parseFloat(row.qty))unitTotals[row.unit]=(unitTotals[row.unit]||0)+(parseFloat(row.qty)||0);
+      if(row.unit&&parseFloat(row.qty)&&(parseFloat(row.rate)||0)>=0)unitTotals[row.unit]=(unitTotals[row.unit]||0)+(parseFloat(row.qty)||0);
       const nel=document.getElementById(`ml-edit-row-net-${sec.id}-${row.rowIdx}`);
       if(nel)nel.textContent=ln!==0?`${ln.toLocaleString('hu-HU')} Ft`:'';
     });
@@ -12830,11 +12830,22 @@ function renderQEditor() {
   const clientsOpts = (clients||[]).map(function(c) {
     return '<option value="' + c.id + '"' + (q.clientId===c.id?' selected':'') + '>' + c.name + '</option>';
   }).join('');
+  // Biztonsági háló: a már hozzárendelt projektet (q.projectId) MINDIG felvesszük a listába,
+  // még akkor is, ha az aktuális kliens-szűrőnek (vagy a lezárt/pending állapot-szűrőnek) nem
+  // felelne meg (pl. a kettő "elcsúszott" egymástól, vagy a projekt státusza közben megváltozott).
+  // Ellenkező esetben a szerkesztő csendben "– Új projekt generálása –"-ra ugrana, és mentéskor
+  // egy duplikált/árva projekt jönne létre a meglévő kapcsolat helyett.
+  const _qLinkedProject = q.projectId ? (projects||[]).find(function(p){return p.id===q.projectId;}) : null;
+  const _qFilteredProjects = (projects||[]).filter(function(p){return p.status!==8 && p.status!==STATUS_PENDING && !p.parentId && (!q.clientId || p.clientId===q.clientId);});
+  const _qProjectsForDropdown = (_qLinkedProject && !_qFilteredProjects.some(function(p){return p.id===_qLinkedProject.id;}))
+    ? _qFilteredProjects.concat([_qLinkedProject])
+    : _qFilteredProjects;
   const projectsOpts = '<option value="">– Új projekt generálása –</option>' +
-    (projects||[]).filter(function(p){return p.status!==8 && p.status!==STATUS_PENDING && !p.parentId && (!q.clientId || p.clientId===q.clientId);})
+    _qProjectsForDropdown
       .sort(function(a,b){return (a.id||'').localeCompare(b.id||'','hu');})
       .map(function(p) {
-      return '<option value="' + p.id + '"' + (q.projectId===p.id?' selected':'') + '>' + p.id + (p.desc?' – '+p.desc.slice(0,40):'') + '</option>';
+      const isDriftedLink = _qLinkedProject && p.id===_qLinkedProject.id && (p.status===8 || p.status===STATUS_PENDING || (q.clientId && p.clientId!==q.clientId));
+      return '<option value="' + p.id + '"' + (q.projectId===p.id?' selected':'') + '>' + p.id + (p.desc?' – '+p.desc.slice(0,40):'') + (isDriftedLink?' ⚠':'') + '</option>';
     }).join('');
 
   let html = '<div style="max-width:900px;">';
@@ -13388,17 +13399,34 @@ function qSaveDraft() {
   const q = qCollectDraft();
   if(!q) return;
   if(!q.id) { alert('Add meg az ajánlat azonosítóját!'); return; }
-  if((q.freeText||'').trim().length<20) { alert('A "Projekt jellemzők" mező (az azonosítóhoz) legalább 20 karakter kell legyen!'); return; }
+  // A 20 karakteres minimumot csak ÚJ ajánlatnál kényszerítjük ki (ez adja az azonosító
+  // szabadmezős részét) – egy már létező, a formátumváltás előtt létrehozott ajánlat
+  // szerkesztésekor/mentésekor ne legyen emiatt blokkolva (ott a hiányra csak figyelmeztetünk).
+  if(!_qEditId && (q.freeText||'').trim().length<20) { alert('A "Projekt jellemzők" mező (az azonosítóhoz) legalább 20 karakter kell legyen!'); return; }
   // Meglévőt frissítjük vagy újat adunk
   // Ha nincs projekt, generálunk egyet az ajánlat ID-jából
   if(!q.projectId && q.id) {
     const newPid = qCreateNewProject(q.id, q.clientId, q.freeText);
     if(newPid) q.projectId = newPid;
   }
-  const idx = _qStore.findIndex(function(x){return x.id===q.id;});
+  // FONTOS: szerkesztéskor (meglévő ajánlat) az azonosító a "Projekt jellemzők" / revízió mező
+  // módosításával ÉLŐBEN megváltozhat (qUpdateIdSuggestion) – ha itt csak q.id alapján keresnénk
+  // vissza a _qStore-ban, a régi id alatt tárolt eredeti rekordot NEM találnánk meg, és egy
+  // duplikált, árva rekord jönne létre (a régi megmaradna, egy új jönne létre mellette – ugyanez
+  // igaz a Firestore-ban is, mivel ott is az id a dokumentum-azonosító). Ezért szerkesztésnél
+  // a KORÁBBI azonosítót (_qEditId) használjuk a keresésre, és ha az id tényleg megváltozott,
+  // a régi rekordot/Firestore-dokumentumot explicit töröljük, majd az újat elmentjük.
+  const origId = _qEditId || null;
+  const lookupId = origId || q.id;
+  const idx = _qStore.findIndex(function(x){return x.id===lookupId;});
   if(idx>=0) _qStore[idx] = q;
   else _qStore.push(q);
   window._quoteStore = _qStore;
+  const idChanged = origId && origId!==q.id;
+  if(idChanged && window.fbDelQuote) {
+    window.fbDelQuote(origId).catch(function(e){ console.error('Régi ajánlat-dokumentum törlési hiba:', e); });
+  }
+  _qEditId = q.id;
   if(window.fbSaveQuote) {
     window.fbSaveQuote(q).then(function(){
       console.log('Ajánlat mentve:', q.id);
@@ -13411,11 +13439,14 @@ function qSaveDraft() {
 }
 
 function qEditQuote(id) {
+  // FONTOS: quoteInit() előbb kell fusson, hogy _qStore friss legyen – ha qEditQuote olyan
+  // helyről hívódik, ahol a modul még nem volt inicializálva (pl. kereszthivatkozás a
+  // projektből), a régi sorrendnél _qStore még üres volt, és a keresés csendben semmit sem talált.
+  quoteInit();
   const q = _qStore.find(function(x){return x.id===id;});
   if(!q) return;
   _qDraft = JSON.parse(JSON.stringify(q));
   _qEditId = id;
-  quoteInit();
   qNav('list'); // nav highlight: lista marad aktív szerkesztés közben
   const mc = qmc();
   if(mc) mc.innerHTML = renderQEditor();
@@ -13431,6 +13462,29 @@ function qGoToProject(pid) {
   if(window.showView) window.showView('project-detail', pid);
 }
 window.qGoToProject = qGoToProject;
+
+// Átugrás a projekt részletező nézetéből egyenesen egy adott ajánlat szerkesztőjébe.
+// NEM a window.enterQuoteModule()-t hívjuk, mert az egy setTimeout-tal mindig a dashboard
+// nézetre vált 30ms múlva – ha azután (akár 80ms késleltetéssel is) hívnánk meg qEditQuote-ot,
+// az egy törékeny időzítési versenyhelyzet lenne. Itt ugyanazt a modul-váltó logikát végezzük el,
+// de a dashboard helyett rögtön a kért ajánlat szerkesztőjét nyitjuk meg, időzítés nélkül.
+function qJumpToQuoteEditor(qid) {
+  const moduleLauncher = document.getElementById('moduleLauncher');
+  if(moduleLauncher) moduleLauncher.style.display = 'none';
+  const mainLayout = document.getElementById('mainLayout');
+  if(mainLayout) mainLayout.style.display = 'none';
+  const idoMod = document.getElementById('ido-module');
+  if(idoMod) idoMod.style.display = 'none';
+  const migoTopbar = document.getElementById('minigo-topbar');
+  if(migoTopbar) migoTopbar.style.display = 'none';
+  const quoteMod = document.getElementById('quote-module');
+  if(quoteMod) quoteMod.style.display = 'flex';
+  const badge = document.getElementById('quote-userBadge');
+  if(badge && typeof auth!=='undefined' && auth?.currentUser) badge.textContent = auth.currentUser.email.split('@')[0] + ' · MiniGo SSO';
+  if(typeof window._updateSensitiveBtn === 'function') window._updateSensitiveBtn();
+  if(qid) qEditQuote(qid); else quoteShowView('dashboard');
+}
+window.qJumpToQuoteEditor = qJumpToQuoteEditor;
 
 function qDelQuote(id) {
   if(!confirm('Biztosan törlöd az ajánlatot? (' + id + ')')) return;
